@@ -1,0 +1,55 @@
+{
+  "student_academic_record": {
+    "image_path": "templates/student_academic_record_blank.tif",
+    "fields": [
+      {"id":"full_name",         "type":"handwritten","x":921, "y":1430,"w":3213,"h":145,"required":true, "format":"alpha"},
+      {"id":"matric_number",     "type":"handwritten","x":1113,"y":1665,"w":3021,"h":145,"required":true, "format":"alphanumeric"},
+      {"id":"department",        "type":"handwritten","x":977, "y":1900,"w":3159,"h":145,"required":true, "format":"alphanumeric"},
+      {"id":"faculty",           "type":"handwritten","x":821, "y":2135,"w":3311,"h":140,"required":true, "format":"alphanumeric"},
+      {"id":"level_100",         "type":"checkbox",   "x":520, "y":2530,"w":117, "h":90},
+      {"id":"level_200",         "type":"checkbox",   "x":1417,"y":2545,"w":121, "h":90},
+      {"id":"level_300",         "type":"checkbox",   "x":2566,"y":2565,"w":118, "h":85},
+      {"id":"level_400",         "type":"checkbox",   "x":3737,"y":2585,"w":118, "h":75},
+      {"id":"session",           "type":"handwritten","x":944, "y":2720,"w":3189,"h":145,"required":true},
+      {"id":"semester",          "type":"handwritten","x":1161,"y":2905,"w":2969,"h":145,"required":true},
+      {"id":"mode_fulltime",     "type":"checkbox",   "x":493, "y":3295,"w":90,  "h":90},
+      {"id":"mode_parttime",     "type":"checkbox",   "x":491, "y":3413,"w":90,  "h":90},
+      {"id":"sn_1",              "type":"handwritten","x":505, "y":4005,"w":480, "h":145},
+      {"id":"course_code_1",     "type":"handwritten","x":985, "y":4005,"w":720, "h":145,"format":"alphanumeric"},
+      {"id":"course_title_1",    "type":"handwritten","x":1705,"y":4005,"w":1400,"h":145},
+      {"id":"unit_1",            "type":"handwritten","x":3105,"y":4005,"w":600, "h":145,"format":"integer"},
+      {"id":"sn_2",              "type":"handwritten","x":505, "y":4150,"w":480, "h":145},
+      {"id":"course_code_2",     "type":"handwritten","x":985, "y":4150,"w":720, "h":145,"format":"alphanumeric"},
+      {"id":"course_title_2",    "type":"handwritten","x":1705,"y":4150,"w":1400,"h":145},
+      {"id":"unit_2",            "type":"handwritten","x":3105,"y":4150,"w":600, "h":145,"format":"integer"},
+      {"id":"sn_3",              "type":"handwritten","x":505, "y":4295,"w":480, "h":145},
+      {"id":"course_code_3",     "type":"handwritten","x":985, "y":4295,"w":720, "h":145,"format":"alphanumeric"},
+      {"id":"course_title_3",    "type":"handwritten","x":1705,"y":4295,"w":1400,"h":145},
+      {"id":"unit_3",            "type":"handwritten","x":3105,"y":4295,"w":600, "h":145,"format":"integer"},
+      {"id":"total_units",       "type":"handwritten","x":914, "y":4595,"w":3220,"h":145,"required":true,"format":"integer"},
+      {"id":"date",              "type":"handwritten","x":500, "y":5210,"w":1100,"h":145,"required":true,"format":"date"}
+    ],
+    "output_schema": {
+      "full_name":"full_name","matric_number":"matric_number","department":"department",
+      "faculty":"faculty","level_100":"level_100","level_200":"level_200",
+      "level_300":"level_300","level_400":"level_400","session":"session",
+      "semester":"semester","mode_fulltime":"mode_fulltime","mode_parttime":"mode_parttime",
+      "sn_1":"sn_1","course_code_1":"course_code_1","course_title_1":"course_title_1","unit_1":"unit_1",
+      "sn_2":"sn_2","course_code_2":"course_code_2","course_title_2":"course_title_2","unit_2":"unit_2",
+      "sn_3":"sn_3","course_code_3":"course_code_3","course_title_3":"course_title_3","unit_3":"unit_3",
+      "total_units":"total_units","date":"date"
+    }
+  },
+  "medical_screening": {
+    "image_path": "templates/medical_screening_blank.tif",
+    "fields": [],
+    "output_schema": {},
+    "_note": "Run: python main.py --register --template-id medical_screening --template-image templates/medical_screening_blank.tif"
+  },
+  "leave_application": {
+    "image_path": "templates/leave_application_blank.tif",
+    "fields": [],
+    "output_schema": {},
+    "_note": "Run: python main.py --register --template-id leave_application --template-image templates/leave_application_blank.tif"
+  }
+}
