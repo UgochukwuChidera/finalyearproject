@@ -50,11 +50,52 @@ class DAPEOrchestrator:
         hitl_port            = 5050,
         tesseract_cmd        = None,
         dpi                  = 300,
+        extractor            = None,
+        extractor_kwargs     = None,
     ):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._dpi      = dpi
         self._ks       = kernel_sizes(dpi)   # all kernels scaled to actual DPI
+
+        # Resolve extractor name → OCR backend for FieldExtractor
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
+
+        extractor_name   = extractor or "tesseract"
+        extractor_kwargs = extractor_kwargs or {}
+
+        # Inject tesseract_cmd for Tesseract backend if not explicitly set
+        if extractor_name == "tesseract" and "tesseract_cmd" not in extractor_kwargs:
+            if tesseract_cmd:
+                extractor_kwargs["tesseract_cmd"] = tesseract_cmd
+
+        self._extractor_name = extractor_name
+        self._standalone_extractor = None   # used for DeepSeek / non-template backends
+
+        _log.info("DAPEOrchestrator: using extractor '%s'", extractor_name)
+
+        if extractor_name == "deepseek":
+            # DeepSeek operates at document level — bypass field-extraction loop
+            from .extraction.deepseek_extractor import DeepSeekExtractor
+            self._standalone_extractor = DeepSeekExtractor(
+                registry_path=registry_path, **extractor_kwargs
+            )
+            _ocr_backend = None   # not used in deepseek path
+        elif extractor_name in ("paddle", "paddleocr"):
+            # PaddleOCR field-level backend for FieldExtractor
+            from .extraction.paddle_extractor import PaddleOCRExtractor
+            _paddle = PaddleOCRExtractor(
+                registry_path=registry_path, **extractor_kwargs
+            )
+            # Wrap as a compatible callable with the OCRExtractor interface
+            _ocr_backend = _PaddleOCRBackendAdapter(_paddle)
+        else:
+            # Default: Tesseract
+            from .extraction.ocr_extractor import OCRExtractor as _OCRExtractor
+            _ocr_backend = _OCRExtractor(
+                tesseract_cmd=extractor_kwargs.get("tesseract_cmd", tesseract_cmd)
+            )
 
         self._registry   = TemplateRegistry(registry_path)
         self._aligner    = TemplateAligner(
@@ -64,7 +105,7 @@ class DAPEOrchestrator:
             diff_threshold  = self._ks["diff_threshold"],
             min_region_area = self._ks["min_region_area"],
         )
-        self._extractor  = FieldExtractor(tesseract_cmd=tesseract_cmd)
+        self._extractor  = FieldExtractor(ocr_backend=_ocr_backend)
         self._validator  = ConfidenceValidator(confidence_threshold)
         self._escalation = HITLEscalation()
         self._exporter   = DataExporter()
@@ -122,9 +163,20 @@ class DAPEOrchestrator:
         images["interaction_mask"] = interaction_mask
 
         # ── Stage 4: Field Extraction ─────────────────────────────────────────
-        extracted_fields = self._extractor.extract_fields(
-            aligned, interaction_mask, field_defs
-        )
+        if self._standalone_extractor is not None:
+            # DeepSeek / cloud path: send the image directly to the API
+            ext_result = self._standalone_extractor.extract(
+                image_path, template_id=template_id
+            )
+            # Convert ExtractionResult.fields → unified field list format
+            extracted_fields = self._result_to_field_list(
+                ext_result, field_defs
+            )
+            stats["extractor"] = self._extractor_name
+        else:
+            extracted_fields = self._extractor.extract_fields(
+                aligned, interaction_mask, field_defs
+            )
 
         # ── Stage 5: Confidence Validation ────────────────────────────────────
         validated_fields = self._validator.validate(extracted_fields, field_defs)
@@ -181,3 +233,63 @@ class DAPEOrchestrator:
             return (2480, 3508)
         h, w = img.shape[:2]
         return (w, h)
+
+    @staticmethod
+    def _result_to_field_list(ext_result, field_defs):
+        """
+        Convert an ExtractionResult produced by a standalone extractor
+        (e.g. DeepSeek) into the unified field-list format expected by the
+        rest of the pipeline (ConfidenceValidator, OutputStructurer, etc.).
+        """
+        fields_map = ext_result.fields if ext_result else {}
+        result = []
+        for fdef in field_defs:
+            fid   = fdef["id"]
+            ftype = fdef["type"]
+            value = fields_map.get(fid, False if ftype == "checkbox" else "")
+            result.append({
+                "field_id":   fid,
+                "field_type": ftype,
+                "x": int(fdef.get("x", 0)),
+                "y": int(fdef.get("y", 0)),
+                "w": int(fdef.get("w", 0)),
+                "h": int(fdef.get("h", 0)),
+                "value":      value,
+                "confidence": 0.85,   # cloud APIs are treated as high-confidence
+                "raw_data":   {"words": [], "confidences": []},
+            })
+        return result
+
+
+class _PaddleOCRBackendAdapter:
+    """
+    Thin adapter that wraps :class:`PaddleOCRExtractor` so it can be used
+    as a drop-in replacement for :class:`OCRExtractor` inside
+    :class:`FieldExtractor`.
+
+    ``FieldExtractor`` calls ``ocr.extract(field_image, field_type)`` and
+    expects ``{"value": str, "confidence": float, "raw_data": {...}}``.
+    PaddleOCRExtractor operates at the document level, so we call its
+    internal ``_ocr_roi`` method here.
+    """
+
+    def __init__(self, paddle_extractor) -> None:
+        self._paddle = paddle_extractor
+
+    def extract(self, field_image, field_type="printed"):
+        """Delegate to PaddleOCRExtractor's field-level OCR helper."""
+        import numpy as np
+
+        _empty = {"value": "", "confidence": 0.0, "raw_data": {"words": [], "confidences": []}}
+        if field_image is None or field_image.size == 0:
+            return _empty
+
+        # Ensure PaddleOCR engine is loaded
+        self._paddle._load_engine(self._paddle._lang, self._paddle._use_gpu)
+
+        result = self._paddle._ocr_roi(field_image)
+        return {
+            "value":      result.get("value", ""),
+            "confidence": result.get("confidence", 0.0),
+            "raw_data":   {"words": [], "confidences": []},
+        }

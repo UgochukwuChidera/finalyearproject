@@ -4,8 +4,17 @@ from .ocr_extractor import OCRExtractor
 from .checkbox_extractor import CheckboxExtractor
 
 class FieldExtractor:
-    def __init__(self, tesseract_cmd=None):
-        self.ocr      = OCRExtractor(tesseract_cmd=tesseract_cmd)
+    def __init__(self, tesseract_cmd=None, ocr_backend=None):
+        """
+        Parameters
+        ----------
+        tesseract_cmd : optional path to Tesseract binary; only used when
+                        *ocr_backend* is ``None`` (default Tesseract backend).
+        ocr_backend   : optional callable with the same signature as
+                        ``OCRExtractor.extract(field_image, field_type)``.
+                        When provided, *tesseract_cmd* is ignored.
+        """
+        self.ocr      = ocr_backend if ocr_backend is not None else OCRExtractor(tesseract_cmd=tesseract_cmd)
         self.checkbox = CheckboxExtractor()
 
     def extract_fields(self, aligned_form, interaction_mask, field_definitions):
