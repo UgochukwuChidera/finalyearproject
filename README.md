@@ -150,6 +150,66 @@ DAPE/
 
 ---
 
+## Extractor Architecture
+
+DAPE supports three interchangeable OCR / extraction backends.  All three share
+the same `BaseExtractor` interface defined in `project/extraction/base.py` and
+produce an `ExtractionResult(text, fields, layout, raw_ocr)` container that is
+consumed unchanged by the HITL, validation, and evaluation modules.
+
+### Available backends
+
+| Name | Module | Description | Extra deps |
+|---|---|---|---|
+| `tesseract` *(default)* | `TesseractFormExtractor` | Rule-based OCR (`--oem 3 --psm 6`) | `pytesseract` + system Tesseract |
+| `paddle` | `PaddleOCRExtractor` | Deep-learning OCR (DBNet + CRNN-LSTM). Real CTC confidence scores. CPU-viable. | `pip install paddlepaddle paddleocr` |
+| `deepseek` | `DeepSeekExtractor` | Cloud Document AI via DeepSeek Vision API. Sends full page, returns structured JSON. | `pip install openai` + API key |
+
+### Selecting the backend
+
+**Via CLI flag:**
+```bash
+# Tesseract (default — no extra deps):
+python main.py --image form.tif --template-id student_academic_record
+
+# PaddleOCR deep-learning backend:
+python main.py --image form.tif --template-id student_academic_record --extractor paddle
+
+# DeepSeek Vision Document AI:
+python main.py --image form.tif --template-id student_academic_record \
+  --extractor deepseek --deepseek-key sk-xxxx
+```
+
+**Via environment variable:**
+```bash
+export OCR_EXTRACTOR=paddle        # set default for all runs
+python main.py --image form.tif --template-id student_academic_record
+```
+
+**Via Python API:**
+```python
+from project.extraction.factory import get_extractor
+
+extractor = get_extractor("paddle")                    # PaddleOCR
+extractor = get_extractor("deepseek", api_key="sk-…") # DeepSeek
+result    = extractor.extract("form.tif", template_id="student_academic_record")
+print(result.fields)   # {"name": "Jane Smith", "dob": "12/03/1995", …}
+```
+
+### DeepSeek configuration
+
+The DeepSeek extractor reads credentials from environment variables:
+
+| Variable | Required | Description |
+|---|---|---|
+| `DEEPSEEK_API_KEY` | ✓ | Your DeepSeek secret key |
+| `DEEPSEEK_API_BASE` | — | API base URL (default: `https://api.deepseek.com/v1`) |
+| `DEEPSEEK_MODEL` | — | Model name (default: `deepseek-chat`) |
+
+Missing `DEEPSEEK_API_KEY` raises a clear `RuntimeError` with setup instructions.
+
+---
+
 ## Usage
 
 ### Step 1 — Register templates (one-time per template type)
@@ -171,7 +231,8 @@ python main.py \
   --dpi 600
 ```
 
-Flags:
+**Pipeline flags:**
+
 | Flag | Default | Description |
 |---|---|---|
 | `--image` | required | Path to scanned form |
@@ -182,6 +243,16 @@ Flags:
 | `--hitl-port` | `5050` | Port for HITL Flask UI |
 | `--output-dir` | `outputs/` | Where to write exports |
 | `--tesseract-cmd` | auto | Explicit path to Tesseract binary |
+
+**Extractor flags:**
+
+| Flag | Default | Description |
+|---|---|---|
+| `--extractor` | `tesseract` | OCR backend: `tesseract`, `paddle`, or `deepseek` |
+| `--deepseek-key` | env | DeepSeek API key (or set `DEEPSEEK_API_KEY`) |
+| `--deepseek-model` | `deepseek-chat` | DeepSeek model name |
+| `--paddle-lang` | `en` | PaddleOCR language code |
+| `--paddle-gpu` | off | Enable GPU for PaddleOCR |
 
 ### Step 3 — HITL review
 
@@ -212,8 +283,11 @@ python generate_ground_truth_excel.py   # creates ground_truth_entry.xlsx
 # ... fill in the Excel spreadsheet ...
 python excel_to_json.py                 # converts to 45 JSON files
 
-# Run evaluation (all 3 pipelines × before/after HITL)
-python run_evaluation.py --dpi 600
+# Run evaluation — Tesseract + PaddleOCR + DAPE (all 3 pipelines × before/after HITL):
+python run_evaluation.py --template-id student_academic_record
+
+# Run with DeepSeek replacing PaddleOCR for Condition 2:
+python run_evaluation.py --deepseek-key sk-xxxx
 ```
 
 ---

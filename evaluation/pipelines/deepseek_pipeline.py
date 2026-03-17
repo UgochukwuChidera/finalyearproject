@@ -25,6 +25,9 @@ import time
 
 from .base_pipeline import BasePipeline
 
+# DeepSeek Vision API output is treated as high-confidence (no pixel-level uncertainty)
+_CLOUD_API_DEFAULT_CONFIDENCE = 0.85
+
 
 class DeepSeekPipeline(BasePipeline):
     """
@@ -90,7 +93,7 @@ class DeepSeekPipeline(BasePipeline):
                 "field_type": ftype,
                 "x": x, "y": y, "w": w, "h": h,
                 "value":      value,
-                "confidence": 0.90,   # treat Document AI output as high-confidence
+                "confidence": _CLOUD_API_DEFAULT_CONFIDENCE,
             })
 
         elapsed = time.perf_counter() - t0

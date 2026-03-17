@@ -12,6 +12,7 @@ Executes the full pipeline:
   8. Export and Audit Log
 """
 
+import logging
 from pathlib import Path
 
 from .preprocessing.io               import load_image
@@ -37,6 +38,11 @@ from .output.relational_exporter      import RelationalXLSXExporter
 from .output.exporter                 import DataExporter
 from .output.audit_logger             import AuditLogger
 
+# Default confidence assigned to cloud-API extractions (treated as high-quality)
+_CLOUD_API_DEFAULT_CONFIDENCE = 0.85
+
+_log = logging.getLogger(__name__)
+
 
 class DAPEOrchestrator:
     def __init__(
@@ -59,9 +65,6 @@ class DAPEOrchestrator:
         self._ks       = kernel_sizes(dpi)   # all kernels scaled to actual DPI
 
         # Resolve extractor name → OCR backend for FieldExtractor
-        import logging as _logging
-        _log = _logging.getLogger(__name__)
-
         extractor_name   = extractor or "tesseract"
         extractor_kwargs = extractor_kwargs or {}
 
@@ -255,7 +258,7 @@ class DAPEOrchestrator:
                 "w": int(fdef.get("w", 0)),
                 "h": int(fdef.get("h", 0)),
                 "value":      value,
-                "confidence": 0.85,   # cloud APIs are treated as high-confidence
+                "confidence": _CLOUD_API_DEFAULT_CONFIDENCE,
                 "raw_data":   {"words": [], "confidences": []},
             })
         return result

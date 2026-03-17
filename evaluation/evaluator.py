@@ -9,9 +9,12 @@ Six conditions:
   │ Pipeline                    │ No HITL  │ With HITL │
   ├─────────────────────────────┼──────────┼───────────┤
   │ 1. Tesseract (Baseline)     │ Cond 1A  │ Cond 1B   │
-  │ 2. DeepSeek Vision          │ Cond 2A  │ Cond 2B   │
+  │ 2. PaddleOCR (LSTM/ANN)     │ Cond 2A  │ Cond 2B   │
   │ 3. DAPE (Full Pipeline)     │ Cond 3A  │ Cond 3B   │
   └─────────────────────────────┴──────────┴───────────┘
+
+When ``deepseek_api_key`` is provided the PaddleOCR condition is replaced
+by DeepSeek Vision for a Document AI comparison.
 
 For each form:
   1. Run pipeline → raw extracted fields
@@ -47,7 +50,9 @@ class Evaluator:
     ground_truth_dir     : directory containing per-form ground truth JSON files
     results_dir          : output directory for results tables
     confidence_threshold : shared threshold for all three pipelines' HITL
-    deepseek_api_key     : required for DeepSeek pipeline
+    deepseek_api_key     : optional; when provided, replaces PaddleOCR with
+                           DeepSeek Vision pipeline for Condition 2
+    deepseek_model       : optional DeepSeek model name (default: deepseek-chat)
     hitl_host, hitl_port : Flask review UI address
     tesseract_cmd        : optional Tesseract binary path
     """
@@ -58,8 +63,8 @@ class Evaluator:
         ground_truth_dir:     str        = "ground_truth",
         results_dir:          str        = "evaluation/results",
         confidence_threshold: float      = 0.60,
-        
-        
+        deepseek_api_key:     str | None = None,
+        deepseek_model:       str | None = None,
         hitl_host:            str        = "127.0.0.1",
         hitl_port:            int        = 5050,
         tesseract_cmd:        str | None = None,
@@ -72,17 +77,26 @@ class Evaluator:
         # Ground truth
         self._gt = GroundTruth(ground_truth_dir)
 
+        # Condition 2: DeepSeek when key is provided, PaddleOCR otherwise
+        if deepseek_api_key:
+            from .pipelines.deepseek_pipeline import DeepSeekPipeline
+            condition2: BasePipeline = DeepSeekPipeline(
+                registry_path = registry_path,
+                api_key       = deepseek_api_key,
+                model         = deepseek_model,
+            )
+        else:
+            condition2 = PaddleOCRPipeline(
+                registry_path = registry_path,
+            )
+
         # Three pipelines
         self._pipelines: list[BasePipeline] = [
             TesseractPipeline(
                 registry_path = registry_path,
                 tesseract_cmd = tesseract_cmd,
             ),
-            PaddleOCRPipeline(
-                registry_path = registry_path,
-                cache_dir     = 
-                device        = 
-            ),
+            condition2,
             DAPEPipeline(
                 registry_path        = registry_path,
                 confidence_threshold = confidence_threshold,

@@ -5,11 +5,11 @@ Entry point for the full six-condition comparative evaluation.
 
 Usage
 -----
-    # With DeepSeek (all 3 pipelines):
-    python run_evaluation.py --deepseek-key sk-xxxx
-
-    # Without DeepSeek (Tesseract + DAPE only):
+    # Tesseract + PaddleOCR + DAPE (no API key needed):
     python run_evaluation.py
+
+    # With DeepSeek Vision replacing PaddleOCR for Condition 2:
+    python run_evaluation.py --deepseek-key sk-xxxx
 
     # Custom paths:
     python run_evaluation.py \\
@@ -39,6 +39,7 @@ Field IDs must match those defined in templates/registry.json.
 
 import argparse
 import glob
+import os
 from pathlib import Path
 
 from evaluation.evaluator import Evaluator
@@ -73,12 +74,13 @@ def main():
         help="Confidence threshold for HITL escalation (default: 0.60)"
     )
     parser.add_argument(
-        "--got-cache-dir", default="models/got_ocr2",
-        help="Directory to cache GOT-OCR 2.0 model weights (default: models/got_ocr2)"
+        "--deepseek-key", default=None,
+        help="DeepSeek API key; when provided, uses DeepSeek Vision for Condition 2 "
+             "instead of PaddleOCR (can also be set via DEEPSEEK_API_KEY env var)"
     )
     parser.add_argument(
-        "--got-device",    default="cpu",
-        help="Device for GOT-OCR inference: cpu or cuda (default: cpu)"
+        "--deepseek-model", default=None,
+        help="DeepSeek model name (default: deepseek-chat)"
     )
     parser.add_argument(
         "--hitl-port",    type=int, default=5050,
@@ -94,6 +96,9 @@ def main():
     )
     args = parser.parse_args()
 
+    # Resolve DeepSeek API key (CLI flag takes precedence over env var)
+    deepseek_key = args.deepseek_key or os.environ.get("DEEPSEEK_API_KEY")
+
     # Collect form image paths
     exts  = [e.strip().lstrip(".") for e in args.extensions.split(",")]
     paths = []
@@ -107,14 +112,15 @@ def main():
         print(f"        Looked for extensions: {exts}")
         return
 
+    cond2_label = "DeepSeek Vision" if deepseek_key else "PaddleOCR v3"
+
     print(f"\n{'='*60}")
     print(f"  DAPE Comparative Evaluation")
     print(f"{'='*60}")
     print(f"  Forms found  : {len(paths)}")
     print(f"  Template     : {args.template_id}")
     print(f"  Threshold    : {args.threshold}")
-    print(f"  GOT-OCR dir  : {args.got_cache_dir}")
-    print(f"  GOT device   : {args.got_device}")
+    print(f"  Condition 2  : {cond2_label}")
     print(f"  Results dir  : {args.results_dir}")
     print(f"{'='*60}\n")
 
@@ -134,8 +140,8 @@ def main():
         ground_truth_dir     = args.gt_dir,
         results_dir          = args.results_dir,
         confidence_threshold = args.threshold,
-        got_ocr_cache_dir    = args.got_cache_dir,
-        got_ocr_device       = args.got_device,
+        deepseek_api_key     = deepseek_key,
+        deepseek_model       = args.deepseek_model,
         hitl_port            = args.hitl_port,
         tesseract_cmd        = args.tesseract_cmd,
     )

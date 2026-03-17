@@ -35,9 +35,6 @@ from .checkbox_extractor import CheckboxExtractor
 
 logger = logging.getLogger(__name__)
 
-_CB_MARKED   = 0.15
-_CB_UNMARKED = 0.04
-
 
 class PaddleOCRExtractor(BaseExtractor):
     """
