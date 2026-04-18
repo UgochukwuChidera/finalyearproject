@@ -248,3 +248,43 @@ For each processed form, the following are written to `outputs/`:
 - The course registration table is extracted as individual fields (`sn_1`, `course_code_1`, etc.) and rendered as a separate COURSES sheet in the XLSX export.
 - All kernel sizes scale automatically with DPI. Always pass `--dpi` matching your scanner setting.
 - HITL corrections update `final_value` only. They never retrain models or alter thresholds.
+
+---
+
+## AI Extraction + Web UI (OpenRouter)
+
+This repository now includes:
+
+- `ai_extraction/` for OpenRouter-based vision extraction (`google/gemini-2.5-flash-lite` by default)
+- `configs/*.json` for form-level configuration (fields, bounding boxes, thresholds, extraction mode)
+- `dictionaries/*.csv` for dictionary-assisted validation (header: `name`)
+- `web/` + `app.py` for Flask UI:
+  - Config editor + bbox canvas (`/configs`)
+  - Form upload (`/upload`)
+  - Jobs + review queue (`/jobs`, `/jobs/<id>/review`)
+  - Audit view (`/audit`)
+
+### Run web app
+
+```bash
+export OPENROUTER_API_KEY="<your-key>"
+python app.py
+```
+
+Open: `http://127.0.0.1:5060`
+
+### Unified processor API
+
+`main.py` now provides:
+
+```python
+process_form(image_path, config_name="medical_screening_v1")
+```
+
+This supports `extraction_mode` values:
+
+- `differential`
+- `ai`
+- `hybrid`
+
+and writes `outputs/audit.jsonl` with AI confidence fields (`C_lp`, `C_dict`, `C_final`).

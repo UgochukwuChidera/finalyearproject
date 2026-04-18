@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Upload form</h2>
+  <form method="post" action="{{ url_for('web.upload') }}" enctype="multipart/form-data">
+    <label>Config
+      <select name="config_name" required>
+        <option value="">Select config</option>
+        {% for c in configs %}
+          <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Form file (TIFF/PNG/JPG)
+      <input type="file" name="form_file" accept=".tif,.tiff,.png,.jpg,.jpeg" required />
+    </label>
+    <button type="submit">Process</button>
+  </form>
+</section>
+
+{% if audit_entries %}
+<section class="card">
+  <h2>Audit log</h2>
+  <table>
+    <thead><tr><th>Timestamp</th><th>Job</th><th>Form</th><th>Pending</th></tr></thead>
+    <tbody>
+      {% for e in audit_entries %}
+      <tr>
+        <td>{{ e.timestamp }}</td>
+        <td>{{ e.job_id }}</td>
+        <td>{{ e.form_type }}</td>
+        <td>{{ e.review_summary.pending_review_count if e.review_summary else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}
