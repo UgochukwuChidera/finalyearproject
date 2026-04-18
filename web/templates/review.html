@@ -12,14 +12,14 @@
   {% for f in job.pending_fields %}
   <div class="field-box">
     <div>
-      <strong>{{ f.field_id }}</strong>
-      <p>Value: {{ f.value }} | confidence: {{ '%.3f'|format(f.confidence or 0) }} | closest: {{ f.closest_dictionary_match }}</p>
+      <strong>{{ f.field_id|e }}</strong>
+      <p>Value: {{ f.value|e }} | confidence: {{ '%.3f'|format(f.confidence or 0) }} | closest: {{ f.closest_dictionary_match|e }}</p>
       {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in f.crop_path else '' %}
       {% if rel %}<img src="{{ url_for('web.outputs_static', filename=rel) }}" alt="crop" class="crop" />{% endif %}
     </div>
     <div>
-      <input type="text" name="{{ f.field_id }}" value="{{ f.value }}" />
-      <button type="button" onclick="markIllegible('{{ f.field_id }}')">Mark Illegible</button>
+      <input type="text" name="{{ f.field_id|e }}" value="{{ f.value|e }}" />
+      <button type="button" onclick="markIllegible('{{ f.field_id|e }}')">Mark Illegible</button>
     </div>
   </div>
   {% endfor %}

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, send_from_directory, url_for
+from werkzeug.utils import safe_join, secure_filename
 
 from main import process_form
 
@@ -38,14 +39,31 @@ def _list_configs() -> list[str]:
     return sorted([p.stem for p in _cfg_dir().glob("*.json")])
 
 
+def _safe_config_name(name: str) -> str:
+    import re
+
+    cleaned = (name or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", cleaned):
+        raise ValueError("Invalid config name")
+    return cleaned
+
+
+def _config_path(name: str) -> Path:
+    safe = _safe_config_name(name)
+    joined = safe_join(str(_cfg_dir()), f"{safe}.json")
+    if not joined:
+        raise ValueError("Invalid config path")
+    return Path(joined)
+
+
 def _load_config(name: str) -> dict:
-    path = _cfg_dir() / f"{name}.json"
+    path = _config_path(name)
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def _save_config(name: str, payload: dict) -> Path:
-    path = _cfg_dir() / f"{name}.json"
+    path = _config_path(name)
     with path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2, ensure_ascii=False)
     return path
@@ -88,6 +106,10 @@ def upload():
     file = request.files.get("form_file")
     if not cfg or not file:
         return jsonify({"error": "config_name and form_file are required"}), 400
+    try:
+        cfg = _safe_config_name(cfg)
+    except ValueError:
+        return jsonify({"error": "Invalid config name"}), 400
 
     ext = Path(file.filename or "").suffix.lower()
     if ext not in {".tif", ".tiff", ".png", ".jpg", ".jpeg"}:
@@ -171,10 +193,17 @@ def upload_dictionary():
     file = request.files.get("dictionary_file")
     if not file:
         return redirect(url_for("web.configs_page"))
-    dest = _dict_dir() / Path(file.filename).name
+    safe_name = secure_filename(file.filename or "")
+    if not safe_name.endswith(".csv"):
+        return redirect(url_for("web.configs_page"))
+    joined = safe_join(str(_dict_dir()), safe_name)
+    if not joined:
+        return redirect(url_for("web.configs_page"))
+    dest = Path(joined)
     file.save(dest)
     store = current_app.config["DICTIONARY_STORE"]
-    current_app.config["DICTIONARIES_CACHE"] = store.load()
+    with JOBS_LOCK:
+        current_app.config["DICTIONARIES_CACHE"] = store.load()
     return redirect(url_for("web.configs_page"))
 
 
@@ -188,13 +217,21 @@ def api_configs():
     form_type = (payload.get("form_type") or "").strip()
     if not form_type:
         return jsonify({"error": "form_type is required"}), 400
+    try:
+        form_type = _safe_config_name(form_type)
+    except ValueError:
+        return jsonify({"error": "Invalid form_type"}), 400
     _save_config(form_type, payload)
     return jsonify({"status": "ok", "form_type": form_type})
 
 
 @bp.route("/api/configs/<name>", methods=["GET", "PUT", "DELETE"])
 def api_config_one(name: str):
-    path = _cfg_dir() / f"{name}.json"
+    try:
+        path = _config_path(name)
+        safe_name = _safe_config_name(name)
+    except ValueError:
+        return jsonify({"error": "invalid config name"}), 400
 
     if request.method == "GET":
         if not path.exists():
@@ -205,11 +242,11 @@ def api_config_one(name: str):
     if request.method == "DELETE":
         if path.exists():
             path.unlink()
-        return jsonify({"status": "deleted", "name": name})
+        return jsonify({"status": "deleted", "name": safe_name})
 
     payload = request.get_json(silent=True) or {}
-    _save_config(name, payload)
-    return jsonify({"status": "updated", "name": name})
+    _save_config(safe_name, payload)
+    return jsonify({"status": "updated", "name": safe_name})
 
 
 @bp.route("/api/jobs", methods=["GET"])

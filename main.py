@@ -116,6 +116,9 @@ def process_form(
     w_dict = float(weights.get("w_dict", 0.4))
     t_auto = float(thresholds.get("auto_accept", 0.85))
     t_review = float(thresholds.get("review", 0.70))
+    hybrid_switch_conf = float(thresholds.get("hybrid_switch_confidence", 0.80))
+    dict_low_lp_guard = float(thresholds.get("dictionary_low_lp_guard", 0.80))
+    min_field_height_px = int(thresholds.get("min_field_height_px", 20))
 
     jid = job_id or str(uuid.uuid4())
     output_path = Path(output_dir)
@@ -247,7 +250,7 @@ def process_form(
                 d_val = diff_row.get("value", "")
                 a_val = ai_row.get("value", "")
                 a_conf = float(ai_row.get("C_lp", 0.5))
-                use_ai = (not str(d_val).strip()) or d_conf < 0.80
+                use_ai = (not str(d_val).strip()) or d_conf < hybrid_switch_conf
                 raw = a_val if use_ai else d_val
                 c_lp = a_conf if use_ai else d_conf
                 source = "ai" if use_ai else "differential"
@@ -255,10 +258,10 @@ def process_form(
         dict_file = f.get("dictionary")
         dict_entries = dictionaries.get(dict_file, []) if dict_file else []
         best_match, min_distance = closest_dictionary_match(str(raw), dict_entries)
-        c_final, c_dict, min_distance_conf = compute_confidence(
+        c_final, c_dict, dictionary_distance = compute_confidence(
             str(raw), c_lp, best_match, bool(f.get("critical") and dict_file), w_lp, w_dict
         )
-        min_distance = min(min_distance, min_distance_conf)
+        min_distance = min(min_distance, dictionary_distance)
 
         if c_final >= t_auto:
             status = "accepted"
@@ -267,9 +270,10 @@ def process_form(
         else:
             status = "pending_review"
 
-        if h0 < 20:
+        if h0 < min_field_height_px:
             status = "pending_review"
-        if dict_file and min_distance > 2 and c_lp < 0.80:
+            sem_reason = "bounding_box_too_small"
+        if dict_file and min_distance > 2 and c_lp < dict_low_lp_guard:
             status = "pending_review"
 
         sem_ok, sem_reason = _validation_ok(raw, f)

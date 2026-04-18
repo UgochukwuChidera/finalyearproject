@@ -32,7 +32,6 @@ class DictionaryStore:
         return self._data.get(filename, [])
 
 
-
 def closest_dictionary_match(value: str, entries: list[str]) -> tuple[str | None, int]:
     value = (value or "").strip()
     if not value or not entries:

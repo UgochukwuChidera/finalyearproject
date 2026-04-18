@@ -44,13 +44,13 @@ async function deleteConfig(){
   location.href='/configs';
 }
 
-const ILLEGIBLE = {};
-function markIllegible(field){ILLEGIBLE[field]=true;const i=document.querySelector(`input[name="${field}"]`);if(i)i.value='';}
+const illegibleFields = {};
+function markIllegible(field){illegibleFields[field]=true;const i=document.querySelector(`input[name="${field}"]`);if(i)i.value='';}
 
 async function submitReview(jobId){
   const corrections={};
   document.querySelectorAll('#review-form input[type="text"]').forEach((el)=>{
-    corrections[el.name]=ILLEGIBLE[el.name]?'__ILLEGIBLE__':el.value;
+    corrections[el.name]=illegibleFields[el.name]?'__ILLEGIBLE__':el.value;
   });
   const res=await fetch(`/api/jobs/${jobId}/review`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({corrections})});
   if(!res.ok){alert('Failed to submit');return;}
