@@ -3,3 +3,9 @@ __pycache__/
 *.pyo
 *.pyd
 .DS_Store
+uploads/*
+!uploads/.gitkeep
+logs/*
+!logs/.gitkeep
+outputs/*
+!outputs/.gitkeep
