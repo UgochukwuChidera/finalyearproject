@@ -99,9 +99,9 @@ def _validation_ok(value, field: dict) -> tuple[bool, str]:
         if rules.get("min") is not None or rules.get("max") is not None:
             n = float(s)
             if rules.get("min") is not None and n < float(rules["min"]):
-                return False, "below_min"
+                return False, f"value_below_min_{rules['min']}"
             if rules.get("max") is not None and n > float(rules["max"]):
-                return False, "above_max"
+                return False, f"value_above_max_{rules['max']}"
     except Exception:
         if rules.get("min") is not None or rules.get("max") is not None:
             return False, "numeric_parse_failed"
@@ -114,7 +114,7 @@ def _is_checkbox(field: dict) -> bool:
     return t in {"checkbox_group", "checkbox", "boolean"}
 
 
-def _is_changed(value, baseline) -> bool:
+def _differs_from_template(value, baseline) -> bool:
     if value is None:
         return False
     return str(value).strip() != str(baseline if baseline is not None else "").strip()
@@ -230,7 +230,7 @@ def process_form(
             if _is_checkbox(field):
                 raw = bool(raw) if raw is not None else None
             else:
-                raw = raw if _is_changed(raw, baseline) else None
+                raw = raw if _differs_from_template(raw, baseline) else None
 
         dict_file = field.get("dictionary")
         dict_entries = dictionaries.get(dict_file, []) if dict_file else []

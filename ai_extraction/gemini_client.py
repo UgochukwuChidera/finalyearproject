@@ -58,5 +58,5 @@ class GeminiClient:
         return self._safe_json_extract(raw)
 
 
-# Backwards-compatible alias
+# Backwards-compatible alias (deprecated: use GeminiClient)
 OpenRouterGeminiClient = GeminiClient
