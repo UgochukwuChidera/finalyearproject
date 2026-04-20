@@ -1,6 +1,7 @@
 {
   "form_type": "medical_screening_v1",
   "template_path": "templates/medical_screening_blank.tif",
+  "template_extraction": "templates/medical_blank_extraction.json",
   "fields": [
     {
       "name": "full_name",
@@ -8,15 +9,37 @@
       "expected_type": "string",
       "critical": true,
       "dictionary": "nigerian_names.csv",
-      "validation": {
-        "min_length": 2
-      },
-      "bounding_box": {
-        "x": 150,
-        "y": 200,
-        "w": 300,
-        "h": 40
-      }
+      "validation": { "min_length": 2 },
+      "bounding_box": { "x": 120, "y": 180, "w": 350, "h": 45 }
+    },
+    {
+      "name": "registration_id",
+      "label_hint": "Registration ID",
+      "expected_type": "string",
+      "critical": true,
+      "validation": { "regex": "^[0-9]{7}$" },
+      "bounding_box": { "x": 120, "y": 240, "w": 200, "h": 35 }
+    },
+    {
+      "name": "gender",
+      "label_hint": "Gender",
+      "expected_type": "checkbox_group",
+      "critical": false,
+      "options": ["Male", "Female"]
+    },
+    {
+      "name": "blood_group",
+      "label_hint": "Blood Group",
+      "expected_type": "checkbox_group",
+      "critical": false,
+      "options": ["A", "B", "AB", "O"]
+    },
+    {
+      "name": "height_cm",
+      "label_hint": "Height (cm)",
+      "expected_type": "integer",
+      "critical": false,
+      "validation": { "min": 100, "max": 250 }
     }
   ],
   "confidence_weights": {
@@ -30,6 +53,5 @@
   "preprocessing": {
     "deskew": true,
     "contrast_enhance": true
-  },
-  "extraction_mode": "ai"
+  }
 }

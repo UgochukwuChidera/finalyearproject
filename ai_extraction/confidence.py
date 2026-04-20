@@ -23,35 +23,32 @@ def levenshtein_distance(a: str, b: str) -> int:
     return prev[-1]
 
 
-def _dict_confidence(extracted: str, match: str | None) -> tuple[float, int]:
-    if not extracted or not match:
-        return 0.0, max(len(extracted or ""), len(match or ""))
-    dist = levenshtein_distance(extracted, match)
-    denom = max(len(extracted), len(match), 1)
-    return max(0.0, 1.0 - (dist / denom)), dist
+def compute_C_lp(logprobs_data) -> float:
+    if logprobs_data is None:
+        return 0.5
+    if isinstance(logprobs_data, (int, float)):
+        try:
+            v = float(logprobs_data)
+            if v <= 0:
+                v = math.exp(v)
+            return float(max(0.0, min(1.0, v)))
+        except Exception:
+            return 0.5
+
+    try:
+        values = [float(v) for v in logprobs_data if v is not None]
+        if not values:
+            return 0.5
+        avg = sum(values) / len(values)
+        return float(max(0.0, min(1.0, math.exp(avg))))
+    except Exception:
+        return 0.5
 
 
-def compute_confidence(
-    extracted_value: str,
-    c_lp: float,
-    dictionary_match: str | None,
-    critical: bool,
-    w_lp: float,
-    w_dict: float,
-) -> tuple[float, float, int]:
-    c_lp = float(max(0.0, min(1.0, c_lp)))
-    if not critical or not dictionary_match:
-        return c_lp, 0.0, 0
-
-    c_dict, dist = _dict_confidence(extracted_value or "", dictionary_match)
-    c_final = (w_lp * c_lp) + (w_dict * c_dict)
-    return float(max(0.0, min(1.0, c_final))), float(max(0.0, min(1.0, c_dict))), int(dist)
+def compute_C_final(C_lp: float, C_dict: float, w_lp: float, w_dict: float) -> float:
+    c_final = (float(w_lp) * float(C_lp)) + (float(w_dict) * float(C_dict))
+    return float(max(0.0, min(1.0, c_final)))
 
 
 def logprob_to_confidence(avg_logprob: float | None) -> float:
-    if avg_logprob is None:
-        return 0.5
-    try:
-        return float(max(0.0, min(1.0, math.exp(float(avg_logprob)))))
-    except Exception:
-        return 0.5
+    return compute_C_lp(avg_logprob)

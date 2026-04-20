@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Job: {{ job.job_id }}</h2>
+  <p>Status: <strong>{{ job.status }}</strong></p>
+  {% if job.error %}<p class="danger">{{ job.error }}</p>{% endif %}
+  {% if job.fields %}
+  <table>
+    <thead><tr><th>Field</th><th>Value</th><th>Final</th><th>Confidence</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for f in job.fields %}
+      <tr>
+        <td>{{ f.field_id }}</td>
+        <td>{{ f.value }}</td>
+        <td>{{ f.final_value }}</td>
+        <td>{{ '%.3f'|format(f.confidence or 0) }}</td>
+        <td>{{ f.validation_status }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <p><a href="{{ url_for('web.review', id=job.job_id) }}">Open review page</a></p>
+</section>
+{% endblock %}

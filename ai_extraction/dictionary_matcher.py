@@ -32,16 +32,27 @@ class DictionaryStore:
         return self._data.get(filename, [])
 
 
-def closest_dictionary_match(value: str, entries: list[str]) -> tuple[str | None, int]:
-    value = (value or "").strip()
-    if not value or not entries:
+def best_match(extracted: str, dictionary: list[str]) -> tuple[str | None, int]:
+    value = (extracted or "").strip()
+    if not value or not dictionary:
         return None, 9999
 
-    best = None
-    best_dist = 10**9
-    for candidate in entries:
-        d = levenshtein_distance(value, candidate)
-        if d < best_dist:
-            best_dist = d
-            best = candidate
-    return best, int(best_dist)
+    winner = None
+    winner_distance = 10**9
+    for entry in dictionary:
+        dist = levenshtein_distance(value, entry)
+        if dist < winner_distance:
+            winner_distance = dist
+            winner = entry
+    return winner, int(winner_distance)
+
+
+def compute_C_dict(extracted: str, best: str | None, distance: int) -> float:
+    if not extracted or not best:
+        return 0.0
+    denom = max(len(extracted), len(best), 1)
+    return max(0.0, 1.0 - (float(distance) / float(denom)))
+
+
+# Backwards-compatible alias
+closest_dictionary_match = best_match

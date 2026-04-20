@@ -1,6 +1,6 @@
 """
 TemplateRegistryBuilder — auto-detects fields from a blank template image.
-Uses morphological operations + ORB + OCR. No ML required.
+Uses morphological operations + ORB field geometry detection.
 """
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ import cv2
 
 class TemplateRegistryBuilder:
     def __init__(self, checkbox_max_area=3000, textbox_min_area=3000,
-                 line_min_width=60, padding=4, tesseract_cmd=None):
+                 line_min_width=60, padding=4):
         self.checkbox_max_area = checkbox_max_area
         self.textbox_min_area  = textbox_min_area
         self.line_min_width    = line_min_width

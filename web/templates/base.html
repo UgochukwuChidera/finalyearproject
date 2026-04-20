@@ -3,17 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DAPE Web</title>
+  <title>DAPE</title>
   <link rel="stylesheet" href="{{ url_for('web.static', filename='style.css') }}" />
 </head>
 <body>
   <header>
-    <h1>DAPE Form Processing</h1>
+    <h1>DAPE</h1>
     <nav>
-      <a href="{{ url_for('web.index') }}">Upload</a>
+      <a href="{{ url_for('web.index') }}">Dashboard</a>
       <a href="{{ url_for('web.configs_page') }}">Configs</a>
       <a href="{{ url_for('web.jobs') }}">Jobs</a>
-      <a href="{{ url_for('web.audit') }}">Audit</a>
     </nav>
   </header>
   <main>{% block content %}{% endblock %}</main>

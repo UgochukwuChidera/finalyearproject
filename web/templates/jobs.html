@@ -6,12 +6,12 @@
     <thead><tr><th>Job ID</th><th>Config</th><th>Status</th><th>Created</th><th>Action</th></tr></thead>
     <tbody>
     {% for j in jobs %}
-      <tr {% if highlight == j.job_id %}class="highlight"{% endif %}>
+      <tr>
         <td>{{ j.job_id }}</td>
         <td>{{ j.config_name }}</td>
         <td>{{ j.status }}</td>
         <td>{{ j.created_at }}</td>
-        <td><a href="{{ url_for('web.review', job_id=j.job_id) }}">Open</a></td>
+        <td><a href="{{ url_for('web.job_detail', id=j.job_id) }}">Details</a></td>
       </tr>
     {% endfor %}
     </tbody>

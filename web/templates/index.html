@@ -18,22 +18,20 @@
   </form>
 </section>
 
-{% if audit_entries %}
 <section class="card">
-  <h2>Audit log</h2>
+  <h2>Recent jobs</h2>
   <table>
-    <thead><tr><th>Timestamp</th><th>Job</th><th>Form</th><th>Pending</th></tr></thead>
+    <thead><tr><th>Job ID</th><th>Status</th><th>Config</th><th>Action</th></tr></thead>
     <tbody>
-      {% for e in audit_entries %}
+      {% for j in jobs %}
       <tr>
-        <td>{{ e.timestamp }}</td>
-        <td>{{ e.job_id }}</td>
-        <td>{{ e.form_type }}</td>
-        <td>{{ e.review_summary.pending_review_count if e.review_summary else '' }}</td>
+        <td>{{ j.job_id }}</td>
+        <td>{{ j.status }}</td>
+        <td>{{ j.config_name }}</td>
+        <td><a href="{{ url_for('web.job_detail', id=j.job_id) }}">Open</a></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </section>
-{% endif %}
 {% endblock %}
