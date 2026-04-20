@@ -58,5 +58,6 @@ class GeminiClient:
         return self._safe_json_extract(raw)
 
 
-# Backwards-compatible alias (deprecated: use GeminiClient)
+# Backwards-compatible alias; deprecated and kept temporarily for migration.
+# New code should instantiate GeminiClient directly.
 OpenRouterGeminiClient = GeminiClient

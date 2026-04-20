@@ -237,7 +237,7 @@ def review(id: str):
                 f["correction"] = val
             f["reviewer"] = reviewer
             f["corrected"] = True
-            f["needs_review"] = False if f["validation_status"] == "illegible" else f["validation_status"] == "pending_review"
+            f["needs_review"] = f["validation_status"] == "pending_review"
 
         job["pending_fields"] = [f for f in fields if f.get("needs_review")]
         job["status"] = "completed" if not job["pending_fields"] else "pending_review"
