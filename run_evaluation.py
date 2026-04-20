@@ -6,7 +6,7 @@ from evaluation.evaluator import Evaluator
 
 
 def main():
-    parser = argparse.ArgumentParser(description="VeriForm evaluation runner")
+    parser = argparse.ArgumentParser(description="DAPE evaluation runner")
     parser.add_argument("--forms-dir", default="form")
     parser.add_argument("--results-dir", default="evaluation/results")
     parser.add_argument("--template-id", default="medical_screening_v1")

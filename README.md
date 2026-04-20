@@ -1,4 +1,4 @@
-# VeriForm ICR
+# DAPE
 
 Hybrid differential + AI form extraction pipeline.
 

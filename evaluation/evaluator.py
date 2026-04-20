@@ -3,7 +3,7 @@ from pathlib import Path
 
 from .metrics import aggregate_metrics
 from .pipelines.base_pipeline import BasePipeline
-from .pipelines.veriform_pipeline import VeriFormPipeline
+from .pipelines.dape_pipeline import DAPEPipeline
 
 
 class Evaluator:
@@ -13,7 +13,7 @@ class Evaluator:
     ):
         self._results_dir = Path(results_dir)
         self._results_dir.mkdir(parents=True, exist_ok=True)
-        self._pipelines: list[BasePipeline] = [VeriFormPipeline()]
+        self._pipelines: list[BasePipeline] = [DAPEPipeline()]
 
     def run(self, forms: list[dict]) -> dict:
         all_results = {}

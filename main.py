@@ -1,4 +1,4 @@
-"""VeriForm ICR pipeline entrypoint."""
+"""DAPE pipeline entrypoint."""
 
 import argparse
 import json
@@ -340,7 +340,7 @@ def process_form(
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="VeriForm ICR form processing")
+    p = argparse.ArgumentParser(description="DAPE form processing")
     p.add_argument("--image", required=True, help="Path to filled form image")
     p.add_argument("--config-name", default=None, help="Config name in configs/<name>.json")
     p.add_argument("--config-path", default=None, help="Absolute/relative config path")
