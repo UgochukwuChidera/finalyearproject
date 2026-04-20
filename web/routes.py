@@ -35,6 +35,10 @@ def _logs_dir() -> Path:
     return Path(current_app.config["LOGS_DIR"])
 
 
+def _root_dir() -> Path:
+    return Path(current_app.config["ROOT_DIR"])
+
+
 def _list_configs() -> list[str]:
     return sorted([p.stem for p in _cfg_dir().glob("*.json")])
 
@@ -69,6 +73,22 @@ def _save_config(name: str, payload: dict) -> Path:
     return path
 
 
+
+
+def _append_review_event(job: dict, reviewer: str, corrections: dict):
+    audit_path = _outputs_dir() / "audit.jsonl"
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    event = {
+        "job_id": job.get("job_id"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": "review_action",
+        "reviewer": reviewer,
+        "actions": corrections,
+    }
+    with audit_path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
 def _job_runner(job_id: str, image_path: str, config_name: str, original_filename: str):
     try:
         with JOBS_LOCK:
@@ -94,14 +114,49 @@ def _job_runner(job_id: str, image_path: str, config_name: str, original_filenam
 
 @bp.route("/")
 def index():
-    return render_template("index.html", configs=_list_configs())
+    with JOBS_LOCK:
+        jobs = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
+    return render_template("index.html", configs=_list_configs(), jobs=jobs[:10])
 
 
-@bp.route("/upload", methods=["GET", "POST"])
-def upload():
+@bp.route("/configs", methods=["GET"])
+def configs_page():
+    return render_template("configs.html", configs=_list_configs())
+
+
+@bp.route("/configs/new", methods=["GET", "POST"])
+def config_new():
     if request.method == "GET":
-        return render_template("index.html", configs=_list_configs())
+        return render_template("config_editor.html", mode="new", config_name="", config_text="{}", config={})
 
+    name = _safe_config_name(request.form.get("config_name", ""))
+    payload = json.loads(request.form.get("config_json", "{}") or "{}")
+    _save_config(name, payload)
+    return redirect(url_for("web.config_edit", name=name))
+
+
+@bp.route("/configs/<name>/edit", methods=["GET", "POST"])
+def config_edit(name: str):
+    safe_name = _safe_config_name(name)
+    cfg = _load_config(safe_name)
+
+    if request.method == "POST":
+        payload = json.loads(request.form.get("config_json", "{}") or "{}")
+        _save_config(safe_name, payload)
+        cfg = payload
+
+    return render_template(
+        "config_editor.html",
+        mode="edit",
+        config_name=safe_name,
+        config=cfg,
+        config_text=json.dumps(cfg, indent=2),
+        template_path=cfg.get("template_path", ""),
+    )
+
+
+@bp.route("/upload", methods=["POST"])
+def upload():
     cfg = request.form.get("config_name", "").strip()
     file = request.files.get("form_file")
     if not cfg or not file:
@@ -131,122 +186,83 @@ def upload():
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
-    t = threading.Thread(target=_job_runner, args=(job_id, str(path), cfg, file.filename), daemon=True)
-    t.start()
-
-    return redirect(url_for("web.jobs", highlight=job_id))
+    threading.Thread(target=_job_runner, args=(job_id, str(path), cfg, file.filename), daemon=True).start()
+    return redirect(url_for("web.job_detail", id=job_id))
 
 
-@bp.route("/jobs")
+@bp.route("/jobs", methods=["GET"])
 def jobs():
     with JOBS_LOCK:
         items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
-    return render_template("jobs.html", jobs=items, highlight=request.args.get("highlight"))
+    return render_template("jobs.html", jobs=items)
 
 
-@bp.route("/jobs/<job_id>/review")
-def review(job_id: str):
+@bp.route("/jobs/<id>", methods=["GET"])
+def job_detail(id: str):
     with JOBS_LOCK:
-        job = JOBS.get(job_id)
+        job = JOBS.get(id)
     if not job:
         return jsonify({"error": "job not found"}), 404
-    return render_template("review.html", job=job)
+    return render_template("job_detail.html", job=job)
 
 
-@bp.route("/audit")
-def audit():
-    entries = []
-    p = _outputs_dir() / "audit.jsonl"
-    if p.exists():
-        with p.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entries.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
-    entries.reverse()
-    return render_template("index.html", configs=_list_configs(), audit_entries=entries)
+@bp.route("/jobs/<id>/review", methods=["GET", "POST"])
+def review(id: str):
+    with JOBS_LOCK:
+        job = JOBS.get(id)
+    if not job:
+        return jsonify({"error": "job not found"}), 404
+
+    if request.method == "GET":
+        return render_template("review.html", job=job)
+
+    payload = request.get_json(silent=True) or {}
+    corrections = payload.get("corrections", {})
+    reviewer = payload.get("reviewer", "web_user")
+
+    with JOBS_LOCK:
+        fields = job.get("fields", [])
+        for f in fields:
+            fid = f.get("field_id")
+            if fid not in corrections:
+                continue
+            val = corrections[fid]
+            if val == "__ILLEGIBLE__":
+                f["final_value"] = None
+                f["validation_status"] = "pending_review"
+                f["correction"] = "illegible"
+            else:
+                f["final_value"] = val
+                f["validation_status"] = "accepted"
+                f["correction"] = val
+            f["reviewer"] = reviewer
+            f["corrected"] = True
+            f["needs_review"] = f["validation_status"] == "pending_review"
+
+        job["pending_fields"] = [f for f in fields if f.get("needs_review")]
+        job["status"] = "completed" if not job["pending_fields"] else "pending_review"
+        job["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    _append_review_event(job, reviewer, corrections)
+    return jsonify({"status": "ok", "job_id": id})
 
 
-@bp.route("/configs")
-def configs_page():
-    selected = request.args.get("name")
-    selected_payload = None
-    if selected:
-        try:
-            selected_payload = _load_config(selected)
-        except Exception:
-            selected_payload = None
-    return render_template(
-        "config_editor.html",
-        configs=_list_configs(),
-        selected=selected,
-        selected_payload=json.dumps(selected_payload, indent=2) if selected_payload else "",
-    )
-
-
-@bp.route("/dictionaries", methods=["POST"])
-def upload_dictionary():
+@bp.route("/api/dictionaries/upload", methods=["POST"])
+def api_upload_dictionary():
     file = request.files.get("dictionary_file")
     if not file:
-        return redirect(url_for("web.configs_page"))
+        return jsonify({"error": "dictionary_file is required"}), 400
+
     safe_name = secure_filename(file.filename or "")
     if not safe_name.endswith(".csv"):
-        return redirect(url_for("web.configs_page"))
+        return jsonify({"error": "CSV only"}), 400
+
     joined = safe_join(str(_dict_dir()), safe_name)
     if not joined:
-        return redirect(url_for("web.configs_page"))
-    dest = Path(joined)
-    file.save(dest)
-    store = current_app.config["DICTIONARY_STORE"]
-    with JOBS_LOCK:
-        current_app.config["DICTIONARIES_CACHE"] = store.load()
-    return redirect(url_for("web.configs_page"))
-
-
-@bp.route("/api/configs", methods=["GET", "POST"])
-@bp.route("/api/configs/", methods=["GET", "POST"])
-def api_configs():
-    if request.method == "GET":
-        return jsonify({"configs": _list_configs()})
-
-    payload = request.get_json(silent=True) or {}
-    form_type = (payload.get("form_type") or "").strip()
-    if not form_type:
-        return jsonify({"error": "form_type is required"}), 400
-    try:
-        form_type = _safe_config_name(form_type)
-    except ValueError:
-        return jsonify({"error": "Invalid form_type"}), 400
-    _save_config(form_type, payload)
-    return jsonify({"status": "ok", "form_type": form_type})
-
-
-@bp.route("/api/configs/<name>", methods=["GET", "PUT", "DELETE"])
-def api_config_one(name: str):
-    try:
-        path = _config_path(name)
-        safe_name = _safe_config_name(name)
-    except ValueError:
-        return jsonify({"error": "invalid config name"}), 400
-
-    if request.method == "GET":
-        if not path.exists():
-            return jsonify({"error": "not found"}), 404
-        with path.open("r", encoding="utf-8") as fh:
-            return jsonify(json.load(fh))
-
-    if request.method == "DELETE":
-        if path.exists():
-            path.unlink()
-        return jsonify({"status": "deleted", "name": safe_name})
-
-    payload = request.get_json(silent=True) or {}
-    _save_config(safe_name, payload)
-    return jsonify({"status": "updated", "name": safe_name})
+        return jsonify({"error": "Invalid path"}), 400
+    Path(joined).parent.mkdir(parents=True, exist_ok=True)
+    file.save(joined)
+    return jsonify({"status": "ok", "filename": safe_name})
 
 
 @bp.route("/api/jobs", methods=["GET"])
@@ -256,37 +272,9 @@ def api_jobs():
     return jsonify({"jobs": items})
 
 
-@bp.route("/api/jobs/<job_id>/review", methods=["POST"])
-def api_job_review(job_id: str):
-    payload = request.get_json(silent=True) or {}
-    corrections = payload.get("corrections", {})
-    reviewer = payload.get("reviewer", "web_user")
-
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if not job:
-            return jsonify({"error": "job not found"}), 404
-        fields = job.get("fields", [])
-        for f in fields:
-            fid = f.get("field_id")
-            if fid in corrections:
-                val = corrections[fid]
-                if val == "__ILLEGIBLE__":
-                    f["final_value"] = ""
-                    f["validation_status"] = "illegible"
-                    f["correction"] = "illegible"
-                else:
-                    f["final_value"] = val
-                    f["validation_status"] = "corrected"
-                    f["correction"] = val
-                f["corrected"] = True
-                f["needs_review"] = False
-                f["reviewer"] = reviewer
-
-        job["pending_fields"] = [f for f in fields if f.get("needs_review")]
-        job["status"] = "completed" if not job["pending_fields"] else "pending_review"
-
-    return jsonify({"status": "ok", "job_id": job_id})
+@bp.route("/templates/<path:filename>")
+def templates_static(filename: str):
+    return send_from_directory(_root_dir() / "templates", filename)
 
 
 @bp.route("/uploads/<path:filename>")

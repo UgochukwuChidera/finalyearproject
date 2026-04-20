@@ -2,38 +2,31 @@
 {% block content %}
 <section class="grid-2">
   <div class="card">
-    <h2>Configurations</h2>
-    <ul>
-      {% for c in configs %}
-      <li><a href="{{ url_for('web.configs_page', name=c) }}">{{ c }}</a></li>
-      {% endfor %}
-    </ul>
-    <hr />
-    <h3>Upload dictionary CSV</h3>
-    <form method="post" action="{{ url_for('web.upload_dictionary') }}" enctype="multipart/form-data">
-      <input type="file" name="dictionary_file" accept=".csv" required />
-      <button type="submit">Upload dictionary</button>
+    <h2>{{ 'New Config' if mode == 'new' else 'Edit Config: ' ~ config_name }}</h2>
+    <form method="post">
+      {% if mode == 'new' %}
+      <label>Config name
+        <input name="config_name" value="{{ config_name }}" required />
+      </label>
+      {% else %}
+      <input type="hidden" name="config_name" value="{{ config_name }}" />
+      {% endif %}
+      <textarea id="config-json" name="config_json" rows="24">{{ config_text }}</textarea>
+      <button type="submit">Save</button>
     </form>
   </div>
 
   <div class="card">
-    <h2>Config JSON editor</h2>
-    <p class="muted">Create or edit config JSON and click Save.</p>
-    <label>Config name
-      <input id="config-name" value="{{ selected or '' }}" placeholder="medical_screening_v1" />
-    </label>
-    <textarea id="config-json" rows="20">{{ selected_payload }}</textarea>
+    <h2>Bounding-box editor</h2>
+    <p class="muted">Drag to move, drag bottom-right handle to resize. Save writes updated JSON in editor.</p>
+    <canvas id="bbox-canvas" width="900" height="600"
+            data-template="{{ template_path }}"
+            data-fields='{{ (config.fields if config else []) | tojson }}'></canvas>
     <div class="row">
-      <button type="button" onclick="saveConfig()">Save</button>
-      <button type="button" class="danger" onclick="deleteConfig()">Delete</button>
+      <button type="button" onclick="vfLoadFromJson()">Load from JSON</button>
+      <button type="button" onclick="vfApplyBoxesToJson()">Apply boxes to JSON</button>
     </div>
+    <pre id="bbox-output" class="muted"></pre>
   </div>
-</section>
-
-<section class="card">
-  <h2>Bounding box editor</h2>
-  <p class="muted">Load config with template path and draw one box at a time. Copy coordinates back to JSON.</p>
-  <canvas id="bbox-canvas" width="900" height="600"></canvas>
-  <div id="bbox-output" class="muted"></div>
 </section>
 {% endblock %}

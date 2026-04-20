@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Configurations</h2>
+  <a class="button-link" href="{{ url_for('web.config_new') }}">Create new config</a>
+  <ul>
+    {% for c in configs %}
+    <li><a href="{{ url_for('web.config_edit', name=c) }}">{{ c }}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+<section class="card">
+  <h3>Upload dictionary CSV</h3>
+  <form method="post" action="{{ url_for('web.api_upload_dictionary') }}" enctype="multipart/form-data">
+    <input type="file" name="dictionary_file" accept=".csv" required />
+    <button type="submit">Upload dictionary</button>
+  </form>
+</section>
+{% endblock %}

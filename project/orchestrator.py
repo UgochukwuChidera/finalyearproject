@@ -48,7 +48,6 @@ class DAPEOrchestrator:
         enable_hitl          = True,
         hitl_host            = "127.0.0.1",
         hitl_port            = 5050,
-        tesseract_cmd        = None,
         dpi                  = 300,
     ):
         self.output_dir = Path(output_dir)
@@ -64,7 +63,7 @@ class DAPEOrchestrator:
             diff_threshold  = self._ks["diff_threshold"],
             min_region_area = self._ks["min_region_area"],
         )
-        self._extractor  = FieldExtractor(tesseract_cmd=tesseract_cmd)
+        self._extractor  = FieldExtractor()
         self._validator  = ConfidenceValidator(confidence_threshold)
         self._escalation = HITLEscalation()
         self._exporter   = DataExporter()

@@ -3,7 +3,6 @@
 <section class="card">
   <h2>Review job: {{ job.job_id }}</h2>
   <p>Status: <strong>{{ job.status }}</strong></p>
-  {% if job.error %}<p class="danger">{{ job.error }}</p>{% endif %}
 </section>
 
 {% if job.pending_fields %}
@@ -13,13 +12,15 @@
   <div class="field-box">
     <div>
       <strong>{{ f.field_id|e }}</strong>
-      <p>Value: {{ f.value|e }} | confidence: {{ '%.3f'|format(f.confidence or 0) }} | closest: {{ f.closest_dictionary_match|e }}</p>
+      <p>AI value: {{ f.value|e }} | confidence: {{ '%.3f'|format(f.confidence or 0) }} | closest: {{ f.closest_dictionary_match|e }}</p>
       {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in f.crop_path else '' %}
       {% if rel %}<img src="{{ url_for('web.outputs_static', filename=rel) }}" alt="crop" class="crop" />{% endif %}
     </div>
     <div>
       <input type="text" name="{{ f.field_id|e }}" value="{{ f.value|e }}" />
-      <button type="button" onclick="markIllegible('{{ f.field_id|e }}')">Mark Illegible</button>
+      <div class="row">
+        <button type="button" onclick="markIllegible('{{ f.field_id|e }}')">Mark Illegible</button>
+      </div>
     </div>
   </div>
   {% endfor %}
