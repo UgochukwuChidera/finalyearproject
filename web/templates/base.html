@@ -41,6 +41,12 @@
               <span>Audit Stream</span>
             </a>
           </li>
+          <li>
+            <a href="{{ url_for('web.evaluation') }}" class="{{ 'active' if request.endpoint == 'web.evaluation' }}">
+              <i class="ph ph-chart-bar"></i>
+              <span>Evaluation</span>
+            </a>
+          </li>
           <li style="margin-top: auto">
             <a href="#" class="ghost">
               <i class="ph ph-question"></i>

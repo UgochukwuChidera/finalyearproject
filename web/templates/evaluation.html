@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card-header">
+  <h2><i class="ph ph-chart-bar"></i> Evaluation Results</h2>
+  <div class="row" style="margin: 0; gap: 0.75rem">
+    <span class="badge badge-info">{{ results|length }} Pipeline(s)</span>
+    <a href="#" class="ghost" style="font-size: 0.875rem" onclick="window.location.reload()">
+      <i class="ph ph-arrows-clockwise"></i> Refresh
+    </a>
+  </div>
+</div>
+
+{% if not results %}
+<section class="card" style="text-align: center; padding: 3rem">
+  <i class="ph ph-chart-bar" style="font-size: 4rem; color: var(--text-dim); margin-bottom: 1rem; display: block"></i>
+  <h3>No Evaluation Results</h3>
+  <p class="muted">Run the evaluation pipeline to generate results.</p>
+  <pre class="muted" style="background:#0f172a; color:var(--secondary); padding:1.25rem; border-radius:12px; display:inline-block; text-align:left; margin-top:1.5rem; border:1px solid var(--border); font-size:0.8125rem">python run_evaluation.py --forms-dir form --template-id medical_screening_v1</pre>
+</section>
+{% else %}
+{% for pipeline_name, data in results.items() %}
+<section class="card">
+  <div class="card-header">
+    <h3><i class="ph ph-git-branch" style="color: var(--primary)"></i> {{ pipeline_name }}</h3>
+  </div>
+
+  {# ── HITL Impact Summary ──────────────────────────────────────────── #}
+  {% set impact = data.get('hitl_impact', {}) %}
+  <div class="grid-3" style="margin-bottom: 2rem">
+    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center">
+      <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">Pre-HITL Accuracy</div>
+      <div style="font-size: 2rem; font-weight: 700; color: var(--warning)">
+        {{ '%.1f'|format((impact.get('pre_hitl_accuracy', 0)) * 100) }}%
+      </div>
+    </div>
+    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center">
+      <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">Post-HITL Accuracy</div>
+      <div style="font-size: 2rem; font-weight: 700; color: var(--success)">
+        {{ '%.1f'|format((impact.get('post_hitl_accuracy', 0)) * 100) }}%
+      </div>
+    </div>
+    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center">
+      <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">HITL Gain</div>
+      <div style="font-size: 2rem; font-weight: 700; color: var(--secondary)">
+        +{{ '%.1f'|format(impact.get('hitl_gain_pct', 0)) }}%
+      </div>
+    </div>
+  </div>
+
+  {# ── Aggregate Pre-HITL Metrics ───────────────────────────────────── #}
+  {% set agg = data.get('pre_hitl_aggregate', {}) %}
+  {% if agg %}
+  <h4 style="color: var(--text-muted); margin-bottom: 1rem">Aggregate Metrics (Pre-HITL · {{ agg.get('n_forms', 0) }} forms)</h4>
+  <div style="overflow-x: auto; margin-bottom: 2rem">
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Mean</th>
+          <th>Std Dev</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key in ['field_accuracy', 'exact_match_rate', 'avg_similarity', 'text_field_accuracy',
+                        'checkbox_precision', 'checkbox_recall', 'checkbox_f1',
+                        'escalation_rate', 'processing_time_s'] %}
+        {% if 'mean_' + key in agg %}
+        <tr>
+          <td><code style="color: var(--secondary)">{{ key }}</code></td>
+          <td>{{ '%.4f'|format(agg['mean_' + key]) }}</td>
+          <td class="muted">{{ '%.4f'|format(agg.get('std_' + key, 0)) }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        {% if agg.overall_field_accuracy is defined %}
+        <tr style="border-top: 2px solid var(--border)">
+          <td><strong>overall_field_accuracy</strong></td>
+          <td><strong>{{ '%.4f'|format(agg.overall_field_accuracy) }}</strong></td>
+          <td class="muted">—</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# ── Per-Form Breakdown ───────────────────────────────────────────── #}
+  {% set forms = data.get('pre_hitl_forms', []) %}
+  {% if forms %}
+  <details>
+    <summary style="cursor: pointer; color: var(--text-muted); margin-bottom: 1rem; user-select: none">
+      <i class="ph ph-list"></i> Per-Form Breakdown ({{ forms|length }} forms)
+    </summary>
+    <div style="overflow-x: auto; margin-top: 1rem">
+      <table>
+        <thead>
+          <tr>
+            <th>Form ID</th>
+            <th>GT?</th>
+            <th>Field Acc.</th>
+            <th>Exact Match</th>
+            <th>Escalation</th>
+            <th>Time (s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in forms %}
+          {% set m = f.get('pre_hitl_metrics', {}) %}
+          <tr>
+            <td><code style="color: var(--secondary)">{{ f.form_id }}</code></td>
+            <td>
+              {% if f.has_ground_truth %}
+              <span class="badge badge-success" style="font-size: 0.7rem">yes</span>
+              {% else %}
+              <span class="badge badge-danger" style="font-size: 0.7rem">no</span>
+              {% endif %}
+            </td>
+            <td>{{ '%.3f'|format(m.get('field_accuracy', 0)) }}</td>
+            <td>{{ '%.3f'|format(m.get('exact_match_rate', 0)) }}</td>
+            <td>{{ '%.3f'|format(m.get('escalation_rate', 0)) }}</td>
+            <td class="muted">{{ '%.2f'|format(m.get('processing_time_s', 0)) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endif %}
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}

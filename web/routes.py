@@ -230,6 +230,15 @@ def config_discover():
             tmp_path.unlink()
 
 
+@bp.route("/configs/<name>/delete", methods=["POST"])
+def config_delete(name: str):
+    safe_name = _safe_config_name(name)
+    path = _config_path(safe_name)
+    if path.exists():
+        path.unlink()
+    return redirect(url_for("web.configs_page"))
+
+
 @bp.route("/upload", methods=["POST"])
 def upload():
     cfg = request.form.get("config_name", "").strip()
@@ -386,3 +395,16 @@ def uploads_static(filename: str):
 @bp.route("/outputs/<path:filename>")
 def outputs_static(filename: str):
     return send_from_directory(_outputs_dir(), filename)
+
+
+@bp.route("/evaluation", methods=["GET"])
+def evaluation():
+    results_path = _root_dir() / "evaluation" / "results" / "full_results.json"
+    results: dict = {}
+    if results_path.exists():
+        try:
+            with results_path.open("r", encoding="utf-8") as fh:
+                results = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            results = {}
+    return render_template("evaluation.html", results=results)

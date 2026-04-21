@@ -77,11 +77,13 @@ This creates/updates the `template_extraction` JSON used for text-based diff.
 - `GET /configs`
 - `GET|POST /configs/new`
 - `GET|POST /configs/<name>/edit`
+- `POST /configs/<name>/delete`
 - `POST /upload`
 - `GET /jobs`
 - `GET /jobs/<id>`
 - `GET|POST /jobs/<id>/review`
 - `GET /audits`
+- `GET /evaluation`
 - `GET /api/template-preview?template_path=...`
 - `POST /api/dictionaries/upload`
 
@@ -92,7 +94,22 @@ The pipeline supports dictionary-backed validation for specific fields.
 - Reference them in your field config: `"dictionary": "nigerian_names"` (without the extension).
 - This improves extraction accuracy for regional names and specific terminology.
 
-## Output
+## Run evaluation pipeline
+
+```bash
+python run_evaluation.py \
+  --forms-dir form \
+  --template-id medical_screening_v1 \
+  --ground-truth-dir ground_truth
+```
+
+Results are saved to `evaluation/results/full_results.json` and viewable at `GET /evaluation` in the web app.
+
+The evaluation computes:
+- Field-level accuracy (normalised and exact-match)
+- Checkbox precision / recall / F1
+- Escalation (HITL flag) rate
+- Pre-HITL vs post-HITL accuracy delta
 
 - Structured exports in `outputs/`
 - Audit stream in `outputs/audit.jsonl`
