@@ -11,6 +11,8 @@ Hybrid differential + AI form extraction pipeline.
   - **Non-critical fields** use full-form AI extraction + template JSON diff.
 - Single AI request per form through multi-image prompting.
 - Flask UI for config management, uploads, jobs, and review.
+- Batch upload support from the web dashboard.
+- Audit stream page in the web UI.
 - Audit JSONL enhanced with `C_lp`, `C_dict`, `C_final`, status, reviewer/correction.
 
 ## Setup
@@ -57,6 +59,7 @@ python main.py --image form/medical_screening_01.tif --config-name medical_scree
 - `template_extraction`
 - `fields[].critical`
 - `fields[].dictionary`
+- `editor_canvas` (optional width/height for scaling editor coordinates to aligned image resolution)
 - `confidence_weights`
 - `thresholds`
 
@@ -74,10 +77,14 @@ This creates/updates the `template_extraction` JSON used for text-based diff.
 - `GET /configs`
 - `GET|POST /configs/new`
 - `GET|POST /configs/<name>/edit`
+- `POST /configs/<name>/delete`
 - `POST /upload`
 - `GET /jobs`
 - `GET /jobs/<id>`
 - `GET|POST /jobs/<id>/review`
+- `GET /audits`
+- `GET /evaluation`
+- `GET /api/template-preview?template_path=...`
 - `POST /api/dictionaries/upload`
 
 ## Dictionaries
@@ -87,7 +94,22 @@ The pipeline supports dictionary-backed validation for specific fields.
 - Reference them in your field config: `"dictionary": "nigerian_names"` (without the extension).
 - This improves extraction accuracy for regional names and specific terminology.
 
-## Output
+## Run evaluation pipeline
+
+```bash
+python run_evaluation.py \
+  --forms-dir form \
+  --template-id medical_screening_v1 \
+  --ground-truth-dir ground_truth
+```
+
+Results are saved to `evaluation/results/full_results.json` and viewable at `GET /evaluation` in the web app.
+
+The evaluation computes:
+- Field-level accuracy (normalised and exact-match)
+- Checkbox precision / recall / F1
+- Escalation (HITL flag) rate
+- Pre-HITL vs post-HITL accuracy delta
 
 - Structured exports in `outputs/`
 - Audit stream in `outputs/audit.jsonl`

@@ -14,6 +14,9 @@
       <div>
           <h3 style="margin-bottom: 0.5rem">Job Context: <span style="color: var(--secondary)">{{ job.job_id }}</span></h3>
           <p class="muted">Status: <span class="badge badge-info">{{ job.status }}</span></p>
+          {% if job.batch_id %}
+          <p class="muted">Batch: <span style="color: var(--secondary)">{{ job.batch_id }}</span></p>
+          {% endif %}
       </div>
   </div>
 
@@ -32,6 +35,7 @@
             <th>Normalized Value</th>
             <th>Confidence Score</th>
             <th>Validation</th>
+            <th>Flag</th>
         </tr>
     </thead>
     <tbody>
@@ -49,9 +53,16 @@
             </div>
         </td>
         <td>
-            <span class="badge {{ 'badge-success' if f.validation_status == 'valid' else 'badge-warning' }}">
+            <span class="badge {{ 'badge-success' if f.validation_status in ['accepted','accepted_spot_check'] else 'badge-warning' if f.validation_status in ['spot_check','pending_review'] else 'badge-danger' }}">
                 {{ f.validation_status }}
             </span>
+        </td>
+        <td>
+          {% if f.needs_review %}
+          <span class="badge badge-warning">review</span>
+          {% else %}
+          <span class="badge badge-success">ok</span>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
@@ -59,4 +70,11 @@
   </table>
   {% endif %}
 </section>
+
+{% if job_audit %}
+<section class="card">
+  <h3><i class="ph ph-scroll"></i> Audit Snapshot</h3>
+  <pre class="muted" style="background:#0f172a; color:var(--secondary); padding:1rem; border-radius:12px; overflow:auto; border:1px solid var(--border)">{{ job_audit | tojson(indent=2) }}</pre>
+</section>
+{% endif %}
 {% endblock %}

@@ -10,15 +10,22 @@
 <section class="card">
   <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem">
     {% for c in configs %}
-    <a href="{{ url_for('web.config_edit', name=c) }}" class="card" style="margin-bottom: 0; text-decoration: none; display: flex; align-items: center; gap: 1rem; padding: 1.5rem">
-      <div style="width: 48px; height: 48px; background: rgba(139, 92, 246, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary)">
-        <i class="ph ph-file-code" style="font-size: 1.5rem"></i>
-      </div>
-      <div>
-        <div style="font-weight: 600; color: #fff">{{ c }}</div>
-        <div class="muted" style="font-size: 0.75rem">Last modified: Recently</div>
-      </div>
-    </a>
+    <div class="card" style="margin-bottom: 0; display: flex; align-items: center; gap: 1rem; padding: 1.5rem">
+      <a href="{{ url_for('web.config_edit', name=c) }}" style="display: flex; align-items: center; gap: 1rem; text-decoration: none; flex: 1; min-width: 0">
+        <div style="width: 48px; height: 48px; background: rgba(139, 92, 246, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary); flex-shrink: 0">
+          <i class="ph ph-file-code" style="font-size: 1.5rem"></i>
+        </div>
+        <div style="min-width: 0">
+          <div style="font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ c }}</div>
+          <div class="muted" style="font-size: 0.75rem">Last modified: Recently</div>
+        </div>
+      </a>
+      <form method="post" action="{{ url_for('web.config_delete', name=c) }}" onsubmit="return confirm('Delete config {{ c }}?')">
+        <button type="submit" class="ghost" style="color: var(--danger); padding: 0.5rem" title="Delete">
+          <i class="ph ph-trash"></i>
+        </button>
+      </form>
+    </div>
     {% endfor %}
   </div>
 </section>

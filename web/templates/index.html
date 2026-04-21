@@ -24,11 +24,11 @@
       </div>
       
       <div style="margin-bottom: 2rem">
-        <label>Form Document (TIFF/PNG/JPG)</label>
+        <label>Form Document(s) (TIFF/PNG/JPG)</label>
         <div style="position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; transition: border-color 0.2s" ondragover="this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'">
           <i class="ph ph-file-plus" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 1rem; display: block"></i>
-          <p class="muted">Drag and drop or click to select</p>
-          <input type="file" name="form_file" accept=".tif,.tiff,.png,.jpg,.jpeg" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer" />
+          <p class="muted">Drag and drop or click to select one or many files</p>
+          <input type="file" name="form_files" multiple accept=".tif,.tiff,.png,.jpg,.jpeg" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer" />
         </div>
       </div>
       
@@ -57,7 +57,7 @@
         <tr>
           <td><code style="color: var(--secondary)">#{{ j.job_id[:8] }}</code></td>
           <td>
-            <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status == 'pending' else 'badge-info' }}">
+            <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-info' }}">
               {{ j.status }}
             </span>
           </td>

@@ -10,6 +10,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+MIN_DESKEW_ANGLE_DEG = 0.2
+
 from ai_extraction import (
     DictionaryStore,
     GeminiClient,
@@ -81,6 +83,15 @@ def _safe_crop(img: np.ndarray, x: int, y: int, w: int, h: int) -> np.ndarray:
     if x2 <= x1 or y2 <= y1:
         return np.zeros((1, 1), dtype=np.uint8)
     return img[y1:y2, x1:x2]
+
+
+def _deskew_image(gray: np.ndarray, angle_deg: float) -> np.ndarray:
+    if gray is None or gray.size == 0:
+        return gray
+    h, w = gray.shape[:2]
+    center = (w / 2.0, h / 2.0)
+    m = cv2.getRotationMatrix2D(center, angle_deg, 1.0)
+    return cv2.warpAffine(gray, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=255)
 
 
 def _validation_ok(value, field: dict) -> tuple[bool, str]:
@@ -160,7 +171,18 @@ def process_form(
     stats.update(baseline_metrics(gray))
 
     ks = kernel_sizes(dpi)
-    stats.update(skew_analysis(gray, hough_threshold=ks["skew_hough_threshold"]))
+    skew_meta = skew_analysis(gray, hough_threshold=ks["skew_hough_threshold"])
+    stats.update(skew_meta)
+    if (config.get("preprocessing") or {}).get("deskew", False):
+        angle = float(skew_meta.get("skew_angle", 0.0))
+        if abs(angle) > MIN_DESKEW_ANGLE_DEG:
+            gray = _deskew_image(gray, -angle)
+            stats["deskew_applied"] = True
+            stats["deskew_angle_used"] = -angle
+        else:
+            stats["deskew_applied"] = False
+    else:
+        stats["deskew_applied"] = False
     normalized, illum = illumination_normalization(
         gray,
         stats.get("grayscale_std", 0.0),
@@ -191,9 +213,11 @@ def process_form(
     mask, diff_meta = differ.analyze(aligned, template_img)
     stats.update({f"diff_{k}": v for k, v in diff_meta.items() if not hasattr(v, "shape")})
 
-    # NEW: Define editor-to-actual scaling multipliers
-    # We assume the UI editor works on an 800x1100 fixed canvas (Portrait A4)
-    ref_w, ref_h = 800.0, 1100.0
+    editor_canvas = config.get("editor_canvas", {}) or {}
+    ref_w = float(editor_canvas.get("width", 800.0))
+    ref_h = float(editor_canvas.get("height", 1100.0))
+    ref_w = ref_w if ref_w > 0 else 800.0
+    ref_h = ref_h if ref_h > 0 else 1100.0
     actual_h, actual_w = aligned.shape[:2]
     scale_x, scale_y = actual_w / ref_w, actual_h / ref_h
 
@@ -202,7 +226,7 @@ def process_form(
         if not field.get("critical"):
             continue
         bb = field.get("bounding_box", {})
-        # Scale coordinates from 900x600 -> actual resolution
+        # Scale coordinates from editor canvas space -> aligned image space
         x = int(bb.get("x", 0) * scale_x)
         y = int(bb.get("y", 0) * scale_y)
         w0 = int(bb.get("w", 1) * scale_x)
@@ -227,6 +251,7 @@ def process_form(
     final_fields = []
     pending = []
     extraction_entries = []
+    text_diff_changed_count = 0
 
     for field in fields:
         name = field["name"]
@@ -245,6 +270,9 @@ def process_form(
                 raw = bool(raw) if raw is not None else None
             else:
                 raw = raw if _differs_from_template(raw, baseline) else None
+            text_diff_changed = _differs_from_template(raw, baseline)
+        else:
+            text_diff_changed = False
 
         dict_file = field.get("dictionary")
         dict_entries = dictionaries.get(dict_file, []) if dict_file else []
@@ -288,10 +316,13 @@ def process_form(
             "needs_review": status == "pending_review",
             "corrected": False,
             "source": "hybrid_ai",
+            "text_diff_changed": bool(text_diff_changed),
             "crop_path": str(crop_path),
             "critical": bool(field.get("critical")),
         }
         final_fields.append(out)
+        if out["text_diff_changed"]:
+            text_diff_changed_count += 1
 
         extraction_entries.append(
             {
@@ -311,6 +342,8 @@ def process_form(
 
     schema = {f["name"]: f["name"] for f in fields}
     structurer = OutputStructurer(schema)
+    stats["text_diff_changed_count"] = text_diff_changed_count
+    stats["text_diff_unchanged_count"] = max(0, len(final_fields) - text_diff_changed_count)
     structured = structurer.structure(final_fields, jid, form_type, stats)
 
     exporter = DataExporter()

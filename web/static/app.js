@@ -7,6 +7,7 @@ let vfState = {
   dragMode: null,
   startX: 0,
   startY: 0,
+  fieldCounter: 1,
 };
 
 function vfCanvasPos(e){
@@ -64,10 +65,67 @@ function vfRedraw(){
 
 function vfLoadTemplate(templatePath){
   if(!templatePath) return;
-  const name = templatePath.split('/').pop();
   const img = new Image();
   img.onload = () => { vfState.img = img; vfRedraw(); };
-  img.src = `/templates/${name}`;
+  img.onerror = () => {
+    const out = document.getElementById('bbox-output');
+    if (out) out.textContent = `Failed to load template preview: ${templatePath}`;
+  };
+  img.src = `/api/template-preview?template_path=${encodeURIComponent(templatePath)}&v=${Date.now()}`;
+}
+
+function vfRefreshCounter(){
+  const nums = vfState.fields.map((f) => {
+    const m = String(f.name || '').match(/^field_(\d+)$/);
+    return m ? parseInt(m[1], 10) : 0;
+  });
+  vfState.fieldCounter = Math.max(1, ...(nums.length ? nums : [1])) + 1;
+}
+
+function vfSyncFieldsPanel(){
+  const panel = document.getElementById('field-list');
+  if(!panel) return;
+  panel.innerHTML = '';
+  vfState.fields.forEach((f, idx) => {
+    const b = f.bounding_box || {};
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = idx === vfState.selected ? 'secondary' : 'ghost';
+    btn.style.width = '100%';
+    btn.style.justifyContent = 'space-between';
+    btn.style.marginBottom = '0.5rem';
+    const left = document.createElement('span');
+    left.textContent = f.name || `field_${idx+1}`;
+    const right = document.createElement('span');
+    right.className = 'muted';
+    right.textContent = `${Math.round(b.x||0)},${Math.round(b.y||0)} ${Math.round(b.w||0)}×${Math.round(b.h||0)}`;
+    btn.appendChild(left);
+    btn.appendChild(right);
+    btn.onclick = () => { vfState.selected = idx; vfRedraw(); vfSyncFieldsPanel(); };
+    panel.appendChild(btn);
+  });
+}
+
+function vfAddField(){
+  const name = `field_${vfState.fieldCounter++}`;
+  vfState.fields.push({
+    name,
+    label_hint: name,
+    expected_type: 'string',
+    critical: false,
+    bounding_box: {x: 50, y: 50, w: 220, h: 40}
+  });
+  vfState.selected = vfState.fields.length - 1;
+  vfRedraw();
+  vfSyncFieldsPanel();
+}
+
+function vfDeleteSelectedField(){
+  if(vfState.selected < 0) return;
+  vfState.fields.splice(vfState.selected, 1);
+  vfState.selected = Math.min(vfState.selected, vfState.fields.length - 1);
+  vfRedraw();
+  vfSyncFieldsPanel();
 }
 
 function vfInit(){
@@ -76,8 +134,10 @@ function vfInit(){
   vfState.canvas = canvas;
   vfState.ctx = canvas.getContext('2d');
   vfState.fields = JSON.parse(canvas.dataset.fields || '[]');
+  vfRefreshCounter();
   vfLoadTemplate(canvas.dataset.template || '');
   vfRedraw();
+  vfSyncFieldsPanel();
 
   canvas.addEventListener('mousedown', (e)=>{
     const p=vfCanvasPos(e);
@@ -86,6 +146,7 @@ function vfInit(){
     vfState.dragMode=hit.mode;
     vfState.startX=p.x;vfState.startY=p.y;
     vfRedraw();
+    vfSyncFieldsPanel();
   });
 
   canvas.addEventListener('mousemove', (e)=>{
@@ -116,9 +177,11 @@ function vfLoadFromJson(){
   try{
     const cfg = JSON.parse(ta.value||'{}');
     vfState.fields = cfg.fields || [];
+    vfRefreshCounter();
     vfLoadTemplate(cfg.template_path || '');
     vfState.selected = -1;
     vfRedraw();
+    vfSyncFieldsPanel();
   }catch(err){alert('Invalid JSON');}
 }
 
@@ -127,11 +190,12 @@ function vfApplyBoxesToJson(){
   if(!ta) return;
   try{
     const cfg = JSON.parse(ta.value||'{}');
-    const boxByName = {};
-    vfState.fields.forEach(f=>{boxByName[f.name]=f.bounding_box||{};});
-    (cfg.fields||[]).forEach(f=>{if(boxByName[f.name]) f.bounding_box = boxByName[f.name];});
+    cfg.fields = vfState.fields;
+    if (vfState.canvas) {
+      cfg.editor_canvas = { width: vfState.canvas.width, height: vfState.canvas.height };
+    }
     ta.value = JSON.stringify(cfg, null, 2);
-    alert('Bounding boxes applied to JSON editor');
+    alert('Fields synced to JSON editor');
   }catch(err){alert('Invalid JSON');}
 }
 
@@ -188,15 +252,19 @@ async function vfDiscoverFromImage() {
       reader.readAsDataURL(fileInput.files[0]);
 
       // NEW: Scale normalized AI coordinates (0-1000) to our 800x1100 canvas
+      const cw = vfState.canvas ? vfState.canvas.width : 800;
+      const ch = vfState.canvas ? vfState.canvas.height : 1100;
       const scaledFields = data.fields.map(f => {
         const b = f.bounding_box || {x: 0, y: 0, w: 100, h: 20};
         return {
           ...f,
+          expected_type: f.type === 'checkbox' ? 'checkbox' : 'string',
+          label_hint: f.label || f.name,
           bounding_box: {
-            x: Math.round((b.x / 1000) * 800),
-            y: Math.round((b.y / 1000) * 1100),
-            w: Math.round((b.w / 1000) * 800),
-            h: Math.round((b.h / 1000) * 1100)
+            x: Math.round((b.x / 1000) * cw),
+            y: Math.round((b.y / 1000) * ch),
+            w: Math.round((b.w / 1000) * cw),
+            h: Math.round((b.h / 1000) * ch)
           }
         };
       });
@@ -204,11 +272,14 @@ async function vfDiscoverFromImage() {
       const ta = document.getElementById('config-json');
       const current = JSON.parse(ta.value || '{}');
       current.fields = scaledFields;
+      current.editor_canvas = { width: cw, height: ch };
       ta.value = JSON.stringify(current, null, 2);
       
       // Update canvas state
       vfState.fields = scaledFields;
+      vfRefreshCounter();
       vfRedraw();
+      vfSyncFieldsPanel();
       
       status.textContent = `Found ${data.fields.length} fields! Check the editor below.`;
     } else {

@@ -50,10 +50,12 @@
   </div>
 
   <div class="card" style="padding: 1.5rem">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem">
         <h3><i class="ph ph-bounding-box" style="color: var(--secondary)"></i> Layout Workspace</h3>
         <div class="row" style="margin: 0; gap: 0.5rem">
             <button type="button" class="ghost" onclick="vfLoadFromJson()" title="Load from JSON"><i class="ph ph-arrow-counter-clockwise"></i></button>
+            <button type="button" class="ghost" onclick="vfAddField()"><i class="ph ph-plus"></i> Add Field</button>
+            <button type="button" class="ghost" onclick="vfDeleteSelectedField()"><i class="ph ph-trash"></i> Delete Selected</button>
             <button type="button" class="secondary" onclick="vfApplyBoxesToJson()"><i class="ph ph-check"></i> Sync to Editor</button>
         </div>
     </div>
@@ -67,6 +69,10 @@
     <div style="margin-top: 1.5rem">
         <label>Live Coordinate Stream</label>
         <pre id="bbox-output" class="muted" style="background:#0f172a; color:var(--secondary); padding: 1.25rem; border-radius: 12px; margin: 0; border: 1px solid var(--border); font-size: 0.75rem"></pre>
+    </div>
+    <div style="margin-top: 1rem">
+      <label>Field List</label>
+      <div id="field-list" style="max-height: 260px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:0.75rem; background:rgba(0,0,0,0.15)"></div>
     </div>
   </div>
 </section>

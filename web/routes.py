@@ -1,10 +1,12 @@
 import json
+import io
 import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, send_from_directory, url_for
+import cv2
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, send_file, send_from_directory, url_for
 from werkzeug.utils import safe_join, secure_filename
 
 from main import process_form
@@ -73,6 +75,51 @@ def _save_config(name: str, payload: dict) -> Path:
     with path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2, ensure_ascii=False)
     return path
+
+
+def _allowed_ext(filename: str) -> bool:
+    ext = Path(filename or "").suffix.lower()
+    return ext in {".tif", ".tiff", ".png", ".jpg", ".jpeg"}
+
+
+def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
+    ext = Path(file.filename or "").suffix.lower()
+    job_id = str(uuid.uuid4())
+    save_name = f"{job_id}{ext}"
+    path = _uploads_dir() / save_name
+    file.save(path)
+
+    with JOBS_LOCK:
+        JOBS[job_id] = {
+            "job_id": job_id,
+            "batch_id": batch_id,
+            "status": "queued",
+            "config_name": cfg,
+            "image_path": str(path),
+            "original_filename": file.filename,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    threading.Thread(target=_job_runner, args=(job_id, str(path), cfg, file.filename), daemon=True).start()
+    return job_id
+
+
+def _read_audit_entries(limit: int = 200) -> list[dict]:
+    audit_path = _outputs_dir() / "audit.jsonl"
+    if not audit_path.exists():
+        return []
+    items: list[dict] = []
+    with audit_path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                items.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return list(reversed(items[-limit:]))
 
 
 
@@ -183,46 +230,50 @@ def config_discover():
             tmp_path.unlink()
 
 
+@bp.route("/configs/<name>/delete", methods=["POST"])
+def config_delete(name: str):
+    safe_name = _safe_config_name(name)
+    path = _config_path(safe_name)
+    if path.exists():
+        path.unlink()
+    return redirect(url_for("web.configs_page"))
+
+
 @bp.route("/upload", methods=["POST"])
 def upload():
     cfg = request.form.get("config_name", "").strip()
-    file = request.files.get("form_file")
-    if not cfg or not file:
-        return jsonify({"error": "config_name and form_file are required"}), 400
+    files = request.files.getlist("form_files")
+    if not files:
+        single = request.files.get("form_file")
+        files = [single] if single else []
+
+    files = [f for f in files if f and f.filename]
+    if not cfg or not files:
+        return jsonify({"error": "config_name and at least one form file are required"}), 400
     try:
         cfg = _safe_config_name(cfg)
     except ValueError:
         return jsonify({"error": "Invalid config name"}), 400
 
-    ext = Path(file.filename or "").suffix.lower()
-    if ext not in {".tif", ".tiff", ".png", ".jpg", ".jpeg"}:
-        return jsonify({"error": "Only TIFF/PNG/JPG files are supported"}), 400
+    invalid = [f.filename for f in files if not _allowed_ext(f.filename or "")]
+    if invalid:
+        return jsonify({"error": "Only TIFF/PNG/JPG files are supported", "invalid_files": invalid}), 400
 
-    job_id = str(uuid.uuid4())
-    save_name = f"{job_id}{ext}"
-    path = _uploads_dir() / save_name
-    file.save(path)
-
-    with JOBS_LOCK:
-        JOBS[job_id] = {
-            "job_id": job_id,
-            "status": "queued",
-            "config_name": cfg,
-            "image_path": str(path),
-            "original_filename": file.filename,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-
-    threading.Thread(target=_job_runner, args=(job_id, str(path), cfg, file.filename), daemon=True).start()
-    return redirect(url_for("web.job_detail", id=job_id))
+    batch_id = str(uuid.uuid4()) if len(files) > 1 else None
+    job_ids = [_queue_job(cfg, f, batch_id=batch_id) for f in files]
+    if len(job_ids) == 1:
+        return redirect(url_for("web.job_detail", id=job_ids[0]))
+    return redirect(url_for("web.jobs", batch_id=batch_id))
 
 
 @bp.route("/jobs", methods=["GET"])
 def jobs():
     with JOBS_LOCK:
         items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
-    return render_template("jobs.html", jobs=items)
+    batch_id = (request.args.get("batch_id") or "").strip()
+    if batch_id:
+        items = [j for j in items if j.get("batch_id") == batch_id]
+    return render_template("jobs.html", jobs=items, selected_batch=batch_id)
 
 
 @bp.route("/jobs/<id>", methods=["GET"])
@@ -231,7 +282,9 @@ def job_detail(id: str):
         job = JOBS.get(id)
     if not job:
         return jsonify({"error": "job not found"}), 404
-    return render_template("job_detail.html", job=job)
+    audits = _read_audit_entries(limit=500)
+    job_audit = next((a for a in audits if str(a.get("job_id")) == id), None)
+    return render_template("job_detail.html", job=job, job_audit=job_audit)
 
 
 @bp.route("/jobs/<id>/review", methods=["GET", "POST"])
@@ -300,6 +353,35 @@ def api_jobs():
     return jsonify({"jobs": items})
 
 
+@bp.route("/audits", methods=["GET"])
+def audits():
+    entries = _read_audit_entries(limit=500)
+    return render_template("audits.html", audits=entries)
+
+
+@bp.route("/api/template-preview", methods=["GET"])
+def api_template_preview():
+    template_path = (request.args.get("template_path") or "").strip()
+    if not template_path:
+        return jsonify({"error": "template_path is required"}), 400
+    rel = template_path.replace("\\", "/")
+    if rel.startswith("templates/"):
+        rel = rel[len("templates/") :]
+    joined = safe_join(str(_root_dir() / "templates"), rel)
+    if not joined:
+        return jsonify({"error": "Invalid template path"}), 400
+    target = Path(joined)
+    if not target.exists():
+        return jsonify({"error": "Template not found"}), 404
+    image = cv2.imread(str(target), cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        return jsonify({"error": "Unable to load template image"}), 422
+    ok, encoded = cv2.imencode(".png", image)
+    if not ok:
+        return jsonify({"error": "Unable to render template preview"}), 500
+    return send_file(io.BytesIO(encoded.tobytes()), mimetype="image/png")
+
+
 @bp.route("/templates/<path:filename>")
 def templates_static(filename: str):
     return send_from_directory(_root_dir() / "templates", filename)
@@ -313,3 +395,16 @@ def uploads_static(filename: str):
 @bp.route("/outputs/<path:filename>")
 def outputs_static(filename: str):
     return send_from_directory(_outputs_dir(), filename)
+
+
+@bp.route("/evaluation", methods=["GET"])
+def evaluation():
+    results_path = _root_dir() / "evaluation" / "results" / "full_results.json"
+    results: dict = {}
+    if results_path.exists():
+        try:
+            with results_path.open("r", encoding="utf-8") as fh:
+                results = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            results = {}
+    return render_template("evaluation.html", results=results)
