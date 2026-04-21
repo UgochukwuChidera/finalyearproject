@@ -15,18 +15,33 @@ Hybrid differential + AI form extraction pipeline.
 
 ## Setup
 
-```bash
-pip install -r requirements.txt
-export OPENROUTER_API_KEY="<your-key>"
-```
+1. **Install Python dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Run web app
+2. **System Dependencies (Windows):**
+   - This project uses `pdf2image`, which requires **Poppler**. 
+   - Download the latest [Poppler for Windows](https://github.com/oschwartz10612/poppler-windows/releases) and add the `bin/` directory to your System PATH.
+
+3. **Configure API Key:**
+   - Create a `.env` file in the root directory (you can copy `.env.example`).
+   - Add your [OpenRouter](https://openrouter.ai/) API key using the following format:
+     ```env
+     OPENROUTER_API_KEY="your-api-key-here"
+     ```
+   - Alternatively, set it as a system environment variable:
+     - **Windows (PowerShell):** `$env:OPENROUTER_API_KEY="<your-key>"`
+     - **Windows (CMD):** `set OPENROUTER_API_KEY=<your-key>`
+     - **Linux/macOS:** `export OPENROUTER_API_KEY="<your-key>"`
+
+## Run Web App
 
 ```bash
 python run.py
 ```
 
-Open `http://127.0.0.1:5060`.
+Open `http://127.0.0.1:5060`. (Note: `app.py` is also available as an entry point).
 
 ## Run pipeline from CLI
 
@@ -64,6 +79,13 @@ This creates/updates the `template_extraction` JSON used for text-based diff.
 - `GET /jobs/<id>`
 - `GET|POST /jobs/<id>/review`
 - `POST /api/dictionaries/upload`
+
+## Dictionaries
+
+The pipeline supports dictionary-backed validation for specific fields. 
+- Place `.csv` files in the `dictionaries/` folder (e.g., `dictionaries/nigerian_names.csv`).
+- Reference them in your field config: `"dictionary": "nigerian_names"` (without the extension).
+- This improves extraction accuracy for regional names and specific terminology.
 
 ## Output
 

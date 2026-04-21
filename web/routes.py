@@ -8,6 +8,8 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 from werkzeug.utils import safe_join, secure_filename
 
 from main import process_form
+from ai_extraction.gemini_client import GeminiClient
+from ai_extraction.prompt_builder import build_discovery_prompt
 
 bp = Blueprint("web", __name__)
 
@@ -153,6 +155,32 @@ def config_edit(name: str):
         config_text=json.dumps(cfg, indent=2),
         template_path=cfg.get("template_path", ""),
     )
+
+
+@bp.route("/api/config/discover", methods=["POST"])
+def config_discover():
+    file = request.files.get("template_file")
+    if not file:
+        return jsonify({"error": "template_file is required"}), 400
+
+    # Save template temporarily for processing
+    tmp_path = Path(current_app.config["UPLOADS_DIR"]) / f"tmp_discover_{uuid.uuid4()}.png"
+    file.save(tmp_path)
+
+    try:
+        with open(tmp_path, "rb") as f:
+            image_bytes = f.read()
+
+        client = GeminiClient()
+        prompt = build_discovery_prompt()
+        result = client.extract_from_images([image_bytes], [prompt])
+
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
 
 
 @bp.route("/upload", methods=["POST"])

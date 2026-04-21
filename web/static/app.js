@@ -142,3 +142,71 @@ async function submitReview(jobId){
   if(!res.ok){alert('Failed to submit');return;}
   location.href=`/jobs/${jobId}`;
 }
+
+async function vfDiscoverFromImage() {
+  const fileInput = document.getElementById('ai-template-file');
+  const status = document.getElementById('ai-status');
+  if (!fileInput || !fileInput.files[0]) {
+    alert('Please select a blank template image first.');
+    return;
+  }
+
+  status.textContent = 'Processing with AI (Gemini)... please wait...';
+  const formData = new FormData();
+  formData.append('template_file', fileInput.files[0]);
+
+  try {
+    const res = await fetch('/api/config/discover', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error('AI discovery failed');
+    
+    const data = await res.json();
+    if (data.error) {
+       status.textContent = 'Error: ' + data.error;
+       return;
+    }
+
+    if (data.fields) {
+      // Load the image into the canvas background
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => { vfState.img = img; vfRedraw(); };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(fileInput.files[0]);
+
+      // NEW: Scale normalized AI coordinates (0-1000) to our 800x1100 canvas
+      const scaledFields = data.fields.map(f => {
+        const b = f.bounding_box || {x: 0, y: 0, w: 100, h: 20};
+        return {
+          ...f,
+          bounding_box: {
+            x: Math.round((b.x / 1000) * 800),
+            y: Math.round((b.y / 1000) * 1100),
+            w: Math.round((b.w / 1000) * 800),
+            h: Math.round((b.h / 1000) * 1100)
+          }
+        };
+      });
+
+      const ta = document.getElementById('config-json');
+      const current = JSON.parse(ta.value || '{}');
+      current.fields = scaledFields;
+      ta.value = JSON.stringify(current, null, 2);
+      
+      // Update canvas state
+      vfState.fields = scaledFields;
+      vfRedraw();
+      
+      status.textContent = `Found ${data.fields.length} fields! Check the editor below.`;
+    } else {
+      status.textContent = 'No fields found or AI error.';
+    }
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Error: ' + err.message;
+  }
+}

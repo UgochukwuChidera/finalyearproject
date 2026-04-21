@@ -9,37 +9,62 @@
       "expected_type": "string",
       "critical": true,
       "dictionary": "nigerian_names.csv",
-      "validation": { "min_length": 2 },
-      "bounding_box": { "x": 120, "y": 180, "w": 350, "h": 45 }
+      "validation": {
+        "min_length": 2
+      },
+      "bounding_box": {
+        "x": 120,
+        "y": 180,
+        "w": 350,
+        "h": 45
+      }
     },
     {
       "name": "registration_id",
       "label_hint": "Registration ID",
       "expected_type": "string",
       "critical": true,
-      "validation": { "regex": "^[0-9]{7}$" },
-      "bounding_box": { "x": 120, "y": 240, "w": 200, "h": 35 }
+      "validation": {
+        "regex": "^[0-9]{7}$"
+      },
+      "bounding_box": {
+        "x": 120,
+        "y": 240,
+        "w": 200,
+        "h": 35
+      }
     },
     {
       "name": "gender",
       "label_hint": "Gender",
       "expected_type": "checkbox_group",
       "critical": false,
-      "options": ["Male", "Female"]
+      "options": [
+        "Male",
+        "Female"
+      ]
     },
     {
       "name": "blood_group",
       "label_hint": "Blood Group",
       "expected_type": "checkbox_group",
       "critical": false,
-      "options": ["A", "B", "AB", "O"]
+      "options": [
+        "A",
+        "B",
+        "AB",
+        "O"
+      ]
     },
     {
       "name": "height_cm",
       "label_hint": "Height (cm)",
       "expected_type": "integer",
       "critical": false,
-      "validation": { "min": 100, "max": 250 }
+      "validation": {
+        "min": 100,
+        "max": 250
+      }
     }
   ],
   "confidence_weights": {

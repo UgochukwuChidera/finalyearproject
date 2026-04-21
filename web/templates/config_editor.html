@@ -5,28 +5,48 @@
     <h2>{{ 'New Config' if mode == 'new' else 'Edit Config: ' ~ config_name }}</h2>
     <form method="post">
       {% if mode == 'new' %}
-      <label>Config name
-        <input name="config_name" value="{{ config_name }}" required />
-      </label>
+      <div style="margin-bottom: 1.5rem">
+        <label>Config name (e.g. medical_v1)</label>
+        <input name="config_name" value="{{ config_name }}" placeholder="Enter config name..." required />
+      </div>
       {% else %}
       <input type="hidden" name="config_name" value="{{ config_name }}" />
       {% endif %}
-      <textarea id="config-json" name="config_json" rows="24">{{ config_text }}</textarea>
-      <button type="submit">Save</button>
+      
+      <label>JSON Configuration</label>
+      <textarea id="config-json" name="config_json" rows="45" placeholder='{ "fields": [] }'>{{ config_text }}</textarea>
+      
+      <div style="margin-top: 1rem">
+        <button type="submit" style="width: 100%">Save Configuration</button>
+      </div>
     </form>
+    
+    <div class="ai-setup">
+      <h3>✨ AI-Assisted Autocomplete</h3>
+      <p class="muted">Upload a blank form. Gemini will identify fields and draw boxes automatically.</p>
+      <input type="file" id="ai-template-file" accept="image/*" style="border: none; padding: 0" />
+      <button type="button" class="secondary" onclick="vfDiscoverFromImage()" style="width: 100%; margin-top: 10px">
+        🚀 Start AI Field Discovery
+      </button>
+      <div id="ai-status" class="muted"></div>
+    </div>
   </div>
 
   <div class="card">
-    <h2>Bounding-box editor</h2>
-    <p class="muted">Drag to move, drag bottom-right handle to resize. Save writes updated JSON in editor.</p>
-    <canvas id="bbox-canvas" width="900" height="600"
-            data-template="{{ template_path }}"
-            data-fields='{{ (config.fields if config else []) | tojson }}'></canvas>
-    <div class="row">
-      <button type="button" onclick="vfLoadFromJson()">Load from JSON</button>
-      <button type="button" onclick="vfApplyBoxesToJson()">Apply boxes to JSON</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem">
+        <h2>Bounding-box Workspace</h2>
+        <div class="row" style="margin: 0">
+            <button type="button" class="secondary" onclick="vfLoadFromJson()">Sync from JSON</button>
+            <button type="button" onclick="vfApplyBoxesToJson()">Apply to JSON editor</button>
+        </div>
     </div>
-    <pre id="bbox-output" class="muted"></pre>
+    <p class="muted" style="margin-bottom: 1rem">Drag to move, drag bottom-right handle to resize. Labels appear automatically.</p>
+    <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; overflow: auto; max-height: 1200px">
+        <canvas id="bbox-canvas" width="800" height="1100"
+                data-template="{{ template_path }}"
+                data-fields='{{ (config.fields if config else []) | tojson }}'></canvas>
+    </div>
+    <pre id="bbox-output" class="muted" style="background:#0f172a; color:#38bdf8; padding: 1rem; border-radius: 8px; margin-top: 1rem; min-height: 80px"></pre>
   </div>
 </section>
 {% endblock %}

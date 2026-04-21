@@ -191,12 +191,23 @@ def process_form(
     mask, diff_meta = differ.analyze(aligned, template_img)
     stats.update({f"diff_{k}": v for k, v in diff_meta.items() if not hasattr(v, "shape")})
 
+    # NEW: Define editor-to-actual scaling multipliers
+    # We assume the UI editor works on an 800x1100 fixed canvas (Portrait A4)
+    ref_w, ref_h = 800.0, 1100.0
+    actual_h, actual_w = aligned.shape[:2]
+    scale_x, scale_y = actual_w / ref_w, actual_h / ref_h
+
     critical_crops: dict[str, bytes] = {}
     for field in fields:
         if not field.get("critical"):
             continue
         bb = field.get("bounding_box", {})
-        x, y, w0, h0 = int(bb.get("x", 0)), int(bb.get("y", 0)), int(bb.get("w", 1)), int(bb.get("h", 1))
+        # Scale coordinates from 900x600 -> actual resolution
+        x = int(bb.get("x", 0) * scale_x)
+        y = int(bb.get("y", 0) * scale_y)
+        w0 = int(bb.get("w", 1) * scale_x)
+        h0 = int(bb.get("h", 1) * scale_y)
+        
         roi = _safe_crop(aligned, x, y, w0, h0)
         roi_mask = _safe_crop(mask, x, y, w0, h0)
         ink = np.full_like(roi, 255)
@@ -220,7 +231,10 @@ def process_form(
     for field in fields:
         name = field["name"]
         bb = field.get("bounding_box", {})
-        x, y, w0, h0 = int(bb.get("x", 0)), int(bb.get("y", 0)), int(bb.get("w", 1)), int(bb.get("h", 1))
+        x = int(bb.get("x", 0) * scale_x)
+        y = int(bb.get("y", 0) * scale_y)
+        w0 = int(bb.get("w", 1) * scale_x)
+        h0 = int(bb.get("h", 1) * scale_y)
 
         raw = ai_fields.get(name)
         c_lp = float(ai_conf_map.get(name, 0.5))

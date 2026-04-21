@@ -1,9 +1,11 @@
 import base64
+import io
 import json
 import os
 from typing import List
 
 from openai import OpenAI
+from PIL import Image
 
 
 class GeminiClient:
@@ -17,8 +19,25 @@ class GeminiClient:
         )
 
     @staticmethod
+    def _process_image(image_bytes: bytes, max_dim: int = 1200) -> bytes:
+        """Resizes image to a max dimension and converts to JPEG to save tokens."""
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+            if img.mode in ("RGBA", "P", "CMYK"):
+                img = img.convert("RGB")
+            
+            if max(img.width, img.height) > max_dim:
+                img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+            
+            output = io.BytesIO()
+            img.save(output, format="JPEG", quality=85)
+            return output.getvalue()
+        except Exception:
+            return image_bytes
+
+    @staticmethod
     def _data_url(image_bytes: bytes) -> str:
-        return "data:image/png;base64," + base64.b64encode(image_bytes).decode("utf-8")
+        return "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
 
     @staticmethod
     def _safe_json_extract(raw: str) -> dict:
@@ -38,19 +57,23 @@ class GeminiClient:
             return {}
 
     def extract_from_images(self, images: List[bytes], prompts: List[str]) -> dict:
-        if not self.client or not images:
-            return {}
+        if not self.client:
+            return {"error": "GeminiClient not initialized. Check your OPENROUTER_API_KEY environment variable."}
+        if not images:
+            return {"error": "No images provided to GeminiClient."}
 
         content = []
         for idx, image_bytes in enumerate(images):
+            processed_bytes = self._process_image(image_bytes)
             text = prompts[idx] if idx < len(prompts) else "Extract requested fields from this image."
             content.append({"type": "text", "text": text})
-            content.append({"type": "image_url", "image_url": {"url": self._data_url(image_bytes)}})
+            content.append({"type": "image_url", "image_url": {"url": self._data_url(processed_bytes)}})
 
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": content}],
             temperature=0,
+            max_tokens=4096,
             response_format={"type": "json_object"},
         )
 
