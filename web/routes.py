@@ -355,10 +355,13 @@ def api_template_preview():
     template_path = (request.args.get("template_path") or "").strip()
     if not template_path:
         return jsonify({"error": "template_path is required"}), 400
-    root = _root_dir().resolve()
-    target = (root / template_path).resolve()
-    if root not in target.parents and target != root:
+    rel = template_path.replace("\\", "/")
+    if rel.startswith("templates/"):
+        rel = rel[len("templates/") :]
+    joined = safe_join(str(_root_dir() / "templates"), rel)
+    if not joined:
         return jsonify({"error": "Invalid template path"}), 400
+    target = Path(joined)
     if not target.exists():
         return jsonify({"error": "Template not found"}), 404
     image = cv2.imread(str(target), cv2.IMREAD_GRAYSCALE)

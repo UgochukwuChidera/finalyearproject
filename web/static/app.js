@@ -67,6 +67,10 @@ function vfLoadTemplate(templatePath){
   if(!templatePath) return;
   const img = new Image();
   img.onload = () => { vfState.img = img; vfRedraw(); };
+  img.onerror = () => {
+    const out = document.getElementById('bbox-output');
+    if (out) out.textContent = `Failed to load template preview: ${templatePath}`;
+  };
   img.src = `/api/template-preview?template_path=${encodeURIComponent(templatePath)}&v=${Date.now()}`;
 }
 
@@ -90,7 +94,13 @@ function vfSyncFieldsPanel(){
     btn.style.width = '100%';
     btn.style.justifyContent = 'space-between';
     btn.style.marginBottom = '0.5rem';
-    btn.innerHTML = `<span>${f.name || `field_${idx+1}`}</span><span class="muted">${Math.round(b.x||0)},${Math.round(b.y||0)} ${Math.round(b.w||0)}×${Math.round(b.h||0)}</span>`;
+    const left = document.createElement('span');
+    left.textContent = f.name || `field_${idx+1}`;
+    const right = document.createElement('span');
+    right.className = 'muted';
+    right.textContent = `${Math.round(b.x||0)},${Math.round(b.y||0)} ${Math.round(b.w||0)}×${Math.round(b.h||0)}`;
+    btn.appendChild(left);
+    btn.appendChild(right);
     btn.onclick = () => { vfState.selected = idx; vfRedraw(); vfSyncFieldsPanel(); };
     panel.appendChild(btn);
   });

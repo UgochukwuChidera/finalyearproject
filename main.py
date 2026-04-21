@@ -10,6 +10,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+MIN_DESKEW_ANGLE_DEG = 0.2
+
 from ai_extraction import (
     DictionaryStore,
     GeminiClient,
@@ -173,7 +175,7 @@ def process_form(
     stats.update(skew_meta)
     if (config.get("preprocessing") or {}).get("deskew", False):
         angle = float(skew_meta.get("skew_angle", 0.0))
-        if abs(angle) > 0.2:
+        if abs(angle) > MIN_DESKEW_ANGLE_DEG:
             gray = _deskew_image(gray, -angle)
             stats["deskew_applied"] = True
             stats["deskew_angle_used"] = -angle
@@ -270,7 +272,7 @@ def process_form(
                 raw = raw if _differs_from_template(raw, baseline) else None
             text_diff_changed = _differs_from_template(raw, baseline)
         else:
-            text_diff_changed = True
+            text_diff_changed = False
 
         dict_file = field.get("dictionary")
         dict_entries = dictionaries.get(dict_file, []) if dict_file else []
