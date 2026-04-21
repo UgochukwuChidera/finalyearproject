@@ -13,12 +13,13 @@ class Evaluator:
         results_dir: str = "evaluation/results",
         ground_truth_dir: str = "ground_truth",
         confidence_threshold: float = 0.60,
+        config_name: str = "medical_screening_v1",
     ):
         self._results_dir = Path(results_dir)
         self._results_dir.mkdir(parents=True, exist_ok=True)
         self._gt = GroundTruth(ground_truth_dir)
         self._threshold = confidence_threshold
-        self._pipelines: list[BasePipeline] = [DAPEPipeline()]
+        self._pipelines: list[BasePipeline] = [DAPEPipeline(config_name=config_name)]
 
     def run(self, forms: list[dict]) -> dict:
         all_results = {}
@@ -125,8 +126,13 @@ class Evaluator:
 
     def _simulate_corrections(self, fields: list[dict], gt_fields: dict) -> list[dict]:
         """
-        Simulate post-HITL state: for fields flagged for review that have a
-        known ground truth, assume a human corrected them to the GT value.
+        Simulate post-HITL state for metric comparison purposes.
+
+        For fields flagged for review that have a known ground truth value, this
+        method assumes an ideal human reviewer corrects them to the ground truth.
+        This gives an upper-bound estimate of post-HITL accuracy and allows a
+        fair pre/post comparison during offline evaluation. Real reviewer
+        corrections may differ and should be preferred when available.
         """
         result: list[dict] = []
         for f in fields:

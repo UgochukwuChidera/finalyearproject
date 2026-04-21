@@ -34,12 +34,8 @@ def main():
     evaluator = Evaluator(
         results_dir=args.results_dir,
         ground_truth_dir=args.ground_truth_dir,
+        config_name=config_name,
     )
-
-    # Allow overriding the pipeline config name
-    for pipeline in evaluator._pipelines:
-        if hasattr(pipeline, "_config_name"):
-            pipeline._config_name = config_name
 
     results = evaluator.run(forms)
     for pipeline_name, data in results.items():

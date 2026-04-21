@@ -5,7 +5,7 @@
   <div class="row" style="margin: 0">
     <span class="badge badge-info">{{ jobs|length }} Total Pipelines</span>
     {% if selected_batch %}
-      <span class="badge badge-warning">Batch: {{ selected_batch[:8] }}</span>
+      <span class="badge badge-warning">Batch: {{ (selected_batch or '')[:8] }}</span>
     {% endif %}
   </div>
 </div>
