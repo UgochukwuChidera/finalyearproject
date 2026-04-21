@@ -1,17 +1,39 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="card-header">
+  <h2><i class="ph ph-list-bullets"></i> Job Queue</h2>
+  <div class="row" style="margin: 0">
+    <span class="badge badge-info">{{ jobs|length }} Total Pipelines</span>
+  </div>
+</div>
+
 <section class="card">
-  <h2>Jobs</h2>
   <table>
-    <thead><tr><th>Job ID</th><th>Config</th><th>Status</th><th>Created</th><th>Action</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Engine ID</th>
+        <th>Configuration</th>
+        <th>Status</th>
+        <th>Timestamp</th>
+        <th>Manage</th>
+      </tr>
+    </thead>
     <tbody>
     {% for j in jobs %}
       <tr>
-        <td>{{ j.job_id }}</td>
+        <td><code style="color: var(--secondary)">#{{ j.job_id[:12] }}</code></td>
         <td>{{ j.config_name }}</td>
-        <td>{{ j.status }}</td>
-        <td>{{ j.created_at }}</td>
-        <td><a href="{{ url_for('web.job_detail', id=j.job_id) }}">Details</a></td>
+        <td>
+          <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status == 'pending' else 'badge-info' }}">
+            {{ j.status }}
+          </span>
+        </td>
+        <td><span class="muted">{{ j.created_at }}</span></td>
+        <td>
+          <a href="{{ url_for('web.job_detail', id=j.job_id) }}" class="button-link secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem">
+            Inspect
+          </a>
+        </td>
       </tr>
     {% endfor %}
     </tbody>

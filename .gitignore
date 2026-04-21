@@ -11,3 +11,5 @@ outputs/*
 !outputs/.gitkeep
 
 .env
+
+skills/

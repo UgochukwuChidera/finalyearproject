@@ -1,37 +1,76 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="card">
-  <h2>Upload form</h2>
-  <form method="post" action="{{ url_for('web.upload') }}" enctype="multipart/form-data">
-    <label>Config
-      <select name="config_name" required>
-        <option value="">Select config</option>
-        {% for c in configs %}
-          <option value="{{ c }}">{{ c }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>Form file (TIFF/PNG/JPG)
-      <input type="file" name="form_file" accept=".tif,.tiff,.png,.jpg,.jpeg" required />
-    </label>
-    <button type="submit">Process</button>
-  </form>
-</section>
+<div class="card-header">
+  <h2>Command Center</h2>
+  <div class="row" style="margin: 0">
+    <div class="muted"><i class="ph ph-clock"></i> Last updated: Just now</div>
+  </div>
+</div>
 
-<section class="card">
-  <h2>Recent jobs</h2>
-  <table>
-    <thead><tr><th>Job ID</th><th>Status</th><th>Config</th><th>Action</th></tr></thead>
-    <tbody>
-      {% for j in jobs %}
-      <tr>
-        <td>{{ j.job_id }}</td>
-        <td>{{ j.status }}</td>
-        <td>{{ j.config_name }}</td>
-        <td><a href="{{ url_for('web.job_detail', id=j.job_id) }}">Open</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
+<div class="grid-2">
+  <section class="card">
+    <div class="card-header">
+      <h3><i class="ph ph-upload-simple"></i> Process New Form</h3>
+    </div>
+    <form method="post" action="{{ url_for('web.upload') }}" enctype="multipart/form-data">
+      <div style="margin-bottom: 1.5rem">
+        <label>Extraction Configuration</label>
+        <select name="config_name" required>
+          <option value="">Select a template...</option>
+          {% for c in configs %}
+            <option value="{{ c }}">{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div style="margin-bottom: 2rem">
+        <label>Form Document (TIFF/PNG/JPG)</label>
+        <div style="position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; transition: border-color 0.2s" ondragover="this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'">
+          <i class="ph ph-file-plus" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 1rem; display: block"></i>
+          <p class="muted">Drag and drop or click to select</p>
+          <input type="file" name="form_file" accept=".tif,.tiff,.png,.jpg,.jpeg" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer" />
+        </div>
+      </div>
+      
+      <button type="submit" class="primary" style="width: 100%">
+        <i class="ph ph-rocket-launch"></i> Initialize Extraction
+      </button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h3><i class="ph ph-activity"></i> Recent Pipelines</h3>
+      <a href="{{ url_for('web.jobs') }}" class="ghost" style="font-size: 0.875rem">View all</a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Job Engine</th>
+          <th>Status</th>
+          <th>Config</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in jobs[:8] %}
+        <tr>
+          <td><code style="color: var(--secondary)">#{{ j.job_id[:8] }}</code></td>
+          <td>
+            <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status == 'pending' else 'badge-info' }}">
+              {{ j.status }}
+            </span>
+          </td>
+          <td>{{ j.config_name }}</td>
+          <td>
+            <a href="{{ url_for('web.job_detail', id=j.job_id) }}" class="ghost" style="padding: 0.5rem">
+              <i class="ph ph-arrow-square-out"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
 {% endblock %}

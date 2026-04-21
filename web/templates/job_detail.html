@@ -1,25 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="card-header">
+    <h2><i class="ph ph-info"></i> Pipeline Intelligence</h2>
+    <div class="row" style="margin: 0; gap: 0.5rem">
+        <a href="{{ url_for('web.review', id=job.job_id) }}" class="primary">
+            <i class="ph ph-eye"></i> Launch Review
+        </a>
+    </div>
+</div>
+
 <section class="card">
-  <h2>Job: {{ job.job_id }}</h2>
-  <p>Status: <strong>{{ job.status }}</strong></p>
-  {% if job.error %}<p class="danger">{{ job.error }}</p>{% endif %}
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem">
+      <div>
+          <h3 style="margin-bottom: 0.5rem">Job Context: <span style="color: var(--secondary)">{{ job.job_id }}</span></h3>
+          <p class="muted">Status: <span class="badge badge-info">{{ job.status }}</span></p>
+      </div>
+  </div>
+
+  {% if job.error %}
+  <div class="card badge-danger" style="padding: 1.5rem; margin-bottom: 2rem">
+      <i class="ph ph-warning-circle"></i> {{ job.error }}
+  </div>
+  {% endif %}
+
   {% if job.fields %}
   <table>
-    <thead><tr><th>Field</th><th>Value</th><th>Final</th><th>Confidence</th><th>Status</th></tr></thead>
+    <thead>
+        <tr>
+            <th>Field Identifier</th>
+            <th>Raw Extraction</th>
+            <th>Normalized Value</th>
+            <th>Confidence Score</th>
+            <th>Validation</th>
+        </tr>
+    </thead>
     <tbody>
       {% for f in job.fields %}
       <tr>
-        <td>{{ f.field_id }}</td>
+        <td><strong>{{ f.field_id }}</strong></td>
         <td>{{ f.value }}</td>
         <td>{{ f.final_value }}</td>
-        <td>{{ '%.3f'|format(f.confidence or 0) }}</td>
-        <td>{{ f.validation_status }}</td>
+        <td>
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; max-width: 60px">
+                    <div style="height: 100%; width: {{ (f.confidence or 0)*100 }}%; background: var(--primary); border-radius: 3px"></div>
+                </div>
+                <span>{{ '%.2f'|format(f.confidence or 0) }}</span>
+            </div>
+        </td>
+        <td>
+            <span class="badge {{ 'badge-success' if f.validation_status == 'valid' else 'badge-warning' }}">
+                {{ f.validation_status }}
+            </span>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   {% endif %}
-  <p><a href="{{ url_for('web.review', id=job.job_id) }}">Open review page</a></p>
 </section>
 {% endblock %}

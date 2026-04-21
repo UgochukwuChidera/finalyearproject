@@ -1,52 +1,73 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="card-header">
+    <h2><i class="ph ph-sliders"></i> {{ 'New Config' if mode == 'new' else 'Edit Config: ' ~ config_name }}</h2>
+    <div class="row" style="margin:0">
+        <button type="button" class="ghost" onclick="window.history.back()"><i class="ph ph-caret-left"></i> Back</button>
+    </div>
+</div>
+
 <section class="grid-2">
   <div class="card">
-    <h2>{{ 'New Config' if mode == 'new' else 'Edit Config: ' ~ config_name }}</h2>
     <form method="post">
       {% if mode == 'new' %}
-      <div style="margin-bottom: 1.5rem">
-        <label>Config name (e.g. medical_v1)</label>
-        <input name="config_name" value="{{ config_name }}" placeholder="Enter config name..." required />
+      <div style="margin-bottom: 2rem">
+        <label>Configuration Identifier</label>
+        <input name="config_name" value="{{ config_name }}" placeholder="e.g. medical_screening_v1" required />
       </div>
       {% else %}
       <input type="hidden" name="config_name" value="{{ config_name }}" />
       {% endif %}
       
-      <label>JSON Configuration</label>
-      <textarea id="config-json" name="config_json" rows="45" placeholder='{ "fields": [] }'>{{ config_text }}</textarea>
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.625rem">
+          <label style="margin: 0">JSON Schema Definition</label>
+          <span class="muted" style="font-size: 0.75rem">Editor Mode: Advanced</span>
+      </div>
+      <textarea id="config-json" name="config_json" rows="35" placeholder='{ "fields": [] }' style="border-color: var(--primary-glow)">{{ config_text }}</textarea>
       
-      <div style="margin-top: 1rem">
-        <button type="submit" style="width: 100%">Save Configuration</button>
+      <div style="margin-top: 2rem">
+        <button type="submit" class="primary" style="width: 100%">
+            <i class="ph ph-floppy-disk"></i> Save Global Changes
+        </button>
       </div>
     </form>
     
-    <div class="ai-setup">
-      <h3>✨ AI-Assisted Autocomplete</h3>
-      <p class="muted">Upload a blank form. Gemini will identify fields and draw boxes automatically.</p>
-      <input type="file" id="ai-template-file" accept="image/*" style="border: none; padding: 0" />
-      <button type="button" class="secondary" onclick="vfDiscoverFromImage()" style="width: 100%; margin-top: 10px">
-        🚀 Start AI Field Discovery
+    <div class="ai-setup" style="margin-top: 3rem">
+      <h3 style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary)">
+          <i class="ph ph-sparkle"></i> AI Discovery
+      </h3>
+      <p class="muted" style="font-size: 0.875rem">Upload a blank form image. The Nexus AI will automatically detect fields and map coordinates.</p>
+      
+      <div style="margin: 1.5rem 0">
+          <input type="file" id="ai-template-file" accept="image/*" style="border: none; padding: 0; background: transparent" />
+      </div>
+      
+      <button type="button" class="secondary" onclick="vfDiscoverFromImage()" style="width: 100%">
+        <i class="ph ph-magic-wand"></i> Run AI Field Discovery
       </button>
-      <div id="ai-status" class="muted"></div>
+      <div id="ai-status" class="muted" style="margin-top: 1rem; font-size: 0.8125rem"></div>
     </div>
   </div>
 
-  <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem">
-        <h2>Bounding-box Workspace</h2>
-        <div class="row" style="margin: 0">
-            <button type="button" class="secondary" onclick="vfLoadFromJson()">Sync from JSON</button>
-            <button type="button" onclick="vfApplyBoxesToJson()">Apply to JSON editor</button>
+  <div class="card" style="padding: 1.5rem">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem">
+        <h3><i class="ph ph-bounding-box" style="color: var(--secondary)"></i> Layout Workspace</h3>
+        <div class="row" style="margin: 0; gap: 0.5rem">
+            <button type="button" class="ghost" onclick="vfLoadFromJson()" title="Load from JSON"><i class="ph ph-arrow-counter-clockwise"></i></button>
+            <button type="button" class="secondary" onclick="vfApplyBoxesToJson()"><i class="ph ph-check"></i> Sync to Editor</button>
         </div>
     </div>
-    <p class="muted" style="margin-bottom: 1rem">Drag to move, drag bottom-right handle to resize. Labels appear automatically.</p>
-    <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; overflow: auto; max-height: 1200px">
+    
+    <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; overflow: auto; max-height: 1000px; border: 1px solid var(--border)">
         <canvas id="bbox-canvas" width="800" height="1100"
                 data-template="{{ template_path }}"
                 data-fields='{{ (config.fields if config else []) | tojson }}'></canvas>
     </div>
-    <pre id="bbox-output" class="muted" style="background:#0f172a; color:#38bdf8; padding: 1rem; border-radius: 8px; margin-top: 1rem; min-height: 80px"></pre>
+    
+    <div style="margin-top: 1.5rem">
+        <label>Live Coordinate Stream</label>
+        <pre id="bbox-output" class="muted" style="background:#0f172a; color:var(--secondary); padding: 1.25rem; border-radius: 12px; margin: 0; border: 1px solid var(--border); font-size: 0.75rem"></pre>
+    </div>
   </div>
 </section>
 {% endblock %}

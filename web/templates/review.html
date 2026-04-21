@@ -1,32 +1,74 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="card">
-  <h2>Review job: {{ job.job_id }}</h2>
-  <p>Status: <strong>{{ job.status }}</strong></p>
-</section>
+<div class="card-header">
+  <h2><i class="ph ph-eye"></i> Quality Assurance Review</h2>
+  <div class="row" style="margin: 0">
+    <span class="badge badge-warning">Job: {{ job.job_id[:12] }}</span>
+    <span class="badge badge-info">Status: {{ job.status }}</span>
+  </div>
+</div>
 
 {% if job.pending_fields %}
-<form id="review-form" class="card">
-  <h3>Pending fields</h3>
-  {% for f in job.pending_fields %}
-  <div class="field-box">
-    <div>
-      <strong>{{ f.field_id|e }}</strong>
-      <p>AI value: {{ f.value|e }} | confidence: {{ '%.3f'|format(f.confidence or 0) }} | closest: {{ f.closest_dictionary_match|e }}</p>
-      {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in f.crop_path else '' %}
-      {% if rel %}<img src="{{ url_for('web.outputs_static', filename=rel) }}" alt="crop" class="crop" />{% endif %}
-    </div>
-    <div>
-      <input type="text" name="{{ f.field_id|e }}" value="{{ f.value|e }}" />
-      <div class="row">
-        <button type="button" onclick="markIllegible('{{ f.field_id|e }}')">Mark Illegible</button>
+<section>
+  <p class="muted" style="margin-bottom: 2rem">Review the AI-extracted values against the document crops. Correct any errors or mark illegible fields.</p>
+  
+  <form id="review-form">
+    {% for f in job.pending_fields %}
+    <div class="card field-box">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem">
+            <h3 style="margin: 0; font-size: 1.125rem">{{ f.field_id|e }}</h3>
+            <span class="badge {{ 'badge-success' if f.confidence > 0.8 else 'badge-warning' }}" style="font-size: 0.7rem">
+                AI Confidence: {{ '%.1f'|format((f.confidence or 0)*100) }}%
+            </span>
+        </div>
+        
+        <p class="muted" style="font-size: 0.875rem; margin-bottom: 1rem">
+            <i class="ph ph-magic-wand"></i> AI Extraction: <strong>{{ f.value|e }}</strong>
+            {% if f.closest_dictionary_match %}
+            <br/><i class="ph ph-book-open"></i> Dictionary Suggestion: <span style="color: var(--secondary)">{{ f.closest_dictionary_match|e }}</span>
+            {% endif %}
+        </p>
+
+        {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in f.crop_path else '' %}
+        {% if rel %}
+        <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--border)">
+            <label style="font-size: 0.7rem; text-transform: uppercase">Source Crop</label>
+            <img src="{{ url_for('web.outputs_static', filename=rel) }}" alt="crop" class="crop" />
+        </div>
+        {% endif %}
+      </div>
+      
+      <div style="display: flex; flex-direction: column; justify-content: center; gap: 1rem">
+        <div>
+            <label>Final Verified Value</label>
+            <input type="text" name="{{ f.field_id|e }}" value="{{ f.value|e }}" style="font-size: 1.25rem; font-weight: 600; color: var(--primary)" />
+        </div>
+        
+        <div class="row">
+          <button type="button" class="ghost" style="width: 100%" onclick="markIllegible('{{ f.field_id|e }}')">
+              <i class="ph ph-prohibit"></i> Mark Illegible
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-  {% endfor %}
-  <button type="button" onclick="submitReview('{{ job.job_id }}')">Submit review</button>
-</form>
+    {% endfor %}
+    
+    <div style="text-align: right; margin-top: 3rem">
+        <button type="button" class="primary" onclick="submitReview('{{ job.job_id }}')" style="padding: 1rem 3rem">
+          <i class="ph ph-check-circle"></i> Finalize Batch Review
+        </button>
+    </div>
+  </form>
+</section>
 {% else %}
-<section class="card"><p>No pending fields.</p></section>
+<section class="card">
+    <div style="text-align: center; padding: 3rem">
+        <i class="ph ph-checks" style="font-size: 4rem; color: var(--success); margin-bottom: 1rem; display: block"></i>
+        <h3>Audit Complete</h3>
+        <p class="muted">No pending fields require review for this job.</p>
+        <a href="{{ url_for('web.index') }}" class="button-link secondary" style="margin-top: 1.5rem">Return to Dashboard</a>
+    </div>
+</section>
 {% endif %}
 {% endblock %}

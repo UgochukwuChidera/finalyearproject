@@ -28,23 +28,32 @@ function vfRedraw(){
   const {ctx,canvas,img,fields,selected}=vfState;
   if(!ctx||!canvas) return;
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle='#f3f4f6';
+  ctx.fillStyle='#0f172a';
   ctx.fillRect(0,0,canvas.width,canvas.height);
   if(img) ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
   fields.forEach((f,i)=>{
     const b=f.bounding_box||{};
     ctx.lineWidth=2;
-    ctx.strokeStyle=i===selected?'#dc2626':'#2563eb';
+    ctx.strokeStyle=i===selected?'#f472b6':'#8b5cf6';
     ctx.strokeRect(b.x||0,b.y||0,b.w||0,b.h||0);
-    ctx.fillStyle='rgba(37,99,235,0.15)';
+    ctx.fillStyle=i===selected?'rgba(244,114,182,0.1)':'rgba(139,92,246,0.1)';
     ctx.fillRect(b.x||0,b.y||0,b.w||0,b.h||0);
-    ctx.fillStyle='#111827';
-    ctx.font='12px sans-serif';
-    ctx.fillText(f.name||`field_${i+1}`,(b.x||0)+2,(b.y||0)-4);
+    
+    // Label tag
+    ctx.fillStyle=i===selected?'#f472b6':'#8b5cf6';
+    ctx.font='600 12px Inter, sans-serif';
+    const txt = f.name||`field_${i+1}`;
+    const tw = ctx.measureText(txt).width;
+    ctx.fillRect((b.x||0), (b.y||0)-20, tw+10, 20);
+    ctx.fillStyle='#ffffff';
+    ctx.fillText(txt,(b.x||0)+5,(b.y||0)-6);
 
-    ctx.fillStyle='#111827';
+    // Resize handle
+    ctx.fillStyle='#ffffff';
     ctx.fillRect((b.x||0)+(b.w||0)-6,(b.y||0)+(b.h||0)-6,12,12);
+    ctx.strokeStyle=i===selected?'#f472b6':'#8b5cf6';
+    ctx.strokeRect((b.x||0)+(b.w||0)-6,(b.y||0)+(b.h||0)-6,12,12);
   });
 
   const out = document.getElementById('bbox-output');

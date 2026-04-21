@@ -1,19 +1,34 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="card-header">
+  <h2><i class="ph ph-gear-six"></i> Configuration Templates</h2>
+  <a class="button-link primary" href="{{ url_for('web.config_new') }}">
+    <i class="ph ph-plus-circle"></i> Create New
+  </a>
+</div>
+
 <section class="card">
-  <h2>Configurations</h2>
-  <a class="button-link" href="{{ url_for('web.config_new') }}">Create new config</a>
-  <ul>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem">
     {% for c in configs %}
-    <li><a href="{{ url_for('web.config_edit', name=c) }}">{{ c }}</a></li>
+    <a href="{{ url_for('web.config_edit', name=c) }}" class="card" style="margin-bottom: 0; text-decoration: none; display: flex; align-items: center; gap: 1rem; padding: 1.5rem">
+      <div style="width: 48px; height: 48px; background: rgba(139, 92, 246, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary)">
+        <i class="ph ph-file-code" style="font-size: 1.5rem"></i>
+      </div>
+      <div>
+        <div style="font-weight: 600; color: #fff">{{ c }}</div>
+        <div class="muted" style="font-size: 0.75rem">Last modified: Recently</div>
+      </div>
+    </a>
     {% endfor %}
-  </ul>
+  </div>
 </section>
+
 <section class="card">
-  <h3>Upload dictionary CSV</h3>
-  <form method="post" action="{{ url_for('web.api_upload_dictionary') }}" enctype="multipart/form-data">
-    <input type="file" name="dictionary_file" accept=".csv" required />
-    <button type="submit">Upload dictionary</button>
+  <h3><i class="ph ph-books" style="color: var(--secondary)"></i> Data Dictionaries</h3>
+  <p class="muted" style="margin-bottom: 1.5rem">Upload CSV files to enable fuzzy-matching validation for specific fields.</p>
+  <form method="post" action="{{ url_for('web.api_upload_dictionary') }}" enctype="multipart/form-data" class="row">
+    <input type="file" name="dictionary_file" accept=".csv" required style="flex: 1" />
+    <button type="submit" class="secondary">Upload Dictionary</button>
   </form>
 </section>
 {% endblock %}
