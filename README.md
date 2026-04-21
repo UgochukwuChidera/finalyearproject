@@ -11,6 +11,8 @@ Hybrid differential + AI form extraction pipeline.
   - **Non-critical fields** use full-form AI extraction + template JSON diff.
 - Single AI request per form through multi-image prompting.
 - Flask UI for config management, uploads, jobs, and review.
+- Batch upload support from the web dashboard.
+- Audit stream page in the web UI.
 - Audit JSONL enhanced with `C_lp`, `C_dict`, `C_final`, status, reviewer/correction.
 
 ## Setup
@@ -57,6 +59,7 @@ python main.py --image form/medical_screening_01.tif --config-name medical_scree
 - `template_extraction`
 - `fields[].critical`
 - `fields[].dictionary`
+- `editor_canvas` (optional width/height for scaling editor coordinates to aligned image resolution)
 - `confidence_weights`
 - `thresholds`
 
@@ -78,6 +81,8 @@ This creates/updates the `template_extraction` JSON used for text-based diff.
 - `GET /jobs`
 - `GET /jobs/<id>`
 - `GET|POST /jobs/<id>/review`
+- `GET /audits`
+- `GET /api/template-preview?template_path=...`
 - `POST /api/dictionaries/upload`
 
 ## Dictionaries

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card-header">
+  <h2><i class="ph ph-scroll"></i> Audit Stream</h2>
+  <div class="row" style="margin: 0">
+    <span class="badge badge-info">{{ audits|length }} records</span>
+  </div>
+</div>
+
+<section class="card">
+  {% if audits %}
+  <table>
+    <thead>
+      <tr>
+        <th>Job</th>
+        <th>Form Type</th>
+        <th>Timestamp</th>
+        <th>Review</th>
+        <th>Open</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in audits %}
+      <tr>
+        <td><code style="color: var(--secondary)">#{{ (a.job_id or '-')[:12] }}</code></td>
+        <td>{{ a.form_type or '-' }}</td>
+        <td><span class="muted">{{ a.timestamp or '-' }}</span></td>
+        <td><span class="muted">{{ (a.review_summary.pending_review_count if a.review_summary else 0) }} pending</span></td>
+        <td>
+          {% if a.job_id %}
+          <a href="{{ url_for('web.job_detail', id=a.job_id) }}" class="button-link secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem">Inspect</a>
+          {% else %}
+          -
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No audit records yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

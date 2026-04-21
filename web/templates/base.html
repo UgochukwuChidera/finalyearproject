@@ -35,6 +35,12 @@
               <span>Job Queue</span>
             </a>
           </li>
+          <li>
+            <a href="{{ url_for('web.audits') }}" class="{{ 'active' if request.endpoint == 'web.audits' }}">
+              <i class="ph ph-scroll"></i>
+              <span>Audit Stream</span>
+            </a>
+          </li>
           <li style="margin-top: auto">
             <a href="#" class="ghost">
               <i class="ph ph-question"></i>
