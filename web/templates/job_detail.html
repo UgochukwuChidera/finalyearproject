@@ -46,8 +46,8 @@
         <td>{{ f.final_value }}</td>
         <td>
             <div style="display: flex; align-items: center; gap: 0.5rem">
-                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; max-width: 60px">
-                    <div style="height: 100%; width: {{ (f.confidence or 0)*100 }}%; background: var(--primary); border-radius: 3px"></div>
+                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; max-width: 60px;">
+                    <div style="height: 100%; --progress: {{ (f.confidence or 0)*100 }}%; width: var(--progress); background: var(--primary); border-radius: 3px;"></div>
                 </div>
                 <span>{{ '%.2f'|format(f.confidence or 0) }}</span>
             </div>

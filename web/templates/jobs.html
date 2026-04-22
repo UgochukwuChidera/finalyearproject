@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card-header">
-  <h2><i class="ph ph-list-bullets"></i> Job Queue</h2>
-  <div class="row" style="margin: 0">
-    <span class="badge badge-info">{{ jobs|length }} Total Pipelines</span>
+<div class="card-header" style="margin-bottom: 2.5rem">
+  <div>
+    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem">Neural Pipeline Queue</h1>
+    <p class="muted">Real-time status of active and completed extraction jobs</p>
+  </div>
+  <div class="row" style="margin: 0; gap: 0.75rem">
+    <div class="badge badge-info" style="padding: 0.5rem 1rem">{{ jobs|length }} Total Active</div>
     {% if selected_batch %}
-      <span class="badge badge-warning">Batch: {{ (selected_batch or '')[:8] }}</span>
+      <div class="badge badge-warning" style="padding: 0.5rem 1rem">Batch: {{ (selected_batch or '')[:8] }}</div>
     {% endif %}
   </div>
 </div>
@@ -24,19 +27,24 @@
     </thead>
     <tbody>
     {% for j in jobs %}
-      <tr>
-        <td><code style="color: var(--secondary)">#{{ j.job_id[:12] }}</code></td>
-        <td>{{ j.config_name }}</td>
+      <tr style="transition: all 0.2s ease">
         <td>
-          <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-info' }}">
-            {{ j.status }}
+          <div style="display: flex; align-items: center; gap: 0.75rem">
+            <i class="ph ph-cpu" style="color: var(--primary); font-size: 1.25rem"></i>
+            <code style="color: var(--secondary); font-size: 0.85rem">#{{ j.job_id[:12] }}</code>
+          </div>
+        </td>
+        <td><span style="font-weight: 500">{{ j.config_name }}</span></td>
+        <td>
+          <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-info' }}" style="padding: 0.35rem 0.75rem">
+            {{ j.status|upper }}
           </span>
         </td>
-        <td><span class="muted">{{ (j.batch_id or '-')[:12] }}</span></td>
-        <td><span class="muted">{{ j.created_at }}</span></td>
+        <td><span class="muted" style="font-family: monospace">{{ (j.batch_id or '—')[:12] }}</span></td>
+        <td><span class="muted" style="font-size: 0.85rem">{{ j.created_at[:19] }}</span></td>
         <td>
           <a href="{{ url_for('web.job_detail', id=j.job_id) }}" class="button-link secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem">
-            Inspect
+            <i class="ph ph-magnifying-glass"></i> Inspect
           </a>
         </td>
       </tr>

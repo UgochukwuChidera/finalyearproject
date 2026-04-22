@@ -1,9 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card-header">
-  <h2>Command Center</h2>
+<div class="card-header" style="margin-bottom: 2.5rem">
+  <div>
+    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem">Nexus Command Center</h1>
+    <p class="muted">Unified Intelligence Interface for Form Extraction & Processing</p>
+  </div>
   <div class="row" style="margin: 0">
-    <div class="muted"><i class="ph ph-clock"></i> Last updated: Just now</div>
+    <div class="badge badge-info" style="font-size: 0.8rem; padding: 0.5rem 1rem">
+      <i class="ph ph-lightning"></i> AI Engine Active
+    </div>
   </div>
 </div>
 
@@ -14,28 +19,47 @@
     </div>
     <form method="post" action="{{ url_for('web.upload') }}" enctype="multipart/form-data">
       <div style="margin-bottom: 1.5rem">
-        <label>Extraction Configuration</label>
+        <label>Extraction Blueprint</label>
         <select name="config_name" required>
-          <option value="">Select a template...</option>
+          <option value="">Select an extraction blueprint...</option>
           {% for c in configs %}
             <option value="{{ c }}">{{ c }}</option>
           {% endfor %}
         </select>
       </div>
       
-      <div style="margin-bottom: 2rem">
-        <label>Form Document(s) (TIFF/PNG/JPG)</label>
-        <div style="position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center; transition: border-color 0.2s" ondragover="this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'">
-          <i class="ph ph-file-plus" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 1rem; display: block"></i>
-          <p class="muted">Drag and drop or click to select one or many files</p>
-          <input type="file" name="form_files" multiple accept=".tif,.tiff,.png,.jpg,.jpeg" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer" />
+      <div style="margin-bottom: 2.5rem">
+        <label>Source Documents (TIFF, PNG, JPG)</label>
+        <div class="drop-zone" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 3rem; text-align: center; transition: all 0.3s ease; background: rgba(255,255,255,0.02)">
+          <div class="icon-stack" style="position: relative; margin-bottom: 1.5rem">
+            <i class="ph ph-file-plus" style="font-size: 3.5rem; color: var(--primary)"></i>
+            <div style="position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background: var(--success); border-radius: 50%; box-shadow: 0 0 10px var(--success)"></div>
+          </div>
+          <h4 style="margin-bottom: 0.5rem">Select Document Stream</h4>
+          <p class="muted" style="font-size: 0.9rem">Drag and drop or click to ingest multiple files</p>
+          <input type="file" name="form_files" id="form-upload" multiple accept=".tif,.tiff,.png,.jpg,.jpeg" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer" />
         </div>
+        <div id="file-list-preview" style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem"></div>
       </div>
       
-      <button type="submit" class="primary" style="width: 100%">
-        <i class="ph ph-rocket-launch"></i> Initialize Extraction
+      <button type="submit" class="primary" style="width: 100%; height: 56px; font-size: 1.1rem">
+        <i class="ph ph-sparkle"></i> Initialize Neural Extraction
       </button>
     </form>
+
+    <script>
+      document.getElementById('form-upload').addEventListener('change', function(e) {
+        const preview = document.getElementById('file-list-preview');
+        preview.innerHTML = '';
+        [...e.target.files].forEach(f => {
+          const b = document.createElement('div');
+          b.className = 'badge badge-info';
+          b.style.fontSize = '0.75rem';
+          b.textContent = f.name;
+          preview.appendChild(b);
+        });
+      });
+    </script>
   </section>
 
   <section class="card">

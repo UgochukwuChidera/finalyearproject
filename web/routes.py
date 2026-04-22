@@ -101,7 +101,8 @@ def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
-    threading.Thread(target=_job_runner, args=(job_id, str(path), cfg, file.filename), daemon=True).start()
+    app = current_app._get_current_object()
+    threading.Thread(target=_job_runner, args=(app, job_id, str(path), cfg, file.filename), daemon=True).start()
     return job_id
 
 
@@ -138,27 +139,28 @@ def _append_review_event(job: dict, reviewer: str, corrections: dict):
         fh.write(json.dumps(event, ensure_ascii=False) + "\n")
 
 
-def _job_runner(job_id: str, image_path: str, config_name: str, original_filename: str):
-    try:
-        with JOBS_LOCK:
-            JOBS[job_id]["status"] = "running"
-        result = process_form(
-            image_path=image_path,
-            config_name=config_name,
-            output_dir=str(_outputs_dir()),
-            log_dir=str(_logs_dir()),
-            dictionaries_dir=str(_dict_dir()),
-            original_filename=original_filename,
-            job_id=job_id,
-        )
-        with JOBS_LOCK:
-            JOBS[job_id].update(result)
-            JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
-    except Exception as exc:
-        with JOBS_LOCK:
-            JOBS[job_id]["status"] = "failed"
-            JOBS[job_id]["error"] = str(exc)
-            JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+def _job_runner(app, job_id: str, image_path: str, config_name: str, original_filename: str):
+    with app.app_context():
+        try:
+            with JOBS_LOCK:
+                JOBS[job_id]["status"] = "running"
+            result = process_form(
+                image_path=image_path,
+                config_name=config_name,
+                output_dir=str(_outputs_dir()),
+                log_dir=str(_logs_dir()),
+                dictionaries_dir=str(_dict_dir()),
+                original_filename=original_filename,
+                job_id=job_id,
+            )
+            with JOBS_LOCK:
+                JOBS[job_id].update(result)
+                JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+        except Exception as exc:
+            with JOBS_LOCK:
+                JOBS[job_id]["status"] = "failed"
+                JOBS[job_id]["error"] = str(exc)
+                JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
 
 
 @bp.route("/")
@@ -395,6 +397,28 @@ def uploads_static(filename: str):
 @bp.route("/outputs/<path:filename>")
 def outputs_static(filename: str):
     return send_from_directory(_outputs_dir(), filename)
+
+
+@bp.route("/api/utils/convert-to-png", methods=["POST"])
+def api_utils_convert_to_png():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    import numpy as np
+    try:
+        file_bytes = np.frombuffer(file.read(), np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        if img is None:
+            return jsonify({"error": "Failed to decode image"}), 422
+            
+        ok, encoded = cv2.imencode(".png", img)
+        if not ok:
+            return jsonify({"error": "Failed to encode to PNG"}), 500
+            
+        return send_file(io.BytesIO(encoded.tobytes()), mimetype="image/png")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/evaluation", methods=["GET"])

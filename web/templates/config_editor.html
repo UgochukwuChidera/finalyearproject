@@ -50,29 +50,110 @@
   </div>
 
   <div class="card" style="padding: 1.5rem">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem">
-        <h3><i class="ph ph-bounding-box" style="color: var(--secondary)"></i> Layout Workspace</h3>
-        <div class="row" style="margin: 0; gap: 0.5rem">
-            <button type="button" class="ghost" onclick="vfLoadFromJson()" title="Load from JSON"><i class="ph ph-arrow-counter-clockwise"></i></button>
-            <button type="button" class="ghost" onclick="vfAddField()"><i class="ph ph-plus"></i> Add Field</button>
-            <button type="button" class="ghost" onclick="vfDeleteSelectedField()"><i class="ph ph-trash"></i> Delete Selected</button>
-            <button type="button" class="secondary" onclick="vfApplyBoxesToJson()"><i class="ph ph-check"></i> Sync to Editor</button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem">
+        <h3 style="margin: 0"><i class="ph ph-bounding-box" style="color: var(--secondary)"></i> Layout Workspace</h3>
+        
+        <div class="row" style="margin: 0; gap: 0.5rem; flex-wrap: wrap">
+            <!-- Dimensions -->
+            <div class="row" style="margin: 0; gap: 0.5rem; background: var(--bg-accent); padding: 0.375rem; border-radius: 10px; border: 1px solid var(--border)">
+              <span class="muted" style="font-size: 0.75rem; padding-left: 0.5rem">Viewport:</span>
+              <input type="number" id="viewport-w" value="800" style="width: 70px; padding: 0.25rem 0.5rem; border: none; background: transparent; font-size: 0.8rem; height: auto" oninput="vfUpdateDimensions('w', this.value)" />
+              <span class="muted">×</span>
+              <input type="number" id="viewport-h" value="1100" style="width: 70px; padding: 0.25rem 0.5rem; border: none; background: transparent; font-size: 0.8rem; height: auto" oninput="vfUpdateDimensions('h', this.value)" />
+            </div>
+
+            <!-- Aspect Ratio Selector -->
+            <div class="row" style="margin: 0; gap: 0.5rem; background: var(--bg-accent); padding: 0.375rem; border-radius: 10px; border: 1px solid var(--border)">
+              <span class="muted" style="font-size: 0.75rem; padding-left: 0.5rem">Ratio:</span>
+              <select id="aspect-ratio" style="width: auto; padding: 0.25rem 0.5rem; border: none; background: transparent; font-size: 0.8rem; height: auto" onchange="vfUpdateAspectRatio(this.value)">
+                <option value="auto">Auto</option>
+                <option value="1:1.414">A4</option>
+                <option value="1:1.294">US Letter</option>
+                <option value="1:1">Square</option>
+              </select>
+            </div>
+
+            <!-- Zoom Controls -->
+            <div class="row" style="margin: 0; gap: 0.25rem; background: var(--bg-accent); padding: 0.25rem; border-radius: 10px; border: 1px solid var(--border)">
+              <button type="button" class="ghost" onclick="vfZoom(-0.1)" title="Zoom Out" style="padding: 0.5rem"><i class="ph ph-minus"></i></button>
+              <span id="zoom-level" class="muted" style="font-size: 0.8rem; min-width: 40px; text-align: center">100%</span>
+              <button type="button" class="ghost" onclick="vfZoom(0.1)" title="Zoom In" style="padding: 0.5rem"><i class="ph ph-plus"></i></button>
+            </div>
+
+            <div class="row" style="margin: 0; gap: 0.25rem; background: var(--bg-accent); padding: 0.25rem; border-radius: 10px; border: 1px solid var(--border)">
+              <button type="button" class="ghost" onclick="document.getElementById('preview-upload').click()" title="Overlay Preview Image">
+                <i class="ph ph-image-square"></i>
+              </button>
+              <input type="file" id="preview-upload" accept="image/*" style="display: none" onchange="vfHandlePreviewUpload(event)" />
+            </div>
+
+            <button type="button" class="secondary" onclick="vfApplyBoxesToJson()"><i class="ph ph-check"></i> Sync</button>
+            <button type="button" class="ghost" onclick="vfToggleFullscreen()" title="Fullscreen"><i class="ph ph-corners-out"></i></button>
         </div>
     </div>
     
-    <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; overflow: auto; max-height: 1000px; border: 1px solid var(--border)">
-        <canvas id="bbox-canvas" width="800" height="1100"
-                data-template="{{ template_path }}"
-                data-fields='{{ (config.fields if config else []) | tojson }}'></canvas>
-    </div>
-    
-    <div style="margin-top: 1.5rem">
-        <label>Live Coordinate Stream</label>
-        <pre id="bbox-output" class="muted" style="background:#0f172a; color:var(--secondary); padding: 1.25rem; border-radius: 12px; margin: 0; border: 1px solid var(--border); font-size: 0.75rem"></pre>
-    </div>
-    <div style="margin-top: 1rem">
-      <label>Field List</label>
-      <div id="field-list" style="max-height: 260px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:0.75rem; background:rgba(0,0,0,0.15)"></div>
+    <div class="workspace-container" id="workspace-root" style="display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; min-height: 700px">
+      <div class="canvas-area" style="background: #020617; border-radius: 16px; overflow: hidden; position: relative; border: 1px solid var(--border); box-shadow: var(--shadow-premium)">
+          <div id="canvas-viewport" style="width: 100%; height: 100%; overflow: auto; cursor: grab">
+            <canvas id="bbox-canvas" width="800" height="1100"
+                    data-template="{{ template_path }}"
+                    data-fields='{{ (config.fields if config else []) | tojson }}'
+                    style="transform-origin: top left; transition: transform 0.1s ease-out"></canvas>
+          </div>
+          
+          <div class="canvas-hint" style="position: absolute; bottom: 1rem; left: 1rem; pointer-events: none; background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.75rem; backdrop-filter: blur(4px); border: 1px solid var(--border)">
+            <i class="ph ph-mouse"></i> Drag to pan • Scroll to zoom • Click to select
+          </div>
+      </div>
+
+      <div class="editor-sidebar">
+        <div id="property-editor" class="card" style="padding: 1.25rem; border-color: var(--primary-glow); display: none; margin-bottom: 1.5rem">
+            <h4 style="margin-bottom: 1rem; color: var(--accent)"><i class="ph ph-note-pencil"></i> Field Properties</h4>
+            <div class="form-group" style="margin-bottom: 1rem">
+                <label>Field Name (ID)</label>
+                <input type="text" id="prop-name" oninput="vfUpdateFieldProperty('name', this.value)" />
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem">
+                <label>Label Hint</label>
+                <input type="text" id="prop-label" oninput="vfUpdateFieldProperty('label_hint', this.value)" />
+            </div>
+            <div class="row" style="margin: 0; gap: 1rem; margin-bottom: 1rem">
+              <div style="flex: 1">
+                <label>Expected Type</label>
+                <select id="prop-type" onchange="vfUpdateFieldProperty('expected_type', this.value)">
+                  <option value="string">String</option>
+                  <option value="checkbox">Checkbox</option>
+                  <option value="date">Date</option>
+                  <option value="number">Number</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem">
+                <input type="checkbox" id="prop-critical" style="width: auto" onchange="vfUpdateFieldProperty('critical', this.checked)" />
+                <label style="margin: 0">Critical</label>
+              </div>
+            </div>
+            
+            <label>Coordinates</label>
+            <div class="grid-2" style="grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem">
+              <input type="number" id="prop-x" placeholder="X" oninput="vfUpdateFieldProperty('bounding_box.x', parseInt(this.value))" />
+              <input type="number" id="prop-y" placeholder="Y" oninput="vfUpdateFieldProperty('bounding_box.y', parseInt(this.value))" />
+            </div>
+            <div class="grid-2" style="grid-template-columns: 1fr 1fr; gap: 0.5rem">
+              <input type="number" id="prop-w" placeholder="W" oninput="vfUpdateFieldProperty('bounding_box.w', parseInt(this.value))" />
+              <input type="number" id="prop-h" placeholder="H" oninput="vfUpdateFieldProperty('bounding_box.h', parseInt(this.value))" />
+            </div>
+        </div>
+
+        <div style="margin-bottom: 1rem">
+            <label>Field List</label>
+            <div id="field-list" style="max-height: 400px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:0.75rem; background:rgba(0,0,0,0.15)"></div>
+        </div>
+
+        <div style="margin-top: 1.5rem">
+            <label>Live Coordinates</label>
+            <pre id="bbox-output" class="muted" style="background:#0f172a; color:var(--secondary); padding: 1rem; border-radius: 12px; margin: 0; border: 1px solid var(--border); font-size: 0.7rem; white-space: pre-wrap"></pre>
+        </div>
+      </div>
     </div>
   </div>
 </section>
