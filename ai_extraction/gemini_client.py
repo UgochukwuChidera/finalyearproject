@@ -1,20 +1,28 @@
 import base64
-import io
 import json
 import logging
 import os
+import time
 from typing import List
 
 import httpx
-from openai import OpenAI
-from PIL import Image
+from openai import APIConnectionError, APITimeoutError, OpenAI
+
+from ai_extraction.confidence import compute_C_lp
 
 logger = logging.getLogger(__name__)
 
+_RETRYABLE = (APITimeoutError, APIConnectionError, httpx.TimeoutException, httpx.ConnectError)
+
+# Default model: Qwen2.5-VL-72B — free on OpenRouter, strong multimodal document
+# understanding, and reliable logprobs support via the standard OpenAI-compatible API.
+# Override with the OPENROUTER_MODEL environment variable if desired.
+_DEFAULT_MODEL = "qwen/qwen2.5-vl-72b-instruct:free"
+
 
 class GeminiClient:
-    def __init__(self, api_key: str | None = None, model: str = "google/gemini-2.5-flash-lite", timeout: int = 180):
-        self.model = model
+    def __init__(self, api_key: str | None = None, model: str | None = None, timeout: int = 180):
+        self.model = model or os.getenv("OPENROUTER_MODEL", _DEFAULT_MODEL)
         self.api_key = (api_key or os.getenv("OPENROUTER_API_KEY", "")).strip()
         self.client = (
             OpenAI(
@@ -59,24 +67,43 @@ class GeminiClient:
             content.append({"type": "text", "text": text})
             content.append({"type": "image_url", "image_url": {"url": self._data_url(image_bytes)}})
 
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": content}],
-            temperature=0,
-            max_tokens=4096,
-            response_format={"type": "json_object"},
-            extra_body={"response_logprobs": True, "logprobs": 1},
-        )
+        response = None
+        last_err = None
+        for attempt in range(3):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": content}],
+                    temperature=0,
+                    max_tokens=4096,
+                    response_format={"type": "json_object"},
+                    logprobs=True,
+                    top_logprobs=5,
+                )
+                break
+            except _RETRYABLE as exc:
+                last_err = exc
+                if attempt < 2:
+                    wait = 2 ** attempt
+                    logger.warning("API call attempt %d failed (%s). Retrying in %ds…", attempt + 1, exc, wait)
+                    time.sleep(wait)
+                else:
+                    logger.warning("API call attempt %d failed (%s). No more retries.", attempt + 1, exc)
+            except Exception as exc:
+                return {"error": str(exc)}
+
+        if response is None:
+            return {"error": f"API call failed after 3 attempts: {last_err}"}
 
         raw = (response.choices[0].message.content if response.choices else "") or ""
         payload = self._safe_json_extract(raw)
 
         if "meta" not in payload:
             payload["meta"] = {}
-        
+
         logger.debug("Model: %s", self.model)
         logger.debug("Raw response (first 500 chars): %s", raw[:500])
-        
+
         has_logprobs = False
         logprobs_debug = None
         if response.choices and hasattr(response.choices[0], "logprobs") and response.choices[0].logprobs:
@@ -87,7 +114,7 @@ class GeminiClient:
                 or getattr(lp, "tokens", None)
                 or (isinstance(lp, dict) and lp)
             )
-            
+
         payload["meta"]["has_logprobs"] = has_logprobs
         payload["meta"]["logprobs_debug"] = logprobs_debug
         if not has_logprobs:
@@ -106,7 +133,6 @@ class GeminiClient:
                 logger.debug("Extracted tokens from dict: %d", len(tokens))
             logger.debug("Processing %d logprob tokens", len(tokens))
             if tokens:
-                from ai_extraction.confidence import compute_C_lp
                 char_offset = 0
                 token_offsets = []
                 for t in tokens:
@@ -154,6 +180,23 @@ class GeminiClient:
                         payload["meta"]["C_lp"][k] = payload["meta"]["overall_confidence"]
                 else:
                     logger.debug("Computed C_lp for %d fields: %s", len(payload["meta"]["C_lp"]), list(payload["meta"]["C_lp"].keys()))
+
+        # When logprobs are unavailable, use the model's self-reported confidence values
+        # (returned in the "confidence" key of the JSON response via the updated prompt).
+        if not payload["meta"]["C_lp"]:
+            self_conf = payload.get("confidence")
+            if self_conf and isinstance(self_conf, dict):
+                for k, v in self_conf.items():
+                    try:
+                        payload["meta"]["C_lp"][k] = compute_C_lp(float(v))
+                    except (TypeError, ValueError):
+                        pass
+                if payload["meta"]["C_lp"]:
+                    logger.info("Using model self-reported confidence for %d fields.", len(payload["meta"]["C_lp"]))
+                else:
+                    logger.warning("Model self-reported confidence map was empty or malformed.")
+            else:
+                logger.warning("No self-reported confidence in response; per-field C_lp will use default fallback.")
 
         return payload
 

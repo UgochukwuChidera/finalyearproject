@@ -46,7 +46,13 @@ def compute_C_lp(logprobs_data) -> float:
 
 
 def compute_C_final(C_lp: float, C_dict: float, w_lp: float, w_dict: float) -> float:
-    c_final = (float(w_lp) * float(C_lp)) + (float(w_dict) * float(C_dict))
+    # Normalize by the sum of active weights so that a field using only one
+    # component (e.g. non-critical fields where w_dict=0) still scores the
+    # full value of that component rather than being penalized for the missing weight.
+    total = float(w_lp) + float(w_dict)
+    if total == 0.0:
+        return 0.5
+    c_final = (float(w_lp) * float(C_lp) + float(w_dict) * float(C_dict)) / total
     return float(max(0.0, min(1.0, c_final)))
 
 
