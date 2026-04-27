@@ -19,6 +19,7 @@ function vfSetConfigJson(val) {
 }
 
 
+let vfState = {
   canvas: null,
   ctx: null,
   img: null,
