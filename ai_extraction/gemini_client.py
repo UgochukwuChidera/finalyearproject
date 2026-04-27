@@ -8,6 +8,8 @@ from typing import List
 import httpx
 from openai import APIConnectionError, APITimeoutError, OpenAI
 
+from ai_extraction.confidence import compute_C_lp
+
 logger = logging.getLogger(__name__)
 
 _RETRYABLE = (APITimeoutError, APIConnectionError, httpx.TimeoutException, httpx.ConnectError)
@@ -131,7 +133,6 @@ class GeminiClient:
                 logger.debug("Extracted tokens from dict: %d", len(tokens))
             logger.debug("Processing %d logprob tokens", len(tokens))
             if tokens:
-                from ai_extraction.confidence import compute_C_lp
                 char_offset = 0
                 token_offsets = []
                 for t in tokens:
@@ -185,7 +186,6 @@ class GeminiClient:
         if not payload["meta"]["C_lp"]:
             self_conf = payload.get("confidence")
             if self_conf and isinstance(self_conf, dict):
-                from ai_extraction.confidence import compute_C_lp
                 for k, v in self_conf.items():
                     try:
                         payload["meta"]["C_lp"][k] = compute_C_lp(float(v))
