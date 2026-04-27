@@ -77,9 +77,12 @@ class GeminiClient:
                 break
             except _RETRYABLE as exc:
                 last_err = exc
-                wait = 2 ** attempt
-                logger.warning("API call attempt %d failed (%s). Retrying in %ds…", attempt + 1, exc, wait)
-                time.sleep(wait)
+                if attempt < 2:
+                    wait = 2 ** attempt
+                    logger.warning("API call attempt %d failed (%s). Retrying in %ds…", attempt + 1, exc, wait)
+                    time.sleep(wait)
+                else:
+                    logger.warning("API call attempt %d failed (%s). No more retries.", attempt + 1, exc)
             except Exception as exc:
                 return {"error": str(exc)}
 
@@ -178,9 +181,10 @@ class GeminiClient:
         if not payload["meta"]["C_lp"]:
             self_conf = payload.get("confidence")
             if self_conf and isinstance(self_conf, dict):
+                from ai_extraction.confidence import compute_C_lp
                 for k, v in self_conf.items():
                     try:
-                        payload["meta"]["C_lp"][k] = float(max(0.0, min(1.0, v)))
+                        payload["meta"]["C_lp"][k] = compute_C_lp(float(v))
                     except (TypeError, ValueError):
                         pass
                 if payload["meta"]["C_lp"]:
