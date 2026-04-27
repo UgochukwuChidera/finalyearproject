@@ -181,11 +181,40 @@ class GeminiClient:
                 else:
                     logger.debug("Computed C_lp for %d fields: %s", len(payload["meta"]["C_lp"]), list(payload["meta"]["C_lp"].keys()))
 
-        # When logprobs are unavailable, use the model's self-reported confidence values
-        # (returned in the "confidence" key of the JSON response via the updated prompt).
+        # For every field that still has no C_lp entry, fill it using:
+        #   1. The model's self-reported per-field confidence (returned in the "confidence" key), or
+        #   2. The overall response confidence derived from logprobs, if available.
+        # This handles the common case where logprob token mapping succeeds for only some
+        # fields — previously those remaining fields silently fell back to the 0.65 hard-coded
+        # default in the pipeline, making almost all scores look identical.
+        self_conf = payload.get("confidence")
+        self_conf = self_conf if isinstance(self_conf, dict) else {}
+        overall_conf = payload["meta"].get("overall_confidence")
+        all_fields = payload.get("fields", {})
+
+        missing_fields = [k for k in all_fields if k not in payload["meta"]["C_lp"]]
+        if missing_fields:
+            filled_self, filled_overall = 0, 0
+            for k in missing_fields:
+                if k in self_conf:
+                    try:
+                        payload["meta"]["C_lp"][k] = compute_C_lp(float(self_conf[k]))
+                        filled_self += 1
+                        continue
+                    except (TypeError, ValueError):
+                        pass
+                if overall_conf is not None:
+                    payload["meta"]["C_lp"][k] = overall_conf
+                    filled_overall += 1
+            if filled_self:
+                logger.info("Used self-reported confidence for %d fields.", filled_self)
+            if filled_overall:
+                logger.info("Used overall logprob confidence as fallback for %d fields.", filled_overall)
+
+        # Legacy path: if C_lp is still completely empty (no logprobs at all and
+        # no per-field self-reported values), bulk-fill from self-reported confidence.
         if not payload["meta"]["C_lp"]:
-            self_conf = payload.get("confidence")
-            if self_conf and isinstance(self_conf, dict):
+            if self_conf:
                 for k, v in self_conf.items():
                     try:
                         payload["meta"]["C_lp"][k] = compute_C_lp(float(v))

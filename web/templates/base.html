@@ -7,6 +7,7 @@
   <title>DAPE | AI Form Pipeline</title>
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  {% block styles %}{% endblock %}
 </head>
 <body>
   <div class="app-container">
@@ -62,5 +63,6 @@
     </main>
   </div>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
