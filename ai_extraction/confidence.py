@@ -46,7 +46,10 @@ def compute_C_lp(logprobs_data) -> float:
 
 
 def compute_C_final(C_lp: float, C_dict: float, w_lp: float, w_dict: float) -> float:
-    c_final = (float(w_lp) * float(C_lp)) + (float(w_dict) * float(C_dict))
+    total = float(w_lp) + float(w_dict)
+    if total == 0.0:
+        return 0.5
+    c_final = (float(w_lp) * float(C_lp) + float(w_dict) * float(C_dict)) / total
     return float(max(0.0, min(1.0, c_final)))
 
 

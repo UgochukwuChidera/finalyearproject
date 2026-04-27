@@ -11,9 +11,12 @@ def build_multi_image_prompt(config: dict, full_image_bytes: bytes, critical_cro
         {
             "prompt": (
                 "You are extracting data from a filled form. "
-                "Return ONLY JSON with shape {\"fields\": {\"field_name\": value}}. "
-                "For checkboxes, return true/false. "
-                "For non-critical static fields, extract what appears in the full form."
+                "Return ONLY JSON with shape "
+                "{\"fields\": {\"field_name\": value}, \"confidence\": {\"field_name\": 0.0}}. "
+                "For checkboxes return true/false. "
+                "For non-critical static fields extract what appears in the full form. "
+                "confidence values must be between 0.0 and 1.0 and reflect how certain you are "
+                "about each extracted value (1.0 = completely certain, 0.0 = complete guess)."
             ),
             "image": full_image_bytes,
             "field_name": "__full_form__",
