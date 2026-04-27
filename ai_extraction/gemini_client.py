@@ -1,5 +1,4 @@
 import base64
-import io
 import json
 import logging
 import os
@@ -8,16 +7,20 @@ from typing import List
 
 import httpx
 from openai import APIConnectionError, APITimeoutError, OpenAI
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
 _RETRYABLE = (APITimeoutError, APIConnectionError, httpx.TimeoutException, httpx.ConnectError)
 
+# Default model: Qwen2.5-VL-72B — free on OpenRouter, strong multimodal document
+# understanding, and reliable logprobs support via the standard OpenAI-compatible API.
+# Override with the OPENROUTER_MODEL environment variable if desired.
+_DEFAULT_MODEL = "qwen/qwen2.5-vl-72b-instruct:free"
+
 
 class GeminiClient:
-    def __init__(self, api_key: str | None = None, model: str = "google/gemini-2.5-flash-lite", timeout: int = 180):
-        self.model = model
+    def __init__(self, api_key: str | None = None, model: str | None = None, timeout: int = 180):
+        self.model = model or os.getenv("OPENROUTER_MODEL", _DEFAULT_MODEL)
         self.api_key = (api_key or os.getenv("OPENROUTER_API_KEY", "")).strip()
         self.client = (
             OpenAI(
@@ -72,7 +75,8 @@ class GeminiClient:
                     temperature=0,
                     max_tokens=4096,
                     response_format={"type": "json_object"},
-                    extra_body={"response_logprobs": True, "logprobs": 1},
+                    logprobs=True,
+                    top_logprobs=5,
                 )
                 break
             except _RETRYABLE as exc:
