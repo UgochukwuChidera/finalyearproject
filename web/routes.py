@@ -157,9 +157,11 @@ def _job_runner(app, job_id: str, image_path: str, config_name: str, original_fi
                 JOBS[job_id].update(result)
                 JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
         except Exception as exc:
+            import traceback
             with JOBS_LOCK:
                 JOBS[job_id]["status"] = "failed"
                 JOBS[job_id]["error"] = str(exc)
+                JOBS[job_id]["traceback"] = traceback.format_exc()
                 JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
 
 
@@ -212,24 +214,27 @@ def config_discover():
     if not file:
         return jsonify({"error": "template_file is required"}), 400
 
-    # Save template temporarily for processing
-    tmp_path = Path(current_app.config["UPLOADS_DIR"]) / f"tmp_discover_{uuid.uuid4()}.png"
-    file.save(tmp_path)
+    templates_dir = _root_dir() / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    template_filename = f"template_{uuid.uuid4()}.png"
+    template_path = templates_dir / template_filename
+    file.save(template_path)
 
     try:
-        with open(tmp_path, "rb") as f:
+        with open(template_path, "rb") as f:
             image_bytes = f.read()
 
         client = GeminiClient()
         prompt = build_discovery_prompt()
         result = client.extract_from_images([image_bytes], [prompt])
+        
+        if isinstance(result, dict):
+            # Use forward slashes for cross-platform compatibility
+            result["template_path"] = f"templates/{template_filename}"
 
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    finally:
-        if tmp_path.exists():
-            tmp_path.unlink()
 
 
 @bp.route("/configs/<name>/delete", methods=["POST"])

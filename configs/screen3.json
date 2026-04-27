@@ -1,0 +1,233 @@
+{
+  "fields": [
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 1004,
+        "x": 116,
+        "y": 245
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Full Name:",
+      "label_hint": "Full Name:",
+      "name": "full_name",
+      "type": "text"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 1004,
+        "x": 116,
+        "y": 285
+      },
+      "critical": true,
+      "expected_type": "string",
+      "label": "Matric Number:",
+      "label_hint": "Matric Number:",
+      "name": "matric_number",
+      "type": "text"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 1004,
+        "x": 116,
+        "y": 325
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Department:",
+      "label_hint": "Department:",
+      "name": "department",
+      "type": "text"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 1004,
+        "x": 116,
+        "y": 364
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Faculty:",
+      "label_hint": "Faculty:",
+      "name": "faculty",
+      "type": "text"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 132,
+        "x": 66,
+        "y": 416
+      },
+      "critical": false,
+      "expected_type": "checkbox",
+      "label": "Level: [ ] 100",
+      "label_hint": "Level: [ ] 100",
+      "name": "level_100",
+      "type": "checkbox"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 108,
+        "x": 200,
+        "y": 421
+      },
+      "critical": false,
+      "expected_type": "checkbox",
+      "label": "[ ] 200",
+      "label_hint": "[ ] 200",
+      "name": "level_200",
+      "type": "checkbox"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 108,
+        "x": 382,
+        "y": 420
+      },
+      "critical": false,
+      "expected_type": "checkbox",
+      "label": "[ ] 300",
+      "label_hint": "[ ] 300",
+      "name": "level_300",
+      "type": "checkbox"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 108,
+        "x": 563,
+        "y": 420
+      },
+      "critical": false,
+      "expected_type": "checkbox",
+      "label": "[ ] 400",
+      "label_hint": "[ ] 400",
+      "name": "level_400",
+      "type": "checkbox"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 1004,
+        "x": 116,
+        "y": 443
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Session:",
+      "label_hint": "Session:",
+      "name": "session",
+      "type": "text"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 1004,
+        "x": 116,
+        "y": 483
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Semester:",
+      "label_hint": "Semester:",
+      "name": "semester",
+      "type": "text"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 144,
+        "x": 138,
+        "y": 523
+      },
+      "critical": false,
+      "expected_type": "checkbox",
+      "label": "() Full-Time",
+      "label_hint": "() Full-Time",
+      "name": "mode_of_study_full_time",
+      "type": "checkbox"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 144,
+        "x": 138,
+        "y": 545
+      },
+      "critical": false,
+      "expected_type": "checkbox",
+      "label": "() Part-Time",
+      "label_hint": "() Part-Time",
+      "name": "mode_of_study_part_time",
+      "type": "checkbox"
+    },
+    {
+      "bounding_box": {
+        "h": 165,
+        "w": 1004,
+        "x": 116,
+        "y": 614
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Course Registration",
+      "label_hint": "Course Registration",
+      "name": "course_registration_table",
+      "type": "section"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 1004,
+        "x": 116,
+        "y": 778
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Total Units:",
+      "label_hint": "Total Units:",
+      "name": "total_units",
+      "type": "text"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 1004,
+        "x": 116,
+        "y": 817
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Student Signature:",
+      "label_hint": "Student Signature:",
+      "name": "student_signature",
+      "type": "text"
+    },
+    {
+      "bounding_box": {
+        "h": 28,
+        "w": 336,
+        "x": 116,
+        "y": 857
+      },
+      "critical": false,
+      "expected_type": "string",
+      "label": "Date:",
+      "label_hint": "Date:",
+      "name": "date",
+      "type": "text"
+    }
+  ],
+  "editor_canvas": {
+    "width": 800,
+    "height": 1100
+  },
+  "template_path": "templates/template_565bd191-1690-40a7-88ee-319ecd1b389a.png"
+}

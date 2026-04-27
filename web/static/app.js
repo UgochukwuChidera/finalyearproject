@@ -204,11 +204,34 @@ function vfSyncFieldsPanel(){
     btn.style.width = '100%';
     btn.style.justifyContent = 'space-between';
     btn.style.marginBottom = '0.5rem';
+    btn.style.padding = '0.625rem 0.75rem';
+    
     const left = document.createElement('span');
-    left.textContent = f.name || `field_${idx+1}`;
+    left.style.display = 'flex';
+    left.style.alignItems = 'center';
+    left.style.gap = '0.5rem';
+    
+    if (f.critical) {
+      const badge = document.createElement('span');
+      badge.style.background = 'var(--danger)';
+      badge.style.color = '#fff';
+      badge.style.fontSize = '0.625rem';
+      badge.style.padding = '0.125rem 0.375rem';
+      badge.style.borderRadius = '4px';
+      badge.style.fontWeight = '600';
+      badge.textContent = 'CRITICAL';
+      left.appendChild(badge);
+    }
+    
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = f.name || `field_${idx+1}`;
+    left.appendChild(nameSpan);
+    
     const right = document.createElement('span');
     right.className = 'muted';
-    right.textContent = `${Math.round(b.x||0)},${Math.round(b.y||0)} ${Math.round(b.w||0)}×${Math.round(b.h||0)}`;
+    right.style.fontSize = '0.7rem';
+    right.textContent = `${Math.round(b.x||0)},${Math.round(b.y||0)}`;
+    
     btn.appendChild(left);
     btn.appendChild(right);
     btn.onclick = () => { 
@@ -217,6 +240,23 @@ function vfSyncFieldsPanel(){
       vfSyncFieldsPanel(); 
       vfPopulatePropertyEditor(f);
     };
+    
+    const crBtn = document.createElement('button');
+    crBtn.type = 'button';
+    crBtn.className = f.critical ? 'danger' : 'ghost';
+    crBtn.style.padding = '0.25rem 0.5rem';
+    crBtn.style.fontSize = '0.7rem';
+    crBtn.style.marginLeft = 'auto';
+    crBtn.innerHTML = '<i class="ph ph-star"></i>';
+    crBtn.title = 'Toggle Critical';
+    crBtn.onclick = (e) => {
+      e.stopPropagation();
+      f.critical = !f.critical;
+      vfSyncFieldsPanel();
+      vfPopulatePropertyEditor(f);
+    };
+    btn.appendChild(crBtn);
+    
     panel.appendChild(btn);
   });
 }
@@ -475,6 +515,9 @@ async function vfDiscoverFromImage() {
       const current = JSON.parse(ta.value || '{}');
       current.fields = scaledFields;
       current.editor_canvas = { width: cw, height: ch };
+      if (data.template_path) {
+          current.template_path = data.template_path;
+      }
       ta.value = JSON.stringify(current, null, 2);
       
       // Update canvas state

@@ -24,6 +24,14 @@
   <div class="card badge-danger" style="padding: 1.5rem; margin-bottom: 2rem">
       <i class="ph ph-warning-circle"></i> {{ job.error }}
   </div>
+  {% if job.traceback %}
+  <div class="card" style="padding: 1rem; margin-bottom: 2rem; background: #1a0a0a; border: 1px solid var(--danger)">
+      <details style="width: 100%">
+          <summary style="cursor:pointer; color: var(--danger); margin-bottom: 0.5rem">Show traceback</summary>
+          <pre style="color: var(--danger); font-size: 0.75rem; overflow-x: auto; margin: 0; white-space: pre-wrap;">{{ job.traceback }}</pre>
+      </details>
+  </div>
+  {% endif %}
   {% endif %}
 
   {% if job.fields %}

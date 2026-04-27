@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
@@ -11,6 +12,8 @@ import cv2
 import numpy as np
 
 MIN_DESKEW_ANGLE_DEG = 0.2
+
+logger = logging.getLogger(__name__)
 
 from ai_extraction import (
     DictionaryStore,
@@ -247,6 +250,7 @@ def process_form(
     ai_payload = GeminiClient().extract_from_images(images=images, prompts=prompts)
     ai_fields = ai_payload.get("fields", {}) if isinstance(ai_payload, dict) else {}
     ai_conf_map = ((ai_payload.get("meta") or {}).get("C_lp") or {}) if isinstance(ai_payload, dict) else {}
+    has_logprobs = (ai_payload.get("meta") or {}).get("has_logprobs", False) if isinstance(ai_payload, dict) else False
 
     final_fields = []
     pending = []
@@ -262,7 +266,14 @@ def process_form(
         h0 = int(bb.get("h", 1) * scale_y)
 
         raw = ai_fields.get(name)
-        c_lp = float(ai_conf_map.get(name, 0.5))
+        if name in ai_conf_map:
+            c_lp = float(ai_conf_map[name])
+        elif has_logprobs:
+            c_lp = 0.7
+            logger.warning("Field '%s' had no C_lp computed despite logprobs being available (possible mapping issue)", name)
+        else:
+            c_lp = 0.65
+            logger.debug("Field '%s' using default confidence since logprobs not available", name)
 
         if not field.get("critical"):
             baseline = template_extraction.get(name)
@@ -352,8 +363,8 @@ def process_form(
     export_paths = exporter.export_all(structured, base)
     export_paths["xlsx"] = xlsx.export(structured, base + ".xlsx")
 
-    logger = AuditLogger(log_dir=log_dir, audit_jsonl_path=str(Path(output_dir) / "audit.jsonl"))
-    audit_path = logger.log(
+    audit_logger = AuditLogger(log_dir=log_dir, audit_jsonl_path=str(Path(output_dir) / "audit.jsonl"))
+    audit_path = audit_logger.log(
         form_id=jid,
         template_id=form_type,
         processing_stats=stats,
