@@ -3,6 +3,7 @@
 import argparse
 import json
 import logging
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -248,9 +249,29 @@ def process_form(
     prompts = [p["prompt"] for p in prompt_items]
 
     ai_payload = GeminiClient().extract_from_images(images=images, prompts=prompts)
+    ai_meta = (ai_payload.get("meta") or {}) if isinstance(ai_payload, dict) else {}
     ai_fields = ai_payload.get("fields", {}) if isinstance(ai_payload, dict) else {}
-    ai_conf_map = ((ai_payload.get("meta") or {}).get("C_lp") or {}) if isinstance(ai_payload, dict) else {}
-    has_logprobs = (ai_payload.get("meta") or {}).get("has_logprobs", False) if isinstance(ai_payload, dict) else False
+    if not isinstance(ai_fields, dict):
+        ai_fields = {}
+    ai_conf_map = (ai_meta.get("C_lp") or {})
+    has_logprobs = ai_meta.get("has_logprobs", False)
+
+    # Diagnostic bundle stored on the job so the UI can surface it.
+    ai_debug = {
+        "model": os.environ.get("OPENROUTER_MODEL", "qwen/qwen2.5-vl-72b-instruct:free"),
+        "has_logprobs": has_logprobs,
+        "fields_extracted": sorted(ai_fields.keys()),
+        "raw_response_preview": ai_meta.get("raw_response_preview", ""),
+        "logprobs_debug": ai_meta.get("logprobs_debug", ""),
+        "overall_confidence": ai_meta.get("overall_confidence"),
+        "api_error": ai_payload.get("error") if isinstance(ai_payload, dict) else str(ai_payload),
+    }
+    if not ai_fields:
+        logger.warning(
+            "AI extraction produced no fields for job %s. "
+            "Check ai_debug.raw_response_preview for the model output.",
+            jid,
+        )
 
     final_fields = []
     pending = []
@@ -394,6 +415,7 @@ def process_form(
         "export_paths": export_paths,
         "audit_log_path": audit_path,
         "config_path": resolved_config_path,
+        "ai_debug": ai_debug,
     }
 
 
