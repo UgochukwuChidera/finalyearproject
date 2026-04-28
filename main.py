@@ -258,7 +258,7 @@ def process_form(
 
     # Diagnostic bundle stored on the job so the UI can surface it.
     ai_debug = {
-        "model": os.environ.get("OPENROUTER_MODEL", "qwen/qwen2.5-vl-72b-instruct:free"),
+        "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o"),
         "has_logprobs": has_logprobs,
         "fields_extracted": sorted(ai_fields.keys()),
         "raw_response_preview": ai_meta.get("raw_response_preview", ""),

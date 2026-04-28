@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 _RETRYABLE = (APITimeoutError, APIConnectionError, httpx.TimeoutException, httpx.ConnectError)
 
-# Default model: Qwen2.5-VL-72B — free on OpenRouter, strong multimodal document
-# understanding, and reliable logprobs support via the standard OpenAI-compatible API.
+# Default model: GPT-4o via OpenRouter — stable, production-grade multimodal model
+# with full logprobs support via the standard OpenAI-compatible API.
 # Override with the OPENROUTER_MODEL environment variable if desired.
-_DEFAULT_MODEL = "qwen/qwen2.5-vl-72b-instruct:free"
+_DEFAULT_MODEL = "openai/gpt-4o"
 
 
 class GeminiClient:
