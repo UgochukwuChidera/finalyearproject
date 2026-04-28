@@ -85,4 +85,70 @@
   <pre class="muted" style="background:#0f172a; color:var(--secondary); padding:1rem; border-radius:12px; overflow:auto; border:1px solid var(--border)">{{ job_audit | tojson(indent=2) }}</pre>
 </section>
 {% endif %}
+
+{% if job.ai_debug %}
+<section class="card">
+  <details>
+    <summary style="cursor:pointer; font-weight:600; font-size:0.95rem; padding: 0.25rem 0">
+      <i class="ph ph-robot"></i> AI Extraction Diagnostics
+      {% if not job.ai_debug.fields_extracted %}
+      <span class="badge badge-danger" style="margin-left:0.5rem">No Fields Extracted</span>
+      {% else %}
+      <span class="badge badge-success" style="margin-left:0.5rem">{{ job.ai_debug.fields_extracted | length }} field(s)</span>
+      {% endif %}
+    </summary>
+
+    <div style="margin-top:1.5rem; display:flex; flex-direction:column; gap:1rem">
+
+      {% if job.ai_debug.api_error %}
+      <div class="card" style="padding:1rem; background:#1a0a0a; border:1px solid var(--danger)">
+        <p style="color:var(--danger); margin:0"><i class="ph ph-warning-circle"></i> <strong>API Error:</strong> {{ job.ai_debug.api_error }}</p>
+      </div>
+      {% endif %}
+
+      <div class="grid-2">
+        <div>
+          <label class="muted" style="font-size:0.75rem; text-transform:uppercase">Model</label>
+          <p style="margin:0.25rem 0 0">{{ job.ai_debug.model or '—' }}</p>
+        </div>
+        <div>
+          <label class="muted" style="font-size:0.75rem; text-transform:uppercase">Logprobs available</label>
+          <p style="margin:0.25rem 0 0">
+            {% if job.ai_debug.has_logprobs %}
+            <span class="badge badge-success">yes</span>
+            {% else %}
+            <span class="badge badge-warning">no — using self-reported / fallback confidence</span>
+            {% endif %}
+          </p>
+        </div>
+        {% if job.ai_debug.overall_confidence is not none %}
+        <div>
+          <label class="muted" style="font-size:0.75rem; text-transform:uppercase">Overall Confidence</label>
+          <p style="margin:0.25rem 0 0">{{ '%.3f'|format(job.ai_debug.overall_confidence) }}</p>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if job.ai_debug.fields_extracted %}
+      <div>
+        <label class="muted" style="font-size:0.75rem; text-transform:uppercase">Fields returned by AI</label>
+        <div style="display:flex; flex-wrap:wrap; gap:0.375rem; margin-top:0.5rem">
+          {% for fname in job.ai_debug.fields_extracted %}
+          <span class="badge badge-info" style="font-size:0.7rem">{{ fname }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if job.ai_debug.raw_response_preview %}
+      <div>
+        <label class="muted" style="font-size:0.75rem; text-transform:uppercase">Raw Response Preview (first 800 chars)</label>
+        <pre style="background:#0f172a; color:var(--secondary); padding:0.75rem; border-radius:8px; border:1px solid var(--border); font-size:0.7rem; white-space:pre-wrap; overflow-x:auto; margin-top:0.5rem">{{ job.ai_debug.raw_response_preview | e }}</pre>
+      </div>
+      {% endif %}
+
+    </div>
+  </details>
+</section>
+{% endif %}
 {% endblock %}

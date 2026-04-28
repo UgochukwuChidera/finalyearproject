@@ -98,11 +98,96 @@ class GeminiClient:
         raw = (response.choices[0].message.content if response.choices else "") or ""
         payload = self._safe_json_extract(raw)
 
-        if "meta" not in payload:
-            payload["meta"] = {}
-
         logger.debug("Model: %s", self.model)
         logger.debug("Raw response (first 500 chars): %s", raw[:500])
+
+        # ------------------------------------------------------------------ #
+        # Normalise the parsed payload into the shape the pipeline expects:   #
+        #   {"fields": {"field_name": value, ...}, "meta": {...}}             #
+        # ------------------------------------------------------------------ #
+
+        # 1. Guarantee payload is a dict (safe_json_extract returns {} on failure
+        #    but let's be explicit and also log when something went wrong).
+        if not isinstance(payload, dict):
+            logger.warning(
+                "AI response could not be parsed into a dict (got %s). "
+                "Raw response (first 800 chars): %s",
+                type(payload).__name__,
+                raw[:800],
+            )
+            payload = {}
+
+        payload.setdefault("meta", {})
+        # Store a preview of the raw response for diagnostics visible in the UI.
+        payload["meta"]["raw_response_preview"] = raw[:800]
+
+        # 2. Locate the fields mapping.  The model sometimes uses alternate
+        #    top-level keys ("extractions", "data", "result", "output").
+        if "fields" not in payload:
+            for alt_key in ("extractions", "data", "result", "output"):
+                candidate = payload.get(alt_key)
+                if isinstance(candidate, (dict, list)) and candidate:
+                    logger.warning(
+                        "'fields' key absent from AI response; using top-level key '%s' instead.", alt_key
+                    )
+                    payload["fields"] = candidate
+                    break
+            else:
+                # Last resort: if the payload looks like a flat dict of field
+                # values (no recognised wrapper keys) treat the whole thing as
+                # the fields dict (excluding our own "meta"/"confidence" keys).
+                known_meta_keys = {"meta", "confidence", "error"}
+                if payload and not any(k in payload for k in known_meta_keys):
+                    logger.warning(
+                        "No 'fields' key found and no known wrapper key present; "
+                        "treating entire payload as a fields dict."
+                    )
+                    tmp_meta = payload.pop("meta", {})
+                    tmp_conf = payload.pop("confidence", {})
+                    payload = {"fields": dict(payload), "meta": tmp_meta, "confidence": tmp_conf}
+                else:
+                    payload.setdefault("fields", {})
+
+        # 3. Normalise fields from list shape → dict shape.
+        #    Some models return: [{"name": "dob", "value": "..."}, ...]
+        #    We need:            {"dob": "...", ...}
+        fields_raw = payload.get("fields")
+        if isinstance(fields_raw, list):
+            fields_dict: dict = {}
+            for item in fields_raw:
+                if not isinstance(item, dict):
+                    continue
+                fname = (
+                    item.get("name")
+                    or item.get("field_id")
+                    or item.get("id")
+                    or item.get("key")
+                )
+                if not fname:
+                    continue
+                fval = item.get("value") if "value" in item else item.get("extracted_value")
+                fields_dict[str(fname)] = fval
+            logger.info(
+                "Normalised fields list (%d items) → dict with %d named entries.",
+                len(fields_raw),
+                len(fields_dict),
+            )
+            payload["fields"] = fields_dict
+        elif not isinstance(fields_raw, dict):
+            logger.warning(
+                "fields is neither dict nor list (got %s); defaulting to empty dict.",
+                type(fields_raw).__name__,
+            )
+            payload["fields"] = {}
+
+        # 4. Emit a visible WARNING when no fields came back so the issue is
+        #    immediately apparent in logs (not just DEBUG-level noise).
+        if not payload["fields"]:
+            logger.warning(
+                "No fields were extracted from the AI response. "
+                "Raw response (first 800 chars): %s",
+                raw[:800],
+            )
 
         has_logprobs = False
         logprobs_debug = None
@@ -141,7 +226,7 @@ class GeminiClient:
                     char_offset += len(tok_str)
                     token_offsets.append((start, char_offset, getattr(t, "logprob", 0.0)))
 
-                all_logprobs = [lp for _, _, lp in token_offsets]
+                all_logprobs = [tok_lp for _, _, tok_lp in token_offsets]
                 avg_logprob = sum(all_logprobs) / len(all_logprobs) if all_logprobs else 0.0
                 payload["meta"]["overall_confidence"] = compute_C_lp([avg_logprob])
                 logger.debug("Overall average logprob: %.4f -> confidence: %.4f", avg_logprob, payload["meta"]["overall_confidence"])
@@ -167,9 +252,9 @@ class GeminiClient:
                         v_end = v_idx + len(v_str)
 
                         field_logprobs = []
-                        for t_start, t_end, lp in token_offsets:
+                        for t_start, t_end, tok_lp in token_offsets:
                             if t_end > v_start and t_start < v_end:
-                                field_logprobs.append(lp)
+                                field_logprobs.append(tok_lp)
 
                         if field_logprobs:
                             payload["meta"]["C_lp"][k] = compute_C_lp(field_logprobs)
@@ -181,11 +266,40 @@ class GeminiClient:
                 else:
                     logger.debug("Computed C_lp for %d fields: %s", len(payload["meta"]["C_lp"]), list(payload["meta"]["C_lp"].keys()))
 
-        # When logprobs are unavailable, use the model's self-reported confidence values
-        # (returned in the "confidence" key of the JSON response via the updated prompt).
+        # For every field that still has no C_lp entry, fill it using:
+        #   1. The model's self-reported per-field confidence (returned in the "confidence" key), or
+        #   2. The overall response confidence derived from logprobs, if available.
+        # This handles the common case where logprob token mapping succeeds for only some
+        # fields — previously those remaining fields silently fell back to the 0.65 hard-coded
+        # default in the pipeline, making almost all scores look identical.
+        self_conf = payload.get("confidence")
+        self_conf = self_conf if isinstance(self_conf, dict) else {}
+        overall_conf = payload["meta"].get("overall_confidence")
+        all_fields = payload.get("fields", {})
+
+        missing_fields = [k for k in all_fields if k not in payload["meta"]["C_lp"]]
+        if missing_fields:
+            filled_self, filled_overall = 0, 0
+            for k in missing_fields:
+                if k in self_conf:
+                    try:
+                        payload["meta"]["C_lp"][k] = compute_C_lp(float(self_conf[k]))
+                        filled_self += 1
+                        continue
+                    except (TypeError, ValueError):
+                        pass
+                if overall_conf is not None:
+                    payload["meta"]["C_lp"][k] = overall_conf
+                    filled_overall += 1
+            if filled_self:
+                logger.info("Used self-reported confidence for %d fields.", filled_self)
+            if filled_overall:
+                logger.info("Used overall logprob confidence as fallback for %d fields.", filled_overall)
+
+        # Legacy path: if C_lp is still completely empty (no logprobs at all and
+        # no per-field self-reported values), bulk-fill from self-reported confidence.
         if not payload["meta"]["C_lp"]:
-            self_conf = payload.get("confidence")
-            if self_conf and isinstance(self_conf, dict):
+            if self_conf:
                 for k, v in self_conf.items():
                     try:
                         payload["meta"]["C_lp"][k] = compute_C_lp(float(v))

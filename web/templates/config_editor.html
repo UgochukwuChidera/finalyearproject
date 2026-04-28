@@ -1,4 +1,38 @@
 {% extends "base.html" %}
+{% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/lint.min.css" />
+<style>
+  .CodeMirror {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    border-radius: 12px;
+    border: 1px solid var(--primary-glow);
+    height: 460px;
+    background: #0f172a;
+  }
+  .CodeMirror-scroll { padding-bottom: 0.5rem; }
+  .cm-toolbar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.625rem;
+  }
+  .cm-toolbar .badge-editor-mode {
+    margin-left: auto;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    background: rgba(139,92,246,0.18);
+    color: var(--primary);
+    border: 1px solid var(--primary-glow);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card-header">
     <h2><i class="ph ph-sliders"></i> {{ 'New Config' if mode == 'new' else 'Edit Config: ' ~ config_name }}</h2>
@@ -9,7 +43,7 @@
 
 <section class="grid-2">
   <div class="card">
-    <form method="post">
+    <form method="post" id="config-form">
       {% if mode == 'new' %}
       <div style="margin-bottom: 2rem">
         <label>Configuration Identifier</label>
@@ -18,30 +52,39 @@
       {% else %}
       <input type="hidden" name="config_name" value="{{ config_name }}" />
       {% endif %}
-      
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.625rem">
+
+      <div class="cm-toolbar">
           <label style="margin: 0">JSON Schema Definition</label>
-          <span class="muted" style="font-size: 0.75rem">Editor Mode: Advanced</span>
+          <button type="button" class="ghost" style="padding: 0.3rem 0.75rem; font-size: 0.75rem" onclick="vfFormatJson()" title="Auto-format / prettify JSON">
+              <i class="ph ph-magic-wand"></i> Format
+          </button>
+          <button type="button" class="ghost" style="padding: 0.3rem 0.75rem; font-size: 0.75rem" onclick="vfLoadFromJson()" title="Load JSON into visual canvas">
+              <i class="ph ph-arrow-square-in"></i> Load to Canvas
+          </button>
+          <span class="badge-editor-mode"><i class="ph ph-code"></i> JSON Editor</span>
       </div>
-      <textarea id="config-json" name="config_json" rows="35" placeholder='{ "fields": [] }' style="border-color: var(--primary-glow)">{{ config_text }}</textarea>
-      
-      <div style="margin-top: 2rem">
+      <!-- hidden textarea keeps its name so the form POST still works -->
+      <textarea id="config-json" name="config_json" style="display:none">{{ config_text }}</textarea>
+      <!-- CodeMirror mounts here -->
+      <div id="cm-editor-mount"></div>
+
+      <div style="margin-top: 1.5rem">
         <button type="submit" class="primary" style="width: 100%">
             <i class="ph ph-floppy-disk"></i> Save Global Changes
         </button>
       </div>
     </form>
-    
-    <div class="ai-setup" style="margin-top: 3rem">
+
+    <div class="ai-setup" style="margin-top: 2.5rem">
       <h3 style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary)">
           <i class="ph ph-sparkle"></i> AI Discovery
       </h3>
-      <p class="muted" style="font-size: 0.875rem">Upload a blank form image. The Nexus AI will automatically detect fields and map coordinates.</p>
-      
-      <div style="margin: 1.5rem 0">
+      <p class="muted" style="font-size: 0.875rem">Upload a blank form image. The AI will automatically detect fields and map coordinates.</p>
+
+      <div style="margin: 1.25rem 0">
           <input type="file" id="ai-template-file" accept="image/*" style="border: none; padding: 0; background: transparent" />
       </div>
-      
+
       <button type="button" class="secondary" onclick="vfDiscoverFromImage()" style="width: 100%">
         <i class="ph ph-magic-wand"></i> Run AI Field Discovery
       </button>
@@ -108,7 +151,12 @@
 
       <div class="editor-sidebar">
         <div id="property-editor" class="card" style="padding: 1.25rem; border-color: var(--primary-glow); display: none; margin-bottom: 1.5rem">
-            <h4 style="margin-bottom: 1rem; color: var(--accent)"><i class="ph ph-note-pencil"></i> Field Properties</h4>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem">
+              <h4 style="margin: 0; color: var(--accent)"><i class="ph ph-note-pencil"></i> Field Properties</h4>
+              <button type="button" class="ghost" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; color: var(--danger)" onclick="vfDeleteSelectedField()" title="Remove this field">
+                <i class="ph ph-trash"></i> Remove
+              </button>
+            </div>
             <div class="form-group" style="margin-bottom: 1rem">
                 <label>Field Name (ID)</label>
                 <input type="text" id="prop-name" oninput="vfUpdateFieldProperty('name', this.value)" />
@@ -145,7 +193,12 @@
         </div>
 
         <div style="margin-bottom: 1rem">
-            <label>Field List</label>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem">
+              <label style="margin: 0">Field List</label>
+              <button type="button" class="secondary" style="padding: 0.3rem 0.75rem; font-size: 0.75rem" onclick="vfAddField()" title="Add a new field box to the canvas">
+                <i class="ph ph-plus-circle"></i> Add Field
+              </button>
+            </div>
             <div id="field-list" style="max-height: 400px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:0.75rem; background:rgba(0,0,0,0.15)"></div>
         </div>
 
@@ -157,4 +210,67 @@
     </div>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/fold/brace-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/lint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/json-lint.min.js"></script>
+<script>
+(function () {
+  const ta = document.getElementById('config-json');
+  if (!ta) return;
+
+  window.vfCMEditor = CodeMirror(document.getElementById('cm-editor-mount'), {
+    value: ta.value || '{}',
+    mode: { name: 'javascript', json: true },
+    theme: 'dracula',
+    lineNumbers: true,
+    matchBrackets: true,
+    autoCloseBrackets: true,
+    foldGutter: true,
+    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+    indentUnit: 2,
+    tabSize: 2,
+    indentWithTabs: false,
+    lineWrapping: false,
+    extraKeys: {
+      'Ctrl-S': function (cm) { syncAndSubmit(cm); },
+      'Cmd-S': function (cm) { syncAndSubmit(cm); },
+      Tab: function (cm) {
+        if (cm.somethingSelected()) {
+          cm.indentSelection('add');
+        } else {
+          cm.replaceSelection('  ', 'end');
+        }
+      },
+    },
+  });
+
+  function syncAndSubmit(cm) {
+    ta.value = cm.getValue();
+    document.getElementById('config-form').submit();
+  }
+
+  // Sync CM → hidden textarea before form submission
+  document.getElementById('config-form').addEventListener('submit', function () {
+    ta.value = window.vfCMEditor.getValue();
+  });
+})();
+
+function vfFormatJson() {
+  if (!window.vfCMEditor) return;
+  try {
+    const pretty = JSON.stringify(JSON.parse(window.vfCMEditor.getValue()), null, 2);
+    window.vfCMEditor.setValue(pretty);
+  } catch (e) {
+    alert('Invalid JSON — fix syntax errors before formatting.');
+  }
+}
+</script>
 {% endblock %}

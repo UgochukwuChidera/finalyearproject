@@ -1,3 +1,24 @@
+// ---------------------------------------------------------------------------
+// CodeMirror-aware JSON accessor helpers
+// When the config editor has a CodeMirror instance (window.vfCMEditor) these
+// helpers read/write through it; otherwise they fall back to the raw textarea.
+// ---------------------------------------------------------------------------
+function vfGetConfigJson() {
+  if (window.vfCMEditor) return window.vfCMEditor.getValue();
+  const ta = document.getElementById('config-json');
+  return ta ? ta.value : '{}';
+}
+
+function vfSetConfigJson(val) {
+  if (window.vfCMEditor) {
+    window.vfCMEditor.setValue(val);
+  } else {
+    const ta = document.getElementById('config-json');
+    if (ta) ta.value = val;
+  }
+}
+
+
 let vfState = {
   canvas: null,
   ctx: null,
@@ -419,10 +440,8 @@ function vfToggleFullscreen() {
 window.addEventListener('DOMContentLoaded', vfInit);
 
 function vfLoadFromJson(){
-  const ta = document.getElementById('config-json');
-  if(!ta) return;
   try{
-    const cfg = JSON.parse(ta.value||'{}');
+    const cfg = JSON.parse(vfGetConfigJson() || '{}');
     vfState.fields = cfg.fields || [];
     vfRefreshCounter();
     vfLoadTemplate(cfg.template_path || '');
@@ -433,15 +452,13 @@ function vfLoadFromJson(){
 }
 
 function vfApplyBoxesToJson(){
-  const ta = document.getElementById('config-json');
-  if(!ta) return;
   try{
-    const cfg = JSON.parse(ta.value||'{}');
+    const cfg = JSON.parse(vfGetConfigJson() || '{}');
     cfg.fields = vfState.fields;
     if (vfState.canvas) {
       cfg.editor_canvas = { width: vfState.canvas.width, height: vfState.canvas.height };
     }
-    ta.value = JSON.stringify(cfg, null, 2);
+    vfSetConfigJson(JSON.stringify(cfg, null, 2));
     alert('Fields synced to JSON editor');
   }catch(err){alert('Invalid JSON');}
 }
@@ -511,15 +528,14 @@ async function vfDiscoverFromImage() {
         };
       });
 
-      const ta = document.getElementById('config-json');
-      const current = JSON.parse(ta.value || '{}');
+      const current = JSON.parse(vfGetConfigJson() || '{}');
       current.fields = scaledFields;
       current.editor_canvas = { width: cw, height: ch };
       if (data.template_path) {
           current.template_path = data.template_path;
       }
-      ta.value = JSON.stringify(current, null, 2);
-      
+      vfSetConfigJson(JSON.stringify(current, null, 2));
+
       // Update canvas state
       vfState.fields = scaledFields;
       vfRefreshCounter();
