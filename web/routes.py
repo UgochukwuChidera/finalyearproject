@@ -10,7 +10,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 from werkzeug.utils import safe_join, secure_filename
 
 from main import process_form
-from ai_extraction.gemini_client import GeminiClient
+from ai_extraction.gemini_client import GeminiClient, get_active_model
 from ai_extraction.prompt_builder import build_discovery_prompt
 
 bp = Blueprint("web", __name__)
@@ -80,6 +80,55 @@ def _save_config(name: str, payload: dict) -> Path:
 def _allowed_ext(filename: str) -> bool:
     ext = Path(filename or "").suffix.lower()
     return ext in {".tif", ".tiff", ".png", ".jpg", ".jpeg"}
+
+
+# ---------------------------------------------------------------------------
+# Model configuration helpers
+# ---------------------------------------------------------------------------
+
+_BUILTIN_MODELS = [
+    {
+        "id": "google/gemini-pro-1.5",
+        "label": "Gemini 1.5 Pro",
+        "description": "Primary model — Google Gemini 1.5 Pro via OpenRouter (multimodal, cost-effective)",
+    },
+    {
+        "id": "openai/gpt-4o-mini",
+        "label": "GPT-4o Mini",
+        "description": "Fallback model — OpenAI GPT-4o Mini via OpenRouter (fast, low-cost)",
+    },
+    {
+        "id": "openai/gpt-4o",
+        "label": "GPT-4o",
+        "description": "Third option — OpenAI GPT-4o via OpenRouter (highest accuracy, higher cost)",
+    },
+]
+
+_DEFAULT_MODELS_CONFIG: dict = {
+    "active_model": "google/gemini-pro-1.5",
+    "models": _BUILTIN_MODELS,
+}
+
+
+def _models_config_path() -> Path:
+    return _root_dir() / "models.json"
+
+
+def _load_models_config() -> dict:
+    path = _models_config_path()
+    if path.exists():
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return dict(_DEFAULT_MODELS_CONFIG)
+
+
+def _save_models_config(data: dict) -> None:
+    path = _models_config_path()
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, ensure_ascii=False)
 
 
 def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
@@ -437,3 +486,48 @@ def evaluation():
         except (json.JSONDecodeError, OSError):
             results = {}
     return render_template("evaluation.html", results=results)
+
+
+@bp.route("/settings", methods=["GET"])
+def settings():
+    cfg = _load_models_config()
+    return render_template("settings.html", models_config=cfg, active_model=get_active_model())
+
+
+@bp.route("/api/models", methods=["GET"])
+def api_models_get():
+    cfg = _load_models_config()
+    cfg["resolved_active"] = get_active_model()
+    return jsonify(cfg)
+
+
+@bp.route("/api/models", methods=["POST"])
+def api_models_update():
+    payload = request.get_json(silent=True) or {}
+
+    active = (payload.get("active_model") or "").strip()
+    models = payload.get("models")
+
+    cfg = _load_models_config()
+
+    if active:
+        cfg["active_model"] = active
+
+    if isinstance(models, list):
+        cleaned = []
+        for m in models:
+            if not isinstance(m, dict):
+                continue
+            mid = (m.get("id") or "").strip()
+            if not mid:
+                continue
+            cleaned.append({
+                "id": mid,
+                "label": (m.get("label") or mid).strip(),
+                "description": (m.get("description") or "").strip(),
+            })
+        if cleaned:
+            cfg["models"] = cleaned
+
+    _save_models_config(cfg)
+    return jsonify({"status": "ok", "active_model": cfg.get("active_model")})

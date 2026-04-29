@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card-header">
+  <h2><i class="ph ph-sliders"></i> Model Settings</h2>
+</div>
+
+<section class="card" style="max-width: 760px">
+  <h3 style="margin-bottom: 1.5rem">Active AI Model</h3>
+
+  <div id="active-model-display" style="margin-bottom: 2rem">
+    <label class="muted" style="font-size:0.75rem; text-transform:uppercase">Currently Active</label>
+    <p style="margin:0.35rem 0 0; font-size:1.05rem; font-weight:600; color:var(--primary)" id="active-model-label">
+      {{ active_model }}
+    </p>
+  </div>
+
+  <h4 style="margin-bottom: 1rem">Available Models</h4>
+  <div id="models-list" style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:2rem">
+    {% for m in models_config.models %}
+    <div class="model-card {{ 'model-active' if m.id == active_model else '' }}"
+         data-id="{{ m.id }}"
+         style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; border-radius:12px; border:1px solid {{ 'var(--primary)' if m.id == active_model else 'var(--border)' }}; background:{{ 'rgba(99,102,241,0.08)' if m.id == active_model else 'var(--surface)' }}; cursor:pointer; transition:border-color 0.2s, background 0.2s">
+      <div>
+        <p style="margin:0; font-weight:600">{{ m.label }}</p>
+        <p class="muted" style="margin:0.2rem 0 0; font-size:0.8rem">{{ m.id }}</p>
+        {% if m.description %}
+        <p class="muted" style="margin:0.2rem 0 0; font-size:0.75rem">{{ m.description }}</p>
+        {% endif %}
+      </div>
+      <div style="display:flex; gap:0.5rem; align-items:center">
+        {% if m.id == active_model %}
+        <span class="badge badge-success">active</span>
+        {% else %}
+        <button class="btn-set-active secondary" data-id="{{ m.id }}" style="font-size:0.8rem; padding:0.3rem 0.75rem">Set Active</button>
+        {% endif %}
+        <button class="btn-remove-model ghost" data-id="{{ m.id }}" style="font-size:0.8rem; padding:0.3rem 0.6rem; color:var(--danger)" title="Remove model">
+          <i class="ph ph-trash"></i>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h4 style="margin-bottom: 1rem">Add a Custom Model</h4>
+  <form id="add-model-form" style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.5rem">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem">
+      <div>
+        <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">OpenRouter Model ID <span style="color:var(--danger)">*</span></label>
+        <input id="new-model-id" type="text" placeholder="e.g. anthropic/claude-3-haiku" style="width:100%; box-sizing:border-box" required />
+      </div>
+      <div>
+        <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">Display Label</label>
+        <input id="new-model-label" type="text" placeholder="e.g. Claude 3 Haiku" style="width:100%; box-sizing:border-box" />
+      </div>
+    </div>
+    <div>
+      <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">Description (optional)</label>
+      <input id="new-model-desc" type="text" placeholder="Short description" style="width:100%; box-sizing:border-box" />
+    </div>
+    <div>
+      <button type="submit" class="primary" style="width:auto">
+        <i class="ph ph-plus"></i> Add Model
+      </button>
+    </div>
+  </form>
+
+  <div id="settings-feedback" style="display:none; padding:0.75rem 1rem; border-radius:8px; margin-top:0.5rem"></div>
+</section>
+
+<script>
+(function () {
+  let cfg = {{ models_config | tojson }};
+
+  function showFeedback(msg, type) {
+    const el = document.getElementById('settings-feedback');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.background = type === 'success' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+    el.style.color = type === 'success' ? 'var(--success, #22c55e)' : 'var(--danger)';
+    el.style.border = '1px solid ' + (type === 'success' ? '#22c55e' : 'var(--danger)');
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
+
+  function saveConfig() {
+    return fetch('/api/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg)
+    }).then(r => r.json());
+  }
+
+  function rebuildList() {
+    const list = document.getElementById('models-list');
+    list.innerHTML = '';
+    cfg.models.forEach(function (m) {
+      const isActive = m.id === cfg.active_model;
+      const card = document.createElement('div');
+      card.className = 'model-card' + (isActive ? ' model-active' : '');
+      card.dataset.id = m.id;
+      card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-radius:12px;border:1px solid ' + (isActive ? 'var(--primary)' : 'var(--border)') + ';background:' + (isActive ? 'rgba(99,102,241,0.08)' : 'var(--surface)') + ';cursor:pointer;transition:border-color 0.2s,background 0.2s';
+      card.innerHTML =
+        '<div>' +
+          '<p style="margin:0;font-weight:600">' + escHtml(m.label || m.id) + '</p>' +
+          '<p class="muted" style="margin:0.2rem 0 0;font-size:0.8rem">' + escHtml(m.id) + '</p>' +
+          (m.description ? '<p class="muted" style="margin:0.2rem 0 0;font-size:0.75rem">' + escHtml(m.description) + '</p>' : '') +
+        '</div>' +
+        '<div style="display:flex;gap:0.5rem;align-items:center">' +
+          (isActive
+            ? '<span class="badge badge-success">active</span>'
+            : '<button class="btn-set-active secondary" data-id="' + escHtml(m.id) + '" style="font-size:0.8rem;padding:0.3rem 0.75rem">Set Active</button>') +
+          '<button class="btn-remove-model ghost" data-id="' + escHtml(m.id) + '" style="font-size:0.8rem;padding:0.3rem 0.6rem;color:var(--danger)" title="Remove model"><i class="ph ph-trash"></i></button>' +
+        '</div>';
+      list.appendChild(card);
+    });
+    document.getElementById('active-model-label').textContent = cfg.active_model;
+    attachHandlers();
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function attachHandlers() {
+    document.querySelectorAll('.btn-set-active').forEach(function (btn) {
+      btn.onclick = function () {
+        cfg.active_model = this.dataset.id;
+        saveConfig().then(function (res) {
+          rebuildList();
+          showFeedback('Active model switched to ' + cfg.active_model, 'success');
+        }).catch(function () { showFeedback('Failed to save settings.', 'error'); });
+      };
+    });
+
+    document.querySelectorAll('.btn-remove-model').forEach(function (btn) {
+      btn.onclick = function () {
+        const id = this.dataset.id;
+        if (id === cfg.active_model) {
+          showFeedback('Cannot remove the currently active model. Switch to another model first.', 'error');
+          return;
+        }
+        cfg.models = cfg.models.filter(function (m) { return m.id !== id; });
+        saveConfig().then(function () {
+          rebuildList();
+          showFeedback('Model removed.', 'success');
+        }).catch(function () { showFeedback('Failed to save settings.', 'error'); });
+      };
+    });
+  }
+
+  document.getElementById('add-model-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const id = document.getElementById('new-model-id').value.trim();
+    const label = document.getElementById('new-model-label').value.trim() || id;
+    const desc = document.getElementById('new-model-desc').value.trim();
+    if (!id) return;
+    if (cfg.models.some(function (m) { return m.id === id; })) {
+      showFeedback('A model with this ID already exists.', 'error');
+      return;
+    }
+    cfg.models.push({ id: id, label: label, description: desc });
+    saveConfig().then(function () {
+      document.getElementById('new-model-id').value = '';
+      document.getElementById('new-model-label').value = '';
+      document.getElementById('new-model-desc').value = '';
+      rebuildList();
+      showFeedback('Model "' + label + '" added.', 'success');
+    }).catch(function () { showFeedback('Failed to save settings.', 'error'); });
+  });
+
+  attachHandlers();
+})();
+</script>
+{% endblock %}

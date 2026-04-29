@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import List
 
 import httpx
@@ -14,15 +15,39 @@ logger = logging.getLogger(__name__)
 
 _RETRYABLE = (APITimeoutError, APIConnectionError, httpx.TimeoutException, httpx.ConnectError)
 
-# Default model: GPT-4o via OpenRouter — stable, production-grade multimodal model
-# with full logprobs support via the standard OpenAI-compatible API.
-# Override with the OPENROUTER_MODEL environment variable if desired.
-_DEFAULT_MODEL = "openai/gpt-4o"
+# Hardcoded fallback used only when models.json is absent and no env var is set.
+_BUILTIN_DEFAULT_MODEL = "google/gemini-pro-1.5"
+
+# Path to the models.json file at the project root (one level above this package).
+_MODELS_JSON_PATH = Path(__file__).resolve().parents[1] / "models.json"
+
+
+def get_active_model() -> str:
+    """Return the currently active model ID.
+
+    Resolution order:
+    1. ``OPENROUTER_MODEL`` environment variable (explicit override).
+    2. ``active_model`` key in ``models.json`` at the project root.
+    3. Built-in default (``google/gemini-pro-1.5``).
+    """
+    env_override = os.getenv("OPENROUTER_MODEL", "").strip()
+    if env_override:
+        return env_override
+    if _MODELS_JSON_PATH.exists():
+        try:
+            with _MODELS_JSON_PATH.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            active = (data.get("active_model") or "").strip()
+            if active:
+                return active
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Could not read models.json (%s); using built-in default.", exc)
+    return _BUILTIN_DEFAULT_MODEL
 
 
 class GeminiClient:
     def __init__(self, api_key: str | None = None, model: str | None = None, timeout: int = 180):
-        self.model = model or os.getenv("OPENROUTER_MODEL", _DEFAULT_MODEL)
+        self.model = model or get_active_model()
         self.api_key = (api_key or os.getenv("OPENROUTER_API_KEY", "")).strip()
         self.client = (
             OpenAI(

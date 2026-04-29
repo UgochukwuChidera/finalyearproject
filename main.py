@@ -24,6 +24,7 @@ from ai_extraction import (
     compute_C_dict,
     compute_C_final,
 )
+from ai_extraction.gemini_client import get_active_model
 from project.alignment.aligner import TemplateAligner
 from project.differential.analyzer import DifferentialAnalyzer
 from project.output.audit_logger import AuditLogger
@@ -248,7 +249,8 @@ def process_form(
     images = [p["image"] for p in prompt_items]
     prompts = [p["prompt"] for p in prompt_items]
 
-    ai_payload = GeminiClient().extract_from_images(images=images, prompts=prompts)
+    client = GeminiClient()
+    ai_payload = client.extract_from_images(images=images, prompts=prompts)
     ai_meta = (ai_payload.get("meta") or {}) if isinstance(ai_payload, dict) else {}
     ai_fields = ai_payload.get("fields", {}) if isinstance(ai_payload, dict) else {}
     if not isinstance(ai_fields, dict):
@@ -258,7 +260,7 @@ def process_form(
 
     # Diagnostic bundle stored on the job so the UI can surface it.
     ai_debug = {
-        "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o"),
+        "model": client.model,
         "has_logprobs": has_logprobs,
         "fields_extracted": sorted(ai_fields.keys()),
         "raw_response_preview": ai_meta.get("raw_response_preview", ""),

@@ -48,6 +48,12 @@
               <span>Evaluation</span>
             </a>
           </li>
+          <li>
+            <a href="{{ url_for('web.settings') }}" class="{{ 'active' if request.endpoint == 'web.settings' }}">
+              <i class="ph ph-sliders"></i>
+              <span>Model Settings</span>
+            </a>
+          </li>
           <li style="margin-top: auto">
             <a href="#" class="ghost">
               <i class="ph ph-question"></i>
