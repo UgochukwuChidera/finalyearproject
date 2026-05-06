@@ -36,9 +36,13 @@ let vfState = {
 
 function vfCanvasPos(e){
   const r = vfState.canvas.getBoundingClientRect();
+  // Calculate the actual scale factor between the screen pixels and internal canvas pixels
+  const scaleX = r.width / vfState.canvas.width;
+  const scaleY = r.height / vfState.canvas.height;
+  
   return {
-    x: (e.clientX - r.left) / vfState.zoom,
-    y: (e.clientY - r.top) / vfState.zoom
+    x: (e.clientX - r.left) / scaleX,
+    y: (e.clientY - r.top) / scaleY
   };
 }
 
@@ -58,15 +62,15 @@ function vfRedraw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   
   // Background
-  ctx.fillStyle='#0f172a';
+  ctx.fillStyle='#000000';
   ctx.fillRect(0,0,canvas.width,canvas.height);
   
   if(img) {
     ctx.drawImage(img,0,0,canvas.width,canvas.height);
   } else {
     // Placeholder if no image
-    ctx.fillStyle = 'rgba(255,255,255,0.03)';
-    ctx.font = '24px Outfit';
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.font = '24px Inter';
     ctx.textAlign = 'center';
     ctx.fillText('No Template Image Overlaid', canvas.width/2, canvas.height/2);
     ctx.textAlign = 'start';
@@ -75,15 +79,15 @@ function vfRedraw(){
   fields.forEach((f,i)=>{
     const b=f.bounding_box||{};
     ctx.lineWidth=2;
-    ctx.strokeStyle=i===selected?'#f472b6':'#8b5cf6';
+    ctx.strokeStyle=i===selected?'#0056d2':'#1c1d1f';
     
     // Draw box
     ctx.strokeRect(b.x||0,b.y||0,b.w||0,b.h||0);
-    ctx.fillStyle=i===selected?'rgba(244,114,182,0.15)':'rgba(139,92,246,0.1)';
+    ctx.fillStyle=i===selected?'rgba(0, 86, 210, 0.15)':'rgba(0, 0, 0, 0.2)';
     ctx.fillRect(b.x||0,b.y||0,b.w||0,b.h||0);
     
     // Label tag
-    ctx.fillStyle=i===selected?'#f472b6':'#8b5cf6';
+    ctx.fillStyle=i===selected?'#0056d2':'#1c1d1f';
     ctx.font='600 12px Inter, sans-serif';
     const txt = f.name||`field_${i+1}`;
     const tw = ctx.measureText(txt).width;
@@ -95,7 +99,7 @@ function vfRedraw(){
     if (i === selected) {
       ctx.fillStyle='#ffffff';
       ctx.fillRect((b.x||0)+(b.w||0)-6,(b.y||0)+(b.h||0)-6,12,12);
-      ctx.strokeStyle='#f472b6';
+      ctx.strokeStyle='#0056d2';
       ctx.strokeRect((b.x||0)+(b.w||0)-6,(b.y||0)+(b.h||0)-6,12,12);
     }
   });
@@ -167,7 +171,7 @@ async function vfLoadLocalImage(file) {
       return;
     } catch (err) {
       console.error(err);
-      alert('Failed to process TIFF file. Please try a PNG or JPG.');
+      vfNotify('Failed to process TIFF file. Please try a PNG or JPG.', 'danger');
       return;
     }
   }
@@ -183,7 +187,7 @@ async function vfLoadLocalImage(file) {
     };
     img.onerror = (err) => {
       console.error('Image load error:', err);
-      alert('Failed to load image file. Try a different format (PNG/JPG).');
+      vfNotify('Failed to load image file. Try a different format (PNG/JPG).', 'danger');
     };
     img.src = event.target.result;
   };
@@ -238,7 +242,7 @@ function vfSyncFieldsPanel(){
       badge.style.color = '#fff';
       badge.style.fontSize = '0.625rem';
       badge.style.padding = '0.125rem 0.375rem';
-      badge.style.borderRadius = '4px';
+      badge.style.borderRadius = '0';
       badge.style.fontWeight = '600';
       badge.textContent = 'CRITICAL';
       left.appendChild(badge);
@@ -389,8 +393,25 @@ function vfZoom(delta) {
   vfState.zoom = Math.min(Math.max(0.1, vfState.zoom + delta), 5.0);
   const canvas = document.getElementById('bbox-canvas');
   if (canvas) {
-    canvas.style.transform = `scale(${vfState.zoom})`;
+    // If not auto-fitting, apply the zoom transform
+    if (canvas.style.width !== '100%') {
+      canvas.style.transform = `scale(${vfState.zoom})`;
+    }
     document.getElementById('zoom-level').textContent = `${Math.round(vfState.zoom * 100)}%`;
+  }
+}
+
+function vfToggleAutoFit() {
+  const canvas = document.getElementById('bbox-canvas');
+  if (!canvas) return;
+  if (canvas.style.width === '100%') {
+    canvas.style.width = '';
+    canvas.style.height = '';
+    canvas.style.transform = `scale(${vfState.zoom})`;
+  } else {
+    canvas.style.width = '100%';
+    canvas.style.height = 'auto';
+    canvas.style.transform = 'none';
   }
 }
 
@@ -431,7 +452,7 @@ function vfToggleFullscreen() {
   const root = document.getElementById('workspace-root');
   if (!document.fullscreenElement) {
     root.requestFullscreen().catch(err => {
-      alert(`Error attempting to enable full-screen mode: ${err.message}`);
+      vfNotify(`Error attempting to enable full-screen mode: ${err.message}`, 'danger');
     });
   } else {
     document.exitFullscreen();
@@ -448,7 +469,8 @@ function vfLoadFromJson(){
     vfState.selected = -1;
     vfRedraw();
     vfSyncFieldsPanel();
-  }catch(err){alert('Invalid JSON');}
+    vfNotify('Configuration loaded from JSON editor', 'success');
+  }catch(err){vfNotify('Invalid JSON', 'danger');}
 }
 
 function vfApplyBoxesToJson(){
@@ -459,8 +481,8 @@ function vfApplyBoxesToJson(){
       cfg.editor_canvas = { width: vfState.canvas.width, height: vfState.canvas.height };
     }
     vfSetConfigJson(JSON.stringify(cfg, null, 2));
-    alert('Fields synced to JSON editor');
-  }catch(err){alert('Invalid JSON');}
+    vfNotify('Fields synced to JSON editor', 'success');
+  }catch(err){vfNotify('Invalid JSON', 'danger');}
 }
 
 const illegibleFields = {};
@@ -476,7 +498,7 @@ async function submitReview(jobId){
     corrections[el.name]=illegibleFields[el.name]?'__ILLEGIBLE__':el.value;
   });
   const res=await fetch(`/jobs/${jobId}/review`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({corrections})});
-  if(!res.ok){alert('Failed to submit');return;}
+  if(!res.ok){vfNotify('Failed to submit review', 'danger');return;}
   location.href=`/jobs/${jobId}`;
 }
 
@@ -484,7 +506,7 @@ async function vfDiscoverFromImage() {
   const fileInput = document.getElementById('ai-template-file');
   const status = document.getElementById('ai-status');
   if (!fileInput || !fileInput.files[0]) {
-    alert('Please select a blank template image first.');
+    vfNotify('Please select a blank template image first.', 'info');
     return;
   }
 

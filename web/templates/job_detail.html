@@ -13,19 +13,63 @@
   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem">
       <div>
           <h3 style="margin-bottom: 0.5rem">Job Context: <span style="color: var(--secondary)">{{ job.job_id }}</span></h3>
-          <p class="muted">Status: <span class="badge badge-info">{{ job.status }}</span></p>
+          <p class="muted">Status: <span class="badge {{ 'badge-success' if job.status == 'completed' else 'badge-warning' if job.status in ['pending_review','spot_check'] else 'badge-danger' if job.status == 'failed' else 'badge-info' }}">{{ job.status }}</span></p>
           {% if job.batch_id %}
           <p class="muted">Batch: <span style="color: var(--secondary)">{{ job.batch_id }}</span></p>
           {% endif %}
       </div>
   </div>
 
+  {% if job.status in ['queued', 'running'] or job.logs %}
+  <section class="card" id="pipeline-progress-card" style="border: 1px solid var(--border-strong); background: var(--bg-main); padding: 1.5rem; margin-bottom: 2rem">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem">
+      <h3 style="margin: 0; font-size: 1.1rem"><i class="ph ph-pulse" style="color: var(--info)"></i> Neural Pipeline Live Feed</h3>
+      {% if job.status in ['queued', 'running'] %}
+      <span class="badge badge-info" style="animation: pulse 1.5s infinite">Processing</span>
+      {% else %}
+      <span class="badge badge-success">Completed</span>
+      {% endif %}
+    </div>
+
+    <div id="progress-header" style="margin-bottom: 1.5rem; padding: 1.25rem; background: var(--bg-secondary); border: 1px solid var(--border)">
+      <div class="muted" style="font-size: 0.7rem; text-transform: uppercase; margin-bottom: 0.35rem; letter-spacing: 0.05em">Current Stage</div>
+      <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary)" id="current-stage-label">
+        {{ job.current_stage or 'Warming up...' }}
+      </div>
+      <p class="muted" style="margin-top: 0.35rem; font-size: 0.9rem" id="current-message-label">{{ job.current_message or 'Establishing secure neural link...' }}</p>
+    </div>
+
+    <details style="border-top: 1px solid var(--border); padding-top: 1rem">
+      <summary style="cursor:pointer; font-weight:600; font-size:0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem">
+        <i class="ph ph-terminal-window"></i> Raw execution logs
+      </summary>
+      <div id="execution-logs" style="margin-top: 1rem; padding: 1rem; background: var(--bg-dark); color: #82e0aa; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; max-height: 250px; overflow-y: auto; border: 1px solid var(--border-strong)">
+        {% for log in job.logs %}
+        <div style="margin-bottom: 0.35rem; border-left: 2px solid #2d2f31; padding-left: 0.75rem">
+          <span style="color: #6a6f73; font-size: 0.75rem">[{{ log.time }}]</span> 
+          <span style="color: #ffffff; font-weight: 700; font-size: 0.75rem">[{{ log.stage }}]</span> 
+          {{ log.message }}
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+  </section>
+
+  <style>
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+  </style>
+  {% endif %}
+
   {% if job.error %}
   <div class="card badge-danger" style="padding: 1.5rem; margin-bottom: 2rem">
       <i class="ph ph-warning-circle"></i> {{ job.error }}
   </div>
   {% if job.traceback %}
-  <div class="card" style="padding: 1rem; margin-bottom: 2rem; background: #1a0a0a; border: 1px solid var(--danger)">
+  <div class="card" style="padding: 1rem; margin-bottom: 2rem; background: var(--bg-secondary); border: 1px solid var(--danger)">
       <details style="width: 100%">
           <summary style="cursor:pointer; color: var(--danger); margin-bottom: 0.5rem">Show traceback</summary>
           <pre style="color: var(--danger); font-size: 0.75rem; overflow-x: auto; margin: 0; white-space: pre-wrap;">{{ job.traceback }}</pre>
@@ -54,8 +98,8 @@
         <td>{{ f.final_value }}</td>
         <td>
             <div style="display: flex; align-items: center; gap: 0.5rem">
-                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; max-width: 60px;">
-                    <div style="height: 100%; --progress: {{ (f.confidence or 0)*100 }}%; width: var(--progress); background: var(--primary); border-radius: 3px;"></div>
+                <div style="flex: 1; height: 6px; background: var(--bg-secondary); max-width: 60px; border: 1px solid var(--border)">
+                    <div style="height: 100%; --progress: {{ (f.confidence or 0)*100 }}%; width: var(--progress); background: var(--primary);"></div>
                 </div>
                 <span>{{ '%.2f'|format(f.confidence or 0) }}</span>
             </div>
@@ -82,7 +126,7 @@
 {% if job_audit %}
 <section class="card">
   <h3><i class="ph ph-scroll"></i> Audit Snapshot</h3>
-  <pre class="muted" style="background:#0f172a; color:var(--secondary); padding:1rem; border-radius:12px; overflow:auto; border:1px solid var(--border)">{{ job_audit | tojson(indent=2) }}</pre>
+  <pre class="muted" style="background:var(--bg-secondary); color:var(--text-main); padding:1rem; overflow:auto; border:1px solid var(--border-strong)">{{ job_audit | tojson(indent=2) }}</pre>
 </section>
 {% endif %}
 
@@ -143,12 +187,54 @@
       {% if job.ai_debug.raw_response_preview %}
       <div>
         <label class="muted" style="font-size:0.75rem; text-transform:uppercase">Raw Response Preview (first 800 chars)</label>
-        <pre style="background:#0f172a; color:var(--secondary); padding:0.75rem; border-radius:8px; border:1px solid var(--border); font-size:0.7rem; white-space:pre-wrap; overflow-x:auto; margin-top:0.5rem">{{ job.ai_debug.raw_response_preview | e }}</pre>
+        <pre style="background:var(--bg-secondary); color:var(--text-main); padding:0.75rem; border:1px solid var(--border-strong); font-size:0.7rem; white-space:pre-wrap; overflow-x:auto; margin-top:0.5rem">{{ job.ai_debug.raw_response_preview | e }}</pre>
       </div>
       {% endif %}
 
     </div>
   </details>
 </section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if job.status in ['queued', 'running'] %}
+<script>
+  (function() {
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 600) clearInterval(interval); // Timeout after 10 mins
+
+      try {
+        const res = await fetch(window.location.href);
+        const text = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        
+        // Find the status badge in the new document
+        const newStatusBadge = doc.querySelector('.badge');
+        const newStatusText = newStatusBadge ? newStatusBadge.textContent.trim().toLowerCase() : '';
+
+        // Update progress card
+        const newProgress = doc.getElementById('pipeline-progress-card');
+        const oldProgress = document.getElementById('pipeline-progress-card');
+        if (newProgress && oldProgress) {
+          oldProgress.innerHTML = newProgress.innerHTML;
+        } else if (newProgress && !oldProgress) {
+          location.reload();
+        }
+
+        // If finished or failed, reload to show data
+        if (newStatusText && !['running', 'queued', 'processing'].includes(newStatusText)) {
+          clearInterval(interval);
+          location.reload();
+        }
+      } catch (e) {
+        console.error("Polling error:", e);
+      }
+    }, 2000);
+  })();
+</script>
 {% endif %}
 {% endblock %}

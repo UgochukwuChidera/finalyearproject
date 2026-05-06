@@ -68,6 +68,30 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+
+  <div id="toast-container" style="position: fixed; top: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem"></div>
+
+  <script>
+    function vfNotify(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      const icon = type === 'success' ? 'check-circle' : type === 'danger' ? 'warning-circle' : 'info';
+      toast.innerHTML = `
+        <div class="toast-content">
+          <i class="ph ph-${icon}"></i>
+          <span>${message}</span>
+        </div>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+  </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>

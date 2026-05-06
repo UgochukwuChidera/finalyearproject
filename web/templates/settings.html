@@ -1,4 +1,29 @@
 {% extends "base.html" %}
+{% block styles %}
+<style>
+  .model-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    background: var(--bg-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .model-card:hover {
+    border-color: var(--primary);
+  }
+  .model-card.model-active {
+    border-color: var(--primary);
+    background: var(--bg-secondary);
+  }
+  #settings-feedback {
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="card-header">
   <h2><i class="ph ph-sliders"></i> Model Settings</h2>
@@ -18,8 +43,7 @@
   <div id="models-list" style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:2rem">
     {% for m in models_config.models %}
     <div class="model-card {{ 'model-active' if m.id == active_model else '' }}"
-         data-id="{{ m.id }}"
-         style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; border-radius:12px; border:1px solid {{ 'var(--primary)' if m.id == active_model else 'var(--border)' }}; background:{{ 'rgba(99,102,241,0.08)' if m.id == active_model else 'var(--surface)' }}; cursor:pointer; transition:border-color 0.2s, background 0.2s">
+         data-id="{{ m.id }}">
       <div>
         <p style="margin:0; font-weight:600">{{ m.label }}</p>
         <p class="muted" style="margin:0.2rem 0 0; font-size:0.8rem">{{ m.id }}</p>
@@ -64,20 +88,24 @@
     </div>
   </form>
 
-  <div id="settings-feedback" style="display:none; padding:0.75rem 1rem; border-radius:8px; margin-top:0.5rem"></div>
+  <div id="settings-feedback" style="display:none; padding:0.75rem 1rem; margin-top:0.5rem"></div>
 </section>
+
+<script type="application/json" id="models-config-json">
+  {{ models_config | tojson | safe }}
+</script>
 
 <script>
 (function () {
-  let cfg = {{ models_config | tojson }};
+  let cfg = JSON.parse(document.getElementById('models-config-json').textContent);
 
   function showFeedback(msg, type) {
     const el = document.getElementById('settings-feedback');
     el.textContent = msg;
     el.style.display = 'block';
-    el.style.background = type === 'success' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
-    el.style.color = type === 'success' ? 'var(--success, #22c55e)' : 'var(--danger)';
-    el.style.border = '1px solid ' + (type === 'success' ? '#22c55e' : 'var(--danger)');
+    el.style.background = type === 'success' ? 'var(--bg-main)' : 'var(--bg-main)';
+    el.style.color = type === 'success' ? 'var(--success)' : 'var(--danger)';
+    el.style.border = '1px solid ' + (type === 'success' ? 'var(--success)' : 'var(--danger)');
     setTimeout(() => { el.style.display = 'none'; }, 4000);
   }
 
@@ -97,7 +125,6 @@
       const card = document.createElement('div');
       card.className = 'model-card' + (isActive ? ' model-active' : '');
       card.dataset.id = m.id;
-      card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-radius:12px;border:1px solid ' + (isActive ? 'var(--primary)' : 'var(--border)') + ';background:' + (isActive ? 'rgba(99,102,241,0.08)' : 'var(--surface)') + ';cursor:pointer;transition:border-color 0.2s,background 0.2s';
       card.innerHTML =
         '<div>' +
           '<p style="margin:0;font-weight:600">' + escHtml(m.label || m.id) + '</p>' +

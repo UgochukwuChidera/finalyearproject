@@ -100,7 +100,7 @@ class GeminiClient:
                     model=self.model,
                     messages=[{"role": "user", "content": content}],
                     temperature=0,
-                    max_tokens=4096,
+                    max_tokens=1024,
                     response_format={"type": "json_object"},
                     logprobs=True,
                     top_logprobs=5,
