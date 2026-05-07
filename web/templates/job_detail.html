@@ -229,7 +229,7 @@
     let attempts = 0;
     const interval = setInterval(async () => {
       attempts++;
-      if (attempts > 600) clearInterval(interval); // Timeout after 10 mins
+      if (attempts > 600) clearInterval(interval); // Timeout after 20 mins
 
       try {
         const res = await fetch(window.location.href);

@@ -39,7 +39,7 @@
 
 * {
   box-sizing: border-box;
-  border-radius: var(--radius) !important; /* Force boxy style */
+  border-radius: var(--radius); /* Force boxy style */
 }
 
 body {
@@ -451,7 +451,7 @@ tr:hover td {
   box-shadow: var(--shadow-md);
   transition: all 0.3s ease;
   min-width: 300px;
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 
 .toast-success { border-left: 4px solid var(--success) !important; }
