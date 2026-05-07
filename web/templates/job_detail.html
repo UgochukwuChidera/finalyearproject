@@ -226,10 +226,11 @@
 {% if job.status in ['queued', 'running'] %}
 <script>
   (function() {
+    const MAX_POLLING_ATTEMPTS = 600;
     let attempts = 0;
     const interval = setInterval(async () => {
       attempts++;
-      if (attempts > 600) clearInterval(interval); // Timeout after 20 mins
+      if (attempts > MAX_POLLING_ATTEMPTS) clearInterval(interval); // Timeout after 20 mins
 
       try {
         const res = await fetch(window.location.href);
