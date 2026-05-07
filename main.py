@@ -146,7 +146,13 @@ def process_form(
     dpi: int = 300,
     original_filename: str | None = None,
     job_id: str | None = None,
+    progress_callback: callable = None,
 ) -> dict:
+    def update_status(stage, message):
+        if progress_callback:
+            progress_callback(stage, message)
+
+    update_status("INITIALIZING", "Loading configuration and resources...")
     config, resolved_config_path = _load_config(config_name, config_path)
     fields = config.get("fields", [])
     form_type = config.get("form_type", Path(resolved_config_path).stem)
@@ -170,6 +176,7 @@ def process_form(
 
     stats: dict = {"dpi": dpi}
 
+    update_status("PREPROCESSING", "Analyzing image metrics and deskewing...")
     image, h, w, aspect = load_image(image_path)
     gray = to_grayscale(image)
     stats.update({"original_width": w, "original_height": h, "aspect_ratio": aspect})
@@ -200,6 +207,7 @@ def process_form(
     cropped, crop_stats = border_removal(binary, stats.get("threshold_stability", 0.0))
     stats.update(crop_stats)
 
+    update_status("ALIGNMENT", "Aligning form with template blueprint...")
     template_path = config.get("template_path")
     if not template_path:
         raise ValueError("template_path is required")
@@ -214,6 +222,7 @@ def process_form(
     aligned, _, align_meta = aligner.align(gray, template_img)
     stats.update({f"align_{k}": v for k, v in align_meta.items()})
 
+    update_status("ANALYSIS", "Detecting ink signatures and form differences...")
     differ = DifferentialAnalyzer(diff_threshold=ks["diff_threshold"], min_region_area=ks["min_region_area"])
     mask, diff_meta = differ.analyze(aligned, template_img)
     stats.update({f"diff_{k}": v for k, v in diff_meta.items() if not hasattr(v, "shape")})
@@ -244,6 +253,7 @@ def process_form(
         critical_crops[field["name"]] = _to_png_bytes(ink)
         cv2.imwrite(str(crops_dir / f"{field['name']}.png"), ink)
 
+    update_status("EXTRACTION", f"Running Neural Extraction with {get_active_model()}...")
     full_image_bytes = _to_png_bytes(aligned)
     prompt_items = build_multi_image_prompt(config, full_image_bytes, critical_crops)
     images = [p["image"] for p in prompt_items]
@@ -275,6 +285,7 @@ def process_form(
             jid,
         )
 
+    update_status("VALIDATION", "Applying business logic and scoring results...")
     final_fields = []
     pending = []
     extraction_entries = []
@@ -380,6 +391,7 @@ def process_form(
     stats["text_diff_unchanged_count"] = max(0, len(final_fields) - text_diff_changed_count)
     structured = structurer.structure(final_fields, jid, form_type, stats)
 
+    update_status("EXPORTING", "Generating structured reports and audit logs...")
     exporter = DataExporter()
     xlsx = RelationalXLSXExporter()
     base = str(Path(output_dir) / jid)

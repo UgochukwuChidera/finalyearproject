@@ -100,7 +100,7 @@ class GeminiClient:
                     model=self.model,
                     messages=[{"role": "user", "content": content}],
                     temperature=0,
-                    max_tokens=4096,
+                    max_tokens=1024,
                     response_format={"type": "json_object"},
                     logprobs=True,
                     top_logprobs=5,
@@ -229,7 +229,8 @@ class GeminiClient:
         payload["meta"]["logprobs_debug"] = logprobs_debug
         if not has_logprobs:
             logger.warning("API response did not contain logprobs. Confidence scores will use fallback values.")
-            logger.debug("Response choice attributes: %s", [a for a in dir(response.choices[0]) if not a.startswith("_")])
+            if response.choices:
+                logger.debug("Response choice attributes: %s", [a for a in dir(response.choices[0]) if not a.startswith("_")])
 
         if "C_lp" not in payload["meta"]:
             payload["meta"]["C_lp"] = {}

@@ -32,9 +32,9 @@
 
         {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in f.crop_path else '' %}
         {% if rel %}
-        <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--border)">
+        <div style="background: var(--bg-secondary); padding: 1rem; border: 1px solid var(--border-strong)">
             <label style="font-size: 0.7rem; text-transform: uppercase">Source Crop</label>
-            <img src="{{ url_for('web.outputs_static', filename=rel) }}" alt="crop" class="crop" />
+            <img src="{{ url_for('web.outputs_static', filename=rel) }}" alt="crop" class="crop" style="border-radius: 0" />
         </div>
         {% endif %}
       </div>

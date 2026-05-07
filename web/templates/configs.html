@@ -13,11 +13,9 @@
 <section>
   <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem">
     {% for c in configs %}
-    <div class="card" style="padding: 1.75rem; transition: all 0.3s ease; position: relative; overflow: hidden">
-      <div style="position: absolute; top: -10px; right: -10px; width: 60px; height: 60px; background: var(--primary-glow); filter: blur(30px); border-radius: 50%"></div>
-      
+    <div class="card" style="padding: 1.75rem; position: relative">
       <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem">
-        <div style="width: 56px; height: 56px; background: rgba(167, 139, 250, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; color: var(--primary); border: 1px solid rgba(167, 139, 250, 0.2)">
+        <div style="width: 56px; height: 56px; background: var(--bg-secondary); border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; color: var(--primary)">
           <i class="ph ph-file-code" style="font-size: 2rem"></i>
         </div>
         <form method="post" action="{{ url_for('web.config_delete', name=c) }}" onsubmit="return confirm('Delete blueprint {{ c }}?')">

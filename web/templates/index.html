@@ -19,21 +19,22 @@
     </div>
     <form method="post" action="{{ url_for('web.upload') }}" enctype="multipart/form-data">
       <div style="margin-bottom: 1.5rem">
-        <label>Extraction Blueprint</label>
-        <select name="config_name" required>
-          <option value="">Select an extraction blueprint...</option>
+        <label for="config-select">Extraction Blueprint</label>
+        <select name="config_name" id="config-select" required>
           {% for c in configs %}
             <option value="{{ c }}">{{ c }}</option>
+          {% else %}
+            <option value="">No blueprints available...</option>
           {% endfor %}
         </select>
       </div>
       
       <div style="margin-bottom: 2.5rem">
-        <label>Source Documents (TIFF, PNG, JPG)</label>
-        <div class="drop-zone" style="position: relative; border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 3rem; text-align: center; transition: all 0.3s ease; background: rgba(255,255,255,0.02)">
+        <label for="form-upload">Source Documents (TIFF, PNG, JPG)</label>
+        <div class="drop-zone">
           <div class="icon-stack" style="position: relative; margin-bottom: 1.5rem">
             <i class="ph ph-file-plus" style="font-size: 3.5rem; color: var(--primary)"></i>
-            <div style="position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background: var(--success); border-radius: 50%; box-shadow: 0 0 10px var(--success)"></div>
+            <div style="position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background: var(--success)"></div>
           </div>
           <h4 style="margin-bottom: 0.5rem">Select Document Stream</h4>
           <p class="muted" style="font-size: 0.9rem">Drag and drop or click to ingest multiple files</p>
