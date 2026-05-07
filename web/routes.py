@@ -102,6 +102,21 @@ _BUILTIN_MODELS = [
         "label": "GPT-4o",
         "description": "Third option — OpenAI GPT-4o via OpenRouter (highest accuracy, higher cost)",
     },
+    {
+        "id": "google/gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "description": "Google Gemini 2.5 Flash (Ultra-fast, efficient multimodal)",
+    },
+    {
+        "id": "google/gemini-3.1-flash-lite-preview",
+        "label": "Gemini 3.1 Flash (Lite Preview)",
+        "description": "Google Gemini 3.1 Flash Lite (Next-gen speed and efficiency, preview)",
+    },
+    {
+        "id": "nvidia/nemotron-3-super-120b-a12b",
+        "label": "NVIDIA Nemotron 3 Super",
+        "description": "NVIDIA Nemotron 3 Super 120B (High-capacity reasoning, supports logprobs via DekaLLM)",
+    },
 ]
 
 _DEFAULT_MODELS_CONFIG: dict = {

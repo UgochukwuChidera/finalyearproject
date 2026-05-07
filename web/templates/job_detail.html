@@ -61,6 +61,31 @@
     50% { opacity: 0.6; }
     100% { opacity: 1; }
   }
+  details summary {
+    transition: color 0.2s ease;
+    user-select: none;
+    padding: 0.5rem 0;
+  }
+  details summary:hover {
+    color: var(--primary) !important;
+  }
+  details[open] summary {
+    color: var(--secondary) !important;
+    margin-bottom: 0.5rem;
+  }
+  #execution-logs::-webkit-scrollbar {
+    width: 6px;
+  }
+  #execution-logs::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+  }
+  #execution-logs::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 3px;
+  }
+  #execution-logs::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
   </style>
   {% endif %}
 
@@ -216,11 +241,37 @@
         const newStatusBadge = doc.querySelector('.badge');
         const newStatusText = newStatusBadge ? newStatusBadge.textContent.trim().toLowerCase() : '';
 
-        // Update progress card
+        // Update progress card while preserving state
         const newProgress = doc.getElementById('pipeline-progress-card');
         const oldProgress = document.getElementById('pipeline-progress-card');
         if (newProgress && oldProgress) {
+          // Save state of details elements
+          const detailStates = [...oldProgress.querySelectorAll('details')].map(d => ({
+            id: d.id || d.querySelector('summary')?.textContent.trim(),
+            open: d.hasAttribute('open')
+          }));
+
+          // Save scroll position of log containers
+          const logContainers = [...oldProgress.querySelectorAll('[id^="execution-logs"]')].map(c => ({
+            id: c.id,
+            scrollTop: c.scrollTop
+          }));
+
           oldProgress.innerHTML = newProgress.innerHTML;
+
+          // Restore state of details elements
+          detailStates.forEach(state => {
+            const d = [...oldProgress.querySelectorAll('details')].find(el => 
+              (el.id === state.id) || (el.querySelector('summary')?.textContent.trim() === state.id)
+            );
+            if (d && state.open) d.setAttribute('open', '');
+          });
+
+          // Restore scroll positions
+          logContainers.forEach(state => {
+            const c = oldProgress.querySelector(`#${state.id}`);
+            if (c) c.scrollTop = state.scrollTop;
+          });
         } else if (newProgress && !oldProgress) {
           location.reload();
         }

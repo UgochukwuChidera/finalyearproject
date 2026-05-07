@@ -3,8 +3,10 @@ import json
 with open('openrouter_models.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
-for m in data.get('data', []):
-    name = m.get('name', '').lower()
-    mid = m.get('id', '').lower()
-    if 'qwen' in mid:
-        print(f"ID: {m['id']} | Name: {m['name']} | Modality: {m.get('architecture', {}).get('modality')}")
+models = data.get('data', [])
+
+print("Nemotron models found:")
+for m in models:
+    model_id = m.get('id', '').lower()
+    if 'nemotron' in model_id:
+        print(f"ID: {m['id']} | Name: {m['name']}")
