@@ -144,8 +144,8 @@
       "bounding_box": {
         "h": 28,
         "w": 144,
-        "x": 138,
-        "y": 523
+        "x": 66,
+        "y": 541
       },
       "critical": false,
       "expected_type": "checkbox",
@@ -158,8 +158,8 @@
       "bounding_box": {
         "h": 28,
         "w": 144,
-        "x": 138,
-        "y": 545
+        "x": 65,
+        "y": 570
       },
       "critical": false,
       "expected_type": "checkbox",
@@ -171,9 +171,9 @@
     {
       "bounding_box": {
         "h": 165,
-        "w": 1004,
-        "x": 116,
-        "y": 614
+        "w": 650,
+        "x": 63,
+        "y": 602
       },
       "critical": false,
       "expected_type": "string",
@@ -185,9 +185,9 @@
     {
       "bounding_box": {
         "h": 28,
-        "w": 1004,
-        "x": 116,
-        "y": 778
+        "w": 650,
+        "x": 148,
+        "y": 772
       },
       "critical": false,
       "expected_type": "string",
@@ -199,9 +199,9 @@
     {
       "bounding_box": {
         "h": 28,
-        "w": 1004,
-        "x": 116,
-        "y": 817
+        "w": 650,
+        "x": 177,
+        "y": 824
       },
       "critical": false,
       "expected_type": "string",
@@ -214,8 +214,8 @@
       "bounding_box": {
         "h": 28,
         "w": 336,
-        "x": 116,
-        "y": 857
+        "x": 102,
+        "y": 868
       },
       "critical": false,
       "expected_type": "string",

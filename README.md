@@ -28,14 +28,26 @@ Hybrid differential + AI form extraction pipeline.
 
 3. **Configure API Key:**
    - Create a `.env` file in the root directory (you can copy `.env.example`).
-   - Add your [OpenRouter](https://openrouter.ai/) API key using the following format:
-     ```env
-     OPENROUTER_API_KEY="your-api-key-here"
+    - Add your [OpenRouter](https://openrouter.ai/) API key using the following format:
+      ```env
+      OPENROUTER_API_KEY="your-api-key-here"
+      ```
+    - Optional tuning:
+      ```env
+      OPENROUTER_MAX_TOKENS=4096
+      ```
+    - Alternatively, set it as a system environment variable:
+      - **Windows (PowerShell):** `$env:OPENROUTER_API_KEY="<your-key>"`
+      - **Windows (CMD):** `set OPENROUTER_API_KEY=<your-key>`
+      - **Linux/macOS:** `export OPENROUTER_API_KEY="<your-key>"`
+
+4. **Delete a merged branch (local + remote):**
+   - Replace `side` with whichever branch you want to remove:
+     ```bash
+     git branch -d side
+     git push origin --delete side
      ```
-   - Alternatively, set it as a system environment variable:
-     - **Windows (PowerShell):** `$env:OPENROUTER_API_KEY="<your-key>"`
-     - **Windows (CMD):** `set OPENROUTER_API_KEY=<your-key>`
-     - **Linux/macOS:** `export OPENROUTER_API_KEY="<your-key>"`
+   - Use `git branch -D side` only if Git blocks deletion because the branch is not fully merged.
 
 ## Run Web App
 

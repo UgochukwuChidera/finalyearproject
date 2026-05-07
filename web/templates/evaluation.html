@@ -15,7 +15,7 @@
   <i class="ph ph-chart-bar" style="font-size: 4rem; color: var(--text-dim); margin-bottom: 1rem; display: block"></i>
   <h3>No Evaluation Results</h3>
   <p class="muted">Run the evaluation pipeline to generate results.</p>
-  <pre class="muted" style="background:#0f172a; color:var(--secondary); padding:1.25rem; border-radius:12px; display:inline-block; text-align:left; margin-top:1.5rem; border:1px solid var(--border); font-size:0.8125rem">python run_evaluation.py --forms-dir form --template-id medical_screening_v1</pre>
+  <pre class="muted" style="background:var(--bg-secondary); color:var(--text-main); padding:1.25rem; display:inline-block; text-align:left; margin-top:1.5rem; border:1px solid var(--border-strong); font-size:0.8125rem">python run_evaluation.py --forms-dir form --template-id medical_screening_v1</pre>
 </section>
 {% else %}
 {% for pipeline_name, data in results.items() %}
@@ -27,21 +27,21 @@
   {# ── HITL Impact Summary ──────────────────────────────────────────── #}
   {% set impact = data.get('hitl_impact', {}) %}
   <div class="grid-3" style="margin-bottom: 2rem">
-    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center">
+    <div style="background: var(--bg-secondary); border: 1px solid var(--border-strong); padding: 1.5rem; text-align: center">
       <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">Pre-HITL Accuracy</div>
       <div style="font-size: 2rem; font-weight: 700; color: var(--warning)">
         {{ '%.1f'|format((impact.get('pre_hitl_accuracy', 0)) * 100) }}%
       </div>
     </div>
-    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center">
+    <div style="background: var(--bg-secondary); border: 1px solid var(--border-strong); padding: 1.5rem; text-align: center">
       <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">Post-HITL Accuracy</div>
       <div style="font-size: 2rem; font-weight: 700; color: var(--success)">
         {{ '%.1f'|format((impact.get('post_hitl_accuracy', 0)) * 100) }}%
       </div>
     </div>
-    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center">
+    <div style="background: var(--bg-secondary); border: 1px solid var(--border-strong); padding: 1.5rem; text-align: center">
       <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">HITL Gain</div>
-      <div style="font-size: 2rem; font-weight: 700; color: var(--secondary)">
+      <div style="font-size: 2rem; font-weight: 700; color: var(--info)">
         +{{ '%.1f'|format(impact.get('hitl_gain_pct', 0)) }}%
       </div>
     </div>

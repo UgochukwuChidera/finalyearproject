@@ -48,6 +48,12 @@ def get_active_model() -> str:
 class GeminiClient:
     def __init__(self, api_key: str | None = None, model: str | None = None, timeout: int = 180):
         self.model = model or get_active_model()
+        try:
+            self.max_tokens = int(os.getenv("OPENROUTER_MAX_TOKENS", "4096"))
+        except ValueError:
+            self.max_tokens = 4096
+        if self.max_tokens < 1:
+            self.max_tokens = 4096
         self.api_key = (api_key or os.getenv("OPENROUTER_API_KEY", "")).strip()
         self.client = (
             OpenAI(
@@ -100,7 +106,7 @@ class GeminiClient:
                     model=self.model,
                     messages=[{"role": "user", "content": content}],
                     temperature=0,
-                    max_tokens=4096,
+                    max_tokens=self.max_tokens,
                     response_format={"type": "json_object"},
                     logprobs=True,
                     top_logprobs=5,
@@ -229,7 +235,8 @@ class GeminiClient:
         payload["meta"]["logprobs_debug"] = logprobs_debug
         if not has_logprobs:
             logger.warning("API response did not contain logprobs. Confidence scores will use fallback values.")
-            logger.debug("Response choice attributes: %s", [a for a in dir(response.choices[0]) if not a.startswith("_")])
+            if response.choices:
+                logger.debug("Response choice attributes: %s", [a for a in dir(response.choices[0]) if not a.startswith("_")])
 
         if "C_lp" not in payload["meta"]:
             payload["meta"]["C_lp"] = {}

@@ -102,6 +102,21 @@ _BUILTIN_MODELS = [
         "label": "GPT-4o",
         "description": "Third option — OpenAI GPT-4o via OpenRouter (highest accuracy, higher cost)",
     },
+    {
+        "id": "google/gemini-2.5-flash",
+        "label": "Gemini 2.5 Flash",
+        "description": "Google Gemini 2.5 Flash (Ultra-fast, efficient multimodal)",
+    },
+    {
+        "id": "google/gemini-3.1-flash-lite-preview",
+        "label": "Gemini 3.1 Flash (Lite Preview)",
+        "description": "Google Gemini 3.1 Flash Lite (Next-gen speed and efficiency, preview)",
+    },
+    {
+        "id": "nvidia/nemotron-3-super-120b-a12b",
+        "label": "NVIDIA Nemotron 3 Super",
+        "description": "NVIDIA Nemotron 3 Super 120B (High-capacity reasoning, supports logprobs via DekaLLM)",
+    },
 ]
 
 _DEFAULT_MODELS_CONFIG: dict = {
@@ -189,10 +204,25 @@ def _append_review_event(job: dict, reviewer: str, corrections: dict):
 
 
 def _job_runner(app, job_id: str, image_path: str, config_name: str, original_filename: str):
+    def progress_cb(stage, message):
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["current_stage"] = stage
+                JOBS[job_id]["current_message"] = message
+                if "logs" not in JOBS[job_id]:
+                    JOBS[job_id]["logs"] = []
+                JOBS[job_id]["logs"].append({
+                    "time": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                    "stage": stage,
+                    "message": message
+                })
+
     with app.app_context():
         try:
             with JOBS_LOCK:
                 JOBS[job_id]["status"] = "running"
+                JOBS[job_id]["logs"] = []
+            
             result = process_form(
                 image_path=image_path,
                 config_name=config_name,
@@ -201,10 +231,12 @@ def _job_runner(app, job_id: str, image_path: str, config_name: str, original_fi
                 dictionaries_dir=str(_dict_dir()),
                 original_filename=original_filename,
                 job_id=job_id,
+                progress_callback=progress_cb
             )
             with JOBS_LOCK:
                 JOBS[job_id].update(result)
                 JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+                JOBS[job_id]["current_message"] = "Processing complete."
         except Exception as exc:
             import traceback
             with JOBS_LOCK:
