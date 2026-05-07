@@ -88,39 +88,39 @@ def _allowed_ext(filename: str) -> bool:
 
 _BUILTIN_MODELS = [
     {
-        "id": "google/gemini-pro-1.5",
-        "label": "Gemini 1.5 Pro",
-        "description": "Primary model — Google Gemini 1.5 Pro via OpenRouter (multimodal, cost-effective)",
-    },
-    {
         "id": "openai/gpt-4o-mini",
         "label": "GPT-4o Mini",
-        "description": "Fallback model — OpenAI GPT-4o Mini via OpenRouter (fast, low-cost)",
+        "description": "Recommended default — image-capable, reliable JSON extraction, and supports logprobs.",
     },
     {
         "id": "openai/gpt-4o",
         "label": "GPT-4o",
-        "description": "Third option — OpenAI GPT-4o via OpenRouter (highest accuracy, higher cost)",
+        "description": "High-accuracy fallback with image support and logprobs.",
     },
     {
-        "id": "google/gemini-2.5-flash",
-        "label": "Gemini 2.5 Flash",
-        "description": "Google Gemini 2.5 Flash (Ultra-fast, efficient multimodal)",
+        "id": "qwen/qwen3.6-27b",
+        "label": "Qwen 3.6 27B",
+        "description": "Strong multimodal option with image support and logprobs.",
     },
     {
-        "id": "google/gemini-3.1-flash-lite-preview",
-        "label": "Gemini 3.1 Flash (Lite Preview)",
-        "description": "Google Gemini 3.1 Flash Lite (Next-gen speed and efficiency, preview)",
+        "id": "qwen/qwen3.5-27b",
+        "label": "Qwen 3.5 27B",
+        "description": "Cost-efficient multimodal model with image support and logprobs.",
     },
     {
-        "id": "nvidia/nemotron-3-super-120b-a12b",
-        "label": "NVIDIA Nemotron 3 Super",
-        "description": "NVIDIA Nemotron 3 Super 120B (High-capacity reasoning, supports logprobs via DekaLLM)",
+        "id": "moonshotai/kimi-k2.6",
+        "label": "Kimi K2.6",
+        "description": "Reliable image-capable model with logprobs support.",
+    },
+    {
+        "id": "google/gemma-4-31b-it",
+        "label": "Gemma 4 31B IT",
+        "description": "Google multimodal model that supports image input and logprobs.",
     },
 ]
 
 _DEFAULT_MODELS_CONFIG: dict = {
-    "active_model": "google/gemini-pro-1.5",
+    "active_model": "openai/gpt-4o-mini",
     "models": _BUILTIN_MODELS,
 }
 

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 _RETRYABLE = (APITimeoutError, APIConnectionError, httpx.TimeoutException, httpx.ConnectError)
 
 # Hardcoded fallback used only when models.json is absent and no env var is set.
-_BUILTIN_DEFAULT_MODEL = "google/gemini-pro-1.5"
+_BUILTIN_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
 # Path to the models.json file at the project root (one level above this package).
 _MODELS_JSON_PATH = Path(__file__).resolve().parents[1] / "models.json"
@@ -28,7 +28,7 @@ def get_active_model() -> str:
     Resolution order:
     1. ``OPENROUTER_MODEL`` environment variable (explicit override).
     2. ``active_model`` key in ``models.json`` at the project root.
-    3. Built-in default (``google/gemini-pro-1.5``).
+    3. Built-in default (``openai/gpt-4o-mini``).
     """
     env_override = os.getenv("OPENROUTER_MODEL", "").strip()
     if env_override:
