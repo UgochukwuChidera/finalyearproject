@@ -411,12 +411,16 @@ _LAST_JOB_START: float = 0.0
 _RATE_LOCK = threading.Lock()
 
 
+def _make_semaphore(n: int) -> threading.Semaphore:
+    return threading.Semaphore(max(1, n))
+
+
 def _get_job_semaphore(max_concurrent: int) -> threading.Semaphore:
     """Return (or lazily create) the global job semaphore."""
     global _JOB_SEM
     with _JOB_SEM_LOCK:
         if _JOB_SEM is None:
-            _JOB_SEM = threading.Semaphore(max(1, max_concurrent))
+            _JOB_SEM = _make_semaphore(max_concurrent)
     return _JOB_SEM
 
 
@@ -424,7 +428,7 @@ def _reset_job_semaphore(max_concurrent: int) -> None:
     """Replace the global semaphore (called when settings change)."""
     global _JOB_SEM
     with _JOB_SEM_LOCK:
-        _JOB_SEM = threading.Semaphore(max(1, max_concurrent))
+        _JOB_SEM = _make_semaphore(max_concurrent)
 
 
 def _get_api_key() -> str:
@@ -781,8 +785,9 @@ def api_batch_settings_update():
     rpm = payload.get("requests_per_minute")
     if rpm is not None:
         updates["requests_per_minute"] = max(1, int(rpm))
-        # Auto-derive inter-request delay from RPM
-        updates["inter_request_delay"] = round(60.0 / updates["requests_per_minute"], 2)
+        # Auto-derive inter-request delay from RPM; guard denominator even though max(1,...) already ensures >= 1
+        safe_rpm = max(1, updates["requests_per_minute"])
+        updates["inter_request_delay"] = round(60.0 / safe_rpm, 2)
 
     inter_delay = payload.get("inter_request_delay")
     if inter_delay is not None and "inter_request_delay" not in updates:
