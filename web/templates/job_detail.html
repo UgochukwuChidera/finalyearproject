@@ -13,7 +13,7 @@
   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem">
       <div>
           <h3 style="margin-bottom: 0.5rem">Job Context: <span style="color: var(--secondary)">{{ job.job_id }}</span></h3>
-          <p class="muted">Status: <span class="badge {{ 'badge-success' if job.status == 'completed' else 'badge-warning' if job.status in ['pending_review','spot_check'] else 'badge-danger' if job.status == 'failed' else 'badge-info' }}">{{ job.status }}</span></p>
+          <p class="muted">Status: <span class="badge {{ 'badge-success' if job.status == 'completed' else 'badge-warning' if job.status in ['pending_review','spot_check'] else 'badge-danger' if job.status == 'failed' else 'badge-muted' if job.status == 'interrupted' else 'badge-info' }}">{{ job.status }}</span></p>
           {% if job.batch_id %}
           <p class="muted">Batch: <span style="color: var(--secondary)">{{ job.batch_id }}</span></p>
           {% endif %}

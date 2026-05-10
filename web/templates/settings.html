@@ -22,18 +22,52 @@
     border: 1px solid transparent;
     transition: all 0.3s ease;
   }
+  .settings-section-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+  }
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .range-row input[type="range"] {
+    flex: 1;
+    width: auto;
+    padding: 0;
+    border: none;
+    background: transparent;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  .range-val {
+    min-width: 3rem;
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  #batch-feedback {
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+  }
 </style>
 {% endblock %}
 {% block content %}
-<div class="card-header">
-  <h2><i class="ph ph-sliders"></i> Model Settings</h2>
+<div class="card-header" style="margin-bottom: 2.5rem">
+  <div>
+    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem">Settings</h1>
+    <p class="muted">AI model configuration and batch processing rate limits</p>
+  </div>
 </div>
 
+<!-- ── Model Settings ──────────────────────────────────────────────── -->
 <section class="card" style="max-width: 760px">
   <div id="settings-feedback" style="display:none; padding:1rem; margin-bottom:1.5rem; text-align:center;"></div>
 
-  <h3 style="margin-bottom: 1.5rem">API Configuration</h3>
-  
+  <h3 class="settings-section-title"><i class="ph ph-sliders"></i> Model Settings</h3>
+  <p class="muted" style="margin-bottom: 2rem; font-size: 0.875rem">Configure the AI model used for form extraction.</p>
+
   <div style="margin-bottom: 2rem">
     <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">OpenRouter API Key</label>
     <div style="display:flex; gap:0.75rem">
@@ -104,8 +138,62 @@
       </button>
     </div>
   </form>
+</section>
 
-  <div id="settings-feedback" style="display:none; padding:0.75rem 1rem; margin-top:0.5rem"></div>
+<!-- ── Batch / Rate-limit Settings ────────────────────────────────── -->
+<section class="card" style="max-width: 760px; margin-top: 2rem" id="batch-section">
+  <div id="batch-feedback" style="display:none; padding:1rem; margin-bottom:1.5rem;"></div>
+
+  <h3 class="settings-section-title"><i class="ph ph-stack"></i> Batch Processing &amp; Rate Limits</h3>
+  <p class="muted" style="margin-bottom: 2rem; font-size: 0.875rem">
+    Control how many files are processed in parallel and how quickly requests are sent.
+    This is especially important for free-tier models which have low requests-per-minute (RPM) caps.
+  </p>
+
+  <div style="display:flex; flex-direction:column; gap:1.75rem">
+
+    <div>
+      <label style="margin-bottom:0.25rem">Max Concurrent Requests</label>
+      <p class="muted" style="font-size:0.8rem; margin-bottom:0.75rem">
+        How many extraction jobs run at the same time. Set to <strong>1</strong> to process files strictly one-by-one.
+      </p>
+      <div class="range-row">
+        <input type="range" id="batch-concurrent" min="1" max="20" step="1" value="3" />
+        <span class="range-val"><span id="batch-concurrent-val">3</span></span>
+      </div>
+    </div>
+
+    <div>
+      <label style="margin-bottom:0.25rem">Requests Per Minute (RPM) Limit</label>
+      <p class="muted" style="font-size:0.8rem; margin-bottom:0.75rem">
+        Match this to your provider's RPM cap. Free-tier OpenRouter models are often limited to <strong>10 RPM</strong>.
+        Setting this automatically adjusts the delay between consecutive job starts.
+      </p>
+      <div class="range-row">
+        <input type="range" id="batch-rpm" min="1" max="120" step="1" value="10" />
+        <span class="range-val"><span id="batch-rpm-val">10</span> <small class="muted">/min</small></span>
+      </div>
+    </div>
+
+    <div>
+      <label style="margin-bottom:0.25rem">Inter-request Delay (seconds)</label>
+      <p class="muted" style="font-size:0.8rem; margin-bottom:0.75rem">
+        Minimum pause between consecutive job starts. Auto-calculated as <code>60 ÷ RPM</code> when you change RPM above, but you can also set it manually here.
+      </p>
+      <div class="range-row">
+        <input type="range" id="batch-delay" min="0" max="60" step="0.5" value="6" />
+        <span class="range-val"><span id="batch-delay-val">6.0</span> s</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:2rem; display:flex; align-items:center; gap:1rem">
+    <button class="primary" id="btn-save-batch">
+      <i class="ph ph-floppy-disk"></i> Save Batch Settings
+    </button>
+    <span class="muted" style="font-size:0.8rem" id="batch-hint"></span>
+  </div>
 </section>
 
 <script type="application/json" id="models-config-json">
@@ -120,15 +208,11 @@
     const el = document.getElementById('settings-feedback');
     el.textContent = msg;
     el.style.display = 'block';
-    
-    // Add visual classes for toast appearance
-    el.style.borderRadius = '6px';
+    el.style.borderRadius = '0';
     el.style.fontWeight = '500';
-    
     el.style.background = type === 'success' ? '#dcfce7' : '#fee2e2';
     el.style.color = type === 'success' ? '#166534' : '#991b1b';
     el.style.borderColor = type === 'success' ? '#bbf7d0' : '#fecaca';
-    
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => { el.style.display = 'none'; }, 4000);
   }
@@ -138,10 +222,8 @@
     cfg.api_key = key;
     this.disabled = true;
     this.textContent = 'Saving...';
-    
     saveConfig().then(() => {
       showFeedback('API Key updated successfully.', 'success');
-      // Visual pulse effect on the input
       const input = document.getElementById('api-key-input');
       input.style.borderColor = 'var(--success)';
       setTimeout(() => { input.style.borderColor = 'var(--border)'; }, 2000);
@@ -239,6 +321,105 @@
   });
 
   attachHandlers();
+})();
+
+// ── Batch Settings ──────────────────────────────────────────────────────────
+(function () {
+  const concurrentSlider = document.getElementById('batch-concurrent');
+  const concurrentVal    = document.getElementById('batch-concurrent-val');
+  const rpmSlider        = document.getElementById('batch-rpm');
+  const rpmVal           = document.getElementById('batch-rpm-val');
+  const delaySlider      = document.getElementById('batch-delay');
+  const delayVal         = document.getElementById('batch-delay-val');
+  const hint             = document.getElementById('batch-hint');
+  let _rpmManual = false; // track if user changed RPM (to auto-set delay)
+
+  function updateHint() {
+    const c = parseInt(concurrentSlider.value, 10);
+    const r = parseInt(rpmSlider.value, 10);
+    const d = parseFloat(delaySlider.value);
+    hint.textContent = `≈ ${r} req/min · ${c} parallel · ${d}s between starts`;
+  }
+
+  concurrentSlider.addEventListener('input', function () {
+    concurrentVal.textContent = this.value;
+    updateHint();
+  });
+
+  rpmSlider.addEventListener('input', function () {
+    rpmVal.textContent = this.value;
+    // Auto-derive delay
+    const delay = Math.round((60 / parseInt(this.value, 10)) * 10) / 10;
+    delaySlider.value = Math.min(delay, 60);
+    delayVal.textContent = delaySlider.value;
+    _rpmManual = true;
+    updateHint();
+  });
+
+  delaySlider.addEventListener('input', function () {
+    delayVal.textContent = this.value;
+    updateHint();
+  });
+
+  function showBatchFeedback(msg, type) {
+    const el = document.getElementById('batch-feedback');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.padding = '0.75rem 1rem';
+    el.style.fontWeight = '500';
+    el.style.background = type === 'success' ? '#dcfce7' : '#fee2e2';
+    el.style.color = type === 'success' ? '#166534' : '#991b1b';
+    el.style.borderColor = type === 'success' ? '#bbf7d0' : '#fecaca';
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
+
+  document.getElementById('btn-save-batch').addEventListener('click', function () {
+    const payload = {
+      max_concurrent: parseInt(concurrentSlider.value, 10),
+      requests_per_minute: parseInt(rpmSlider.value, 10),
+      inter_request_delay: parseFloat(delaySlider.value),
+    };
+    this.disabled = true;
+    this.textContent = 'Saving...';
+    fetch('/api/settings/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          showBatchFeedback('Batch settings saved.', 'success');
+        } else {
+          showBatchFeedback('Error: ' + (data.error || 'unknown'), 'error');
+        }
+      })
+      .catch(() => showBatchFeedback('Failed to save batch settings.', 'error'))
+      .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="ph ph-floppy-disk"></i> Save Batch Settings';
+      });
+  });
+
+  // Load current settings from server
+  fetch('/api/settings/batch')
+    .then(r => r.json())
+    .then(data => {
+      if (data.max_concurrent) {
+        concurrentSlider.value = data.max_concurrent;
+        concurrentVal.textContent = data.max_concurrent;
+      }
+      if (data.requests_per_minute) {
+        rpmSlider.value = data.requests_per_minute;
+        rpmVal.textContent = data.requests_per_minute;
+      }
+      if (data.inter_request_delay != null) {
+        delaySlider.value = Math.min(data.inter_request_delay, 60);
+        delayVal.textContent = delaySlider.value;
+      }
+      updateHint();
+    })
+    .catch(() => updateHint());
 })();
 </script>
 {% endblock %}

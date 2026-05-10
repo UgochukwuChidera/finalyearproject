@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Boxy & Minimalist Palette */
-  --bg-main: #ffffff;
-  --bg-secondary: #f7f9fa;
-  --bg-sidebar: #ffffff;
+  /* Boxy & Minimalist Palette – light mode (slightly off-white) */
+  --bg-main: #f6f5f2;
+  --bg-secondary: #eceae5;
+  --bg-sidebar: #f6f5f2;
   --bg-dark: #1c1d1f;
   
   --text-main: #1c1d1f;
@@ -35,6 +35,97 @@
   
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
   --transition: 0.2s ease;
+
+  /* Dark mode toggle button */
+  --dm-toggle-bg: transparent;
+  --dm-toggle-color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Dark mode – applied via data-theme="dark" on <html>
+--------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --bg-main: #1e1e1c;
+  --bg-secondary: #161614;
+  --bg-sidebar: #1e1e1c;
+  --bg-dark: #0d0d0c;
+
+  --text-main: #e8e6e1;
+  --text-muted: #8b8b85;
+  --text-dim: #5c5c58;
+  --text-inverse: #1e1e1c;
+
+  --primary: #e8e6e1;
+  --primary-hover: #ffffff;
+  --primary-alt: #cac8c3;
+
+  --border: #2e2e2a;
+  --border-strong: #4a4a46;
+
+  --success: #4ade80;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 16px rgba(0,0,0,0.5);
+
+  --dm-toggle-bg: rgba(255,255,255,0.06);
+  --dm-toggle-color: var(--text-main);
+}
+
+/* Dark mode overrides for elements with hard-coded colours */
+[data-theme="dark"] body {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23e8e6e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .drop-zone {
+  background: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .drop-zone:hover {
+  background: #1e1e1c !important;
+}
+
+[data-theme="dark"] .file-input-btn {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .toast {
+  background: #0d0d0c;
+}
+
+[data-theme="dark"] #bbox-canvas {
+  background: #000;
+}
+
+/* Dark mode theme toggle button */
+.dm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 2rem;
+  width: 100%;
+  background: var(--dm-toggle-bg);
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--dm-toggle-color);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-main);
+  text-align: left;
+}
+
+.dm-toggle:hover {
+  background: var(--bg-secondary);
+  color: var(--primary);
 }
 
 * {
@@ -75,6 +166,11 @@ h1, h2, h3, h4 {
   position: fixed;
   height: 100vh;
   z-index: 100;
+  overflow-y: auto;
+}
+
+.sidebar nav {
+  flex: 1;
 }
 
 .main-content {
@@ -101,7 +197,7 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--text-inverse);
   font-weight: 800;
   font-size: 1.2rem;
 }
@@ -221,7 +317,8 @@ textarea {
 }
 
 .drop-zone:hover {
-  background: #f1f3f4 !important;
+  background: var(--bg-secondary) !important;
+  filter: brightness(0.97);
 }
 
 /* Buttons */
@@ -278,7 +375,7 @@ button.danger {
 
 button.danger:hover {
   background: var(--danger);
-  color: white;
+  color: var(--bg-main);
 }
 
 /* Tables */
@@ -322,6 +419,7 @@ tr:hover td {
 .badge-warning { background: transparent; color: var(--warning); }
 .badge-danger { background: transparent; color: var(--danger); }
 .badge-info { background: transparent; color: var(--info); }
+.badge-muted { background: transparent; color: var(--text-muted); }
 
 /* Grid Utilities */
 .grid-2 {
@@ -353,7 +451,7 @@ tr:hover td {
   background: var(--bg-secondary);
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1d7dc;
+  background: var(--border);
   border: 2px solid var(--bg-secondary);
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -412,7 +510,7 @@ tr:hover td {
   gap: 0.5rem;
   width: 100%;
   padding: 0.75rem;
-  background: #fff;
+  background: var(--bg-main);
   border: 1px solid var(--border);
   color: var(--text-main);
   font-weight: 600;
