@@ -1,6 +1,27 @@
 {
-  "active_model": "openai/gpt-4o-mini",
+  "active_model": "google/gemini-2.0-flash-exp:free",
+  "api_key": "",
   "models": [
+    {
+      "id": "google/gemini-2.0-flash-exp:free",
+      "label": "Gemini 2.0 Flash Exp (Free)",
+      "description": "Google's next-generation free-tier model with high speed and multimodal capabilities."
+    },
+    {
+      "id": "nvidia/nemotron-nano-12b-2-vl",
+      "label": "Nemotron Nano 12B VL",
+      "description": "NVIDIA model optimized for OCR, chart reasoning, and multimodal comprehension."
+    },
+    {
+      "id": "openrouter/auto:free",
+      "label": "OpenRouter Auto (Free)",
+      "description": "Auto-selects best available free vision models (e.g. Gemini 2.5 Flash)."
+    },
+    {
+      "id": "google/gemini-2.0-flash",
+      "label": "Gemini 2.0 Flash",
+      "description": "Fast and efficient multimodal model from Google."
+    },
     {
       "id": "openai/gpt-4o-mini",
       "label": "GPT-4o Mini",

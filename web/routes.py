@@ -1,5 +1,6 @@
 import json
 import io
+import os
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -15,8 +16,16 @@ from ai_extraction.prompt_builder import build_discovery_prompt
 
 bp = Blueprint("web", __name__)
 
+# ---------------------------------------------------------------------------
+# Job Persistence & Management
+# ---------------------------------------------------------------------------
+
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
+
+
+def _root_dir() -> Path:
+    return Path(current_app.config["ROOT_DIR"])
 
 
 def _cfg_dir() -> Path:
@@ -39,17 +48,36 @@ def _logs_dir() -> Path:
     return Path(current_app.config["LOGS_DIR"])
 
 
-def _root_dir() -> Path:
-    return Path(current_app.config["ROOT_DIR"])
+def _jobs_db_path() -> Path:
+    return _logs_dir() / "jobs_db.json"
 
 
-def _list_configs() -> list[str]:
-    return sorted([p.stem for p in _cfg_dir().glob("*.json")])
+def _load_jobs_db() -> dict:
+    path = _jobs_db_path()
+    if path.exists():
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {}
+
+
+def _save_jobs_db(jobs_data: dict) -> None:
+    path = _jobs_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(jobs_data, fh, indent=2, ensure_ascii=False)
+
+
+def _init_jobs_internal():
+    global JOBS
+    if not JOBS:
+        JOBS.update(_load_jobs_db())
 
 
 def _safe_config_name(name: str) -> str:
     import re
-
     cleaned = (name or "").strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]+", cleaned):
         raise ValueError("Invalid config name")
@@ -82,68 +110,35 @@ def _allowed_ext(filename: str) -> bool:
     return ext in {".tif", ".tiff", ".png", ".jpg", ".jpeg"}
 
 
-# ---------------------------------------------------------------------------
-# Model configuration helpers
-# ---------------------------------------------------------------------------
-
-_BUILTIN_MODELS = [
-    {
-        "id": "openai/gpt-4o-mini",
-        "label": "GPT-4o Mini",
-        "description": "Recommended default — image-capable, reliable JSON extraction, and supports logprobs.",
-    },
-    {
-        "id": "openai/gpt-4o",
-        "label": "GPT-4o",
-        "description": "High-accuracy fallback with image support and logprobs.",
-    },
-    {
-        "id": "qwen/qwen3.6-27b",
-        "label": "Qwen 3.6 27B",
-        "description": "Strong multimodal option with image support and logprobs.",
-    },
-    {
-        "id": "qwen/qwen3.5-27b",
-        "label": "Qwen 3.5 27B",
-        "description": "Cost-efficient multimodal model with image support and logprobs.",
-    },
-    {
-        "id": "moonshotai/kimi-k2.6",
-        "label": "Kimi K2.6",
-        "description": "Reliable image-capable model with logprobs support.",
-    },
-    {
-        "id": "google/gemma-4-31b-it",
-        "label": "Gemma 4 31B IT",
-        "description": "Google multimodal model that supports image input and logprobs.",
-    },
-]
-
-_DEFAULT_MODELS_CONFIG: dict = {
-    "active_model": "openai/gpt-4o-mini",
-    "models": _BUILTIN_MODELS,
-}
+def _read_audit_entries(limit: int = 200) -> list[dict]:
+    audit_path = _outputs_dir() / "audit.jsonl"
+    if not audit_path.exists():
+        return []
+    items: list[dict] = []
+    with audit_path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                items.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return list(reversed(items[-limit:]))
 
 
-def _models_config_path() -> Path:
-    return _root_dir() / "models.json"
-
-
-def _load_models_config() -> dict:
-    path = _models_config_path()
-    if path.exists():
-        try:
-            with path.open("r", encoding="utf-8") as fh:
-                return json.load(fh)
-        except (json.JSONDecodeError, OSError):
-            pass
-    return dict(_DEFAULT_MODELS_CONFIG)
-
-
-def _save_models_config(data: dict) -> None:
-    path = _models_config_path()
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2, ensure_ascii=False)
+def _append_review_event(job: dict, reviewer: str, corrections: dict):
+    audit_path = _outputs_dir() / "audit.jsonl"
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    event = {
+        "job_id": job.get("job_id"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": "review_action",
+        "reviewer": reviewer,
+        "actions": corrections,
+    }
+    with audit_path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(event, ensure_ascii=False) + "\n")
 
 
 def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
@@ -168,39 +163,6 @@ def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
     app = current_app._get_current_object()
     threading.Thread(target=_job_runner, args=(app, job_id, str(path), cfg, file.filename), daemon=True).start()
     return job_id
-
-
-def _read_audit_entries(limit: int = 200) -> list[dict]:
-    audit_path = _outputs_dir() / "audit.jsonl"
-    if not audit_path.exists():
-        return []
-    items: list[dict] = []
-    with audit_path.open("r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                items.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
-    return list(reversed(items[-limit:]))
-
-
-
-
-def _append_review_event(job: dict, reviewer: str, corrections: dict):
-    audit_path = _outputs_dir() / "audit.jsonl"
-    audit_path.parent.mkdir(parents=True, exist_ok=True)
-    event = {
-        "job_id": job.get("job_id"),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "event": "review_action",
-        "reviewer": reviewer,
-        "actions": corrections,
-    }
-    with audit_path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(event, ensure_ascii=False) + "\n")
 
 
 def _job_runner(app, job_id: str, image_path: str, config_name: str, original_filename: str):
@@ -237,6 +199,7 @@ def _job_runner(app, job_id: str, image_path: str, config_name: str, original_fi
                 JOBS[job_id].update(result)
                 JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
                 JOBS[job_id]["current_message"] = "Processing complete."
+                _save_jobs_db(JOBS)
         except Exception as exc:
             import traceback
             with JOBS_LOCK:
@@ -244,13 +207,65 @@ def _job_runner(app, job_id: str, image_path: str, config_name: str, original_fi
                 JOBS[job_id]["error"] = str(exc)
                 JOBS[job_id]["traceback"] = traceback.format_exc()
                 JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+                _save_jobs_db(JOBS)
 
+
+# ---------------------------------------------------------------------------
+# Model configuration helpers
+# ---------------------------------------------------------------------------
+
+_BUILTIN_MODELS = [
+    {
+        "id": "google/gemini-pro-1.5",
+        "label": "Gemini 1.5 Pro",
+        "description": "Primary model — Google Gemini 1.5 Pro via OpenRouter (multimodal, cost-effective)",
+    },
+    {
+        "id": "openai/gpt-4o-mini",
+        "label": "GPT-4o Mini",
+        "description": "Fallback model — OpenAI GPT-4o Mini via OpenRouter (fast, low-cost)",
+    },
+    {
+        "id": "openai/gpt-4o",
+        "label": "GPT-4o",
+        "description": "Third option — OpenAI GPT-4o via OpenRouter (highest accuracy, higher cost)",
+    },
+]
+
+_DEFAULT_MODELS_CONFIG: dict = {
+    "active_model": "google/gemini-pro-1.5",
+    "api_key": "",
+    "models": _BUILTIN_MODELS,
+}
+
+
+def _models_config_path() -> Path:
+    return _root_dir() / "models.json"
+
+
+def _load_models_config() -> dict:
+    path = _models_config_path()
+    if path.exists():
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return dict(_DEFAULT_MODELS_CONFIG)
+
+
+def _save_models_config(data: dict) -> None:
+    path = _models_config_path()
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, ensure_ascii=False)
 
 @bp.route("/")
 def index():
+    _init_jobs_internal()
     with JOBS_LOCK:
         jobs = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
     return render_template("index.html", configs=_list_configs(), jobs=jobs[:10])
+
 
 
 @bp.route("/configs", methods=["GET"])
@@ -356,6 +371,7 @@ def upload():
 
 @bp.route("/jobs", methods=["GET"])
 def jobs():
+    _init_jobs_internal()
     with JOBS_LOCK:
         items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
     batch_id = (request.args.get("batch_id") or "").strip()
@@ -366,6 +382,7 @@ def jobs():
 
 @bp.route("/jobs/<id>", methods=["GET"])
 def job_detail(id: str):
+    _init_jobs_internal()
     with JOBS_LOCK:
         job = JOBS.get(id)
     if not job:
@@ -377,6 +394,7 @@ def job_detail(id: str):
 
 @bp.route("/jobs/<id>/review", methods=["GET", "POST"])
 def review(id: str):
+    _init_jobs_internal()
     with JOBS_LOCK:
         job = JOBS.get(id)
     if not job:
@@ -436,6 +454,7 @@ def api_upload_dictionary():
 
 @bp.route("/api/jobs", methods=["GET"])
 def api_jobs():
+    _init_jobs_internal()
     with JOBS_LOCK:
         items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
     return jsonify({"jobs": items})
@@ -538,12 +557,16 @@ def api_models_update():
     payload = request.get_json(silent=True) or {}
 
     active = (payload.get("active_model") or "").strip()
+    api_key = (payload.get("api_key") or "").strip()
     models = payload.get("models")
 
     cfg = _load_models_config()
 
     if active:
         cfg["active_model"] = active
+
+    if api_key is not None:
+        cfg["api_key"] = api_key
 
     if isinstance(models, list):
         cleaned = []
@@ -563,3 +586,36 @@ def api_models_update():
 
     _save_models_config(cfg)
     return jsonify({"status": "ok", "active_model": cfg.get("active_model")})
+
+
+@bp.route("/api/jobs/<id>", methods=["DELETE"])
+def api_job_delete(id: str):
+    with JOBS_LOCK:
+        if id in JOBS:
+            del JOBS[id]
+            _save_jobs_db(JOBS)
+            return jsonify({"status": "ok"})
+    return jsonify({"error": "job not found"}), 404
+
+
+@bp.route("/api/jobs/batch-delete", methods=["POST"])
+def api_jobs_batch_delete():
+    payload = request.get_json(silent=True) or {}
+    ids = payload.get("job_ids", [])
+    if not isinstance(ids, list):
+        return jsonify({"error": "job_ids must be a list"}), 400
+    
+    with JOBS_LOCK:
+        count = 0
+        for jid in ids:
+            if jid in JOBS:
+                del JOBS[jid]
+                count += 1
+        if count > 0:
+            _save_jobs_db(JOBS)
+    return jsonify({"status": "ok", "deleted_count": count})
+
+
+@bp.route("/help")
+def help_center():
+    return render_template("help.html")
