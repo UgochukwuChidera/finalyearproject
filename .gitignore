@@ -11,5 +11,6 @@ outputs/*
 !outputs/.gitkeep
 
 .env
+models.json
 
 skills/
