@@ -76,8 +76,8 @@
       </div>
       <div class="help-card">
         <i class="ph ph-check-square"></i>
-        <h4>4. Review & Export</h4>
-        <p>Fields with low confidence or validation errors are flagged for review. Once verified, data can be exported as JSON, CSV, or Excel files.</p>
+        <h4>4. Review → Finalize → Export</h4>
+        <p>Fields with low confidence or validation errors are flagged for review. Confirm and finalize the review to store verified values, then download JSON, CSV, or XLSX exports from the job view.</p>
       </div>
     </div>
   </div>
@@ -93,6 +93,9 @@
     <div style="display:flex; flex-direction:column; gap:1rem">
       <div>
         <strong>Confidence Scores:</strong> DAPE calculates a "Final Confidence" (C_final) for every field based on AI logprobs and dictionary matching.
+      </div>
+      <div>
+        <strong>Status Flow:</strong> <code>pending_review</code> means unresolved fields remain; <code>finalized</code> means review was confirmed and stored; <code>completed</code> means no manual review was required.
       </div>
       <div>
         <strong>Audit Stream:</strong> Every action and extraction is logged in the Audit Stream, providing a complete history of how your data was processed.

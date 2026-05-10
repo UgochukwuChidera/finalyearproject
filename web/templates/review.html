@@ -4,7 +4,7 @@
   <h2><i class="ph ph-eye"></i> Quality Assurance Review</h2>
   <div class="row" style="margin: 0">
     <span class="badge badge-warning">Job: {{ job.job_id[:12] }}</span>
-    <span class="badge badge-info">Status: {{ job.status }}</span>
+    <span class="badge {{ 'badge-success' if job.status in ['completed','finalized'] else 'badge-info' }}">Status: {{ job.status }}</span>
   </div>
 </div>
 
@@ -54,7 +54,11 @@
     </div>
     {% endfor %}
     
-    <div style="text-align: right; margin-top: 3rem">
+    <div class="row" style="justify-content: space-between; margin-top: 3rem; align-items: center">
+        <div style="max-width: 320px; width: 100%">
+          <label for="reviewer-name">Reviewer</label>
+          <input id="reviewer-name" type="text" placeholder="e.g. qa_officer_1" value="{{ job.review_finalized_by or 'web_user' }}" />
+        </div>
         <button type="button" class="primary" onclick="submitReview('{{ job.job_id }}')" style="padding: 1rem 3rem">
           <i class="ph ph-check-circle"></i> Finalize Batch Review
         </button>
@@ -67,6 +71,17 @@
         <i class="ph ph-checks" style="font-size: 4rem; color: var(--success); margin-bottom: 1rem; display: block"></i>
         <h3>Audit Complete</h3>
         <p class="muted">No pending fields require review for this job.</p>
+        <div class="row" style="justify-content:center; gap:0.5rem; margin-top:1rem">
+          {% if job.export_paths and job.export_paths.get('csv') %}
+          <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='csv') }}" class="secondary"><i class="ph ph-download-simple"></i> CSV</a>
+          {% endif %}
+          {% if job.export_paths and job.export_paths.get('xlsx') %}
+          <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='xlsx') }}" class="secondary"><i class="ph ph-download-simple"></i> XLSX</a>
+          {% endif %}
+          {% if job.export_paths and job.export_paths.get('json') %}
+          <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='json') }}" class="secondary"><i class="ph ph-download-simple"></i> JSON</a>
+          {% endif %}
+        </div>
         <a href="{{ url_for('web.index') }}" class="button-link secondary" style="margin-top: 1.5rem">Return to Dashboard</a>
     </div>
 </section>

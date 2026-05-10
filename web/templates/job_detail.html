@@ -6,6 +6,21 @@
         <a href="{{ url_for('web.review', id=job.job_id) }}" class="primary">
             <i class="ph ph-eye"></i> Launch Review
         </a>
+        {% if job.export_paths and job.export_paths.get('csv') %}
+        <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='csv') }}" class="secondary">
+            <i class="ph ph-download-simple"></i> CSV
+        </a>
+        {% endif %}
+        {% if job.export_paths and job.export_paths.get('xlsx') %}
+        <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='xlsx') }}" class="secondary">
+            <i class="ph ph-download-simple"></i> XLSX
+        </a>
+        {% endif %}
+        {% if job.export_paths and job.export_paths.get('json') %}
+        <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='json') }}" class="secondary">
+            <i class="ph ph-download-simple"></i> JSON
+        </a>
+        {% endif %}
     </div>
 </div>
 
@@ -13,12 +28,21 @@
   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem">
       <div>
           <h3 style="margin-bottom: 0.5rem">Job Context: <span style="color: var(--secondary)">{{ job.job_id }}</span></h3>
-          <p class="muted">Status: <span class="badge {{ 'badge-success' if job.status == 'completed' else 'badge-warning' if job.status in ['pending_review','spot_check'] else 'badge-danger' if job.status == 'failed' else 'badge-muted' if job.status == 'interrupted' else 'badge-info' }}">{{ job.status }}</span></p>
+          <p class="muted">Status: <span class="badge {{ 'badge-success' if job.status in ['completed','finalized'] else 'badge-warning' if job.status in ['pending_review','spot_check'] else 'badge-danger' if job.status == 'failed' else 'badge-muted' if job.status == 'interrupted' else 'badge-info' }}">{{ job.status }}</span></p>
           {% if job.batch_id %}
           <p class="muted">Batch: <span style="color: var(--secondary)">{{ job.batch_id }}</span></p>
           {% endif %}
+          {% if job.review_finalized %}
+          <p class="muted">Finalized by <span style="color: var(--secondary)">{{ job.review_finalized_by or 'web_user' }}</span> at <span style="color: var(--secondary)">{{ (job.review_finalized_at or '')[:19] }}</span></p>
+          {% endif %}
       </div>
   </div>
+
+  {% if not job.export_paths %}
+  <div class="card badge-warning" style="padding: 1rem; margin-bottom: 1rem">
+      <i class="ph ph-warning-circle"></i> Export files are not available for this job yet.
+  </div>
+  {% endif %}
 
   {% if job.status in ['queued', 'running'] or job.logs %}
   <section class="card" id="pipeline-progress-card" style="border: 1px solid var(--border-strong); background: var(--bg-main); padding: 1.5rem; margin-bottom: 2rem">

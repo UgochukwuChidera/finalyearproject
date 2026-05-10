@@ -495,10 +495,15 @@ function markIllegible(field){
 async function submitReview(jobId){
   const corrections={};
   document.querySelectorAll('#review-form input[type="text"]').forEach((el)=>{
+    if (el.id === 'reviewer-name') return;
     corrections[el.name]=illegibleFields[el.name]?'__ILLEGIBLE__':el.value;
   });
-  const res=await fetch(`/jobs/${jobId}/review`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({corrections})});
+  if(!confirm('Finalize this review and store verified extraction values?')) return;
+  const reviewerInput=document.getElementById('reviewer-name');
+  const reviewer=(reviewerInput&&reviewerInput.value?reviewerInput.value.trim():'web_user')||'web_user';
+  const res=await fetch(`/jobs/${jobId}/review`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({corrections, reviewer})});
   if(!res.ok){vfNotify('Failed to submit review', 'danger');return;}
+  vfNotify('Review finalized and stored', 'success');
   location.href=`/jobs/${jobId}`;
 }
 

@@ -157,6 +157,10 @@ def _append_review_event(job: dict, reviewer: str, corrections: dict):
         fh.write(json.dumps(event, ensure_ascii=False) + "\n")
 
 
+def _norm_text(value) -> str:
+    return str(value or "").strip().lower()
+
+
 def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
     ext = Path(file.filename or "").suffix.lower()
     job_id = str(uuid.uuid4())
@@ -554,10 +558,53 @@ def jobs():
     _init_jobs_internal()
     with JOBS_LOCK:
         items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
+    q = (request.args.get("q") or "").strip()
+    sort_key = (request.args.get("sort") or "created_at").strip()
+    sort_dir = (request.args.get("dir") or "desc").strip().lower()
     batch_id = (request.args.get("batch_id") or "").strip()
     if batch_id:
         items = [j for j in items if j.get("batch_id") == batch_id]
-    return render_template("jobs.html", jobs=items, selected_batch=batch_id)
+    if q:
+        qn = _norm_text(q)
+        def _matches(job: dict) -> bool:
+            pending_count = len(job.get("pending_fields", []) or [])
+            haystack = [
+                job.get("job_id"),
+                job.get("config_name"),
+                job.get("status"),
+                job.get("batch_id"),
+                job.get("created_at"),
+                job.get("updated_at"),
+                job.get("original_filename"),
+                job.get("review_finalized_by"),
+                str(pending_count),
+            ]
+            return any(qn in _norm_text(v) for v in haystack)
+        items = [j for j in items if _matches(j)]
+
+    key_funcs = {
+        "job_id": lambda j: _norm_text(j.get("job_id")),
+        "config_name": lambda j: _norm_text(j.get("config_name")),
+        "status": lambda j: _norm_text(j.get("status")),
+        "batch_id": lambda j: _norm_text(j.get("batch_id")),
+        "created_at": lambda j: _norm_text(j.get("created_at")),
+        "updated_at": lambda j: _norm_text(j.get("updated_at")),
+        "pending": lambda j: len(j.get("pending_fields", []) or []),
+    }
+    if sort_key not in key_funcs:
+        sort_key = "created_at"
+    if sort_dir not in {"asc", "desc"}:
+        sort_dir = "desc"
+    items = sorted(items, key=key_funcs[sort_key], reverse=(sort_dir == "desc"))
+
+    return render_template(
+        "jobs.html",
+        jobs=items,
+        selected_batch=batch_id,
+        q=q,
+        sort=sort_key,
+        direction=sort_dir,
+    )
 
 
 @bp.route("/jobs/<id>", methods=["GET"])
@@ -585,7 +632,7 @@ def review(id: str):
 
     payload = request.get_json(silent=True) or {}
     corrections = payload.get("corrections", {})
-    reviewer = payload.get("reviewer", "web_user")
+    reviewer = (payload.get("reviewer") or "web_user").strip() or "web_user"
 
     with JOBS_LOCK:
         fields = job.get("fields", [])
@@ -607,8 +654,18 @@ def review(id: str):
             f["needs_review"] = f["validation_status"] == "pending_review"
 
         job["pending_fields"] = [f for f in fields if f.get("needs_review")]
-        job["status"] = "completed" if not job["pending_fields"] else "pending_review"
+        if not job["pending_fields"]:
+            job["status"] = "finalized"
+            job["review_finalized"] = True
+            job["review_finalized_at"] = datetime.now(timezone.utc).isoformat()
+            job["review_finalized_by"] = reviewer
+        else:
+            job["status"] = "pending_review"
+            job["review_finalized"] = False
+            job["review_finalized_at"] = None
+            job["review_finalized_by"] = None
         job["updated_at"] = datetime.now(timezone.utc).isoformat()
+        _save_jobs_db(JOBS)
 
     _append_review_event(job, reviewer, corrections)
     return jsonify({"status": "ok", "job_id": id})
@@ -643,7 +700,69 @@ def api_jobs():
 @bp.route("/audits", methods=["GET"])
 def audits():
     entries = _read_audit_entries(limit=500)
-    return render_template("audits.html", audits=entries)
+    q = (request.args.get("q") or "").strip()
+    sort_key = (request.args.get("sort") or "timestamp").strip()
+    sort_dir = (request.args.get("dir") or "desc").strip().lower()
+
+    if q:
+        qn = _norm_text(q)
+        def _match(a: dict) -> bool:
+            pending = ((a.get("review_summary") or {}).get("pending_review_count", 0))
+            haystack = [
+                a.get("job_id"),
+                a.get("form_type"),
+                a.get("timestamp"),
+                str(pending),
+            ]
+            return any(qn in _norm_text(v) for v in haystack)
+        entries = [a for a in entries if _match(a)]
+
+    key_funcs = {
+        "job_id": lambda a: _norm_text(a.get("job_id")),
+        "form_type": lambda a: _norm_text(a.get("form_type")),
+        "timestamp": lambda a: _norm_text(a.get("timestamp")),
+        "pending": lambda a: int(((a.get("review_summary") or {}).get("pending_review_count", 0)) or 0),
+    }
+    if sort_key not in key_funcs:
+        sort_key = "timestamp"
+    if sort_dir not in {"asc", "desc"}:
+        sort_dir = "desc"
+    entries = sorted(entries, key=key_funcs[sort_key], reverse=(sort_dir == "desc"))
+
+    return render_template("audits.html", audits=entries, q=q, sort=sort_key, direction=sort_dir)
+
+
+@bp.route("/jobs/<id>/exports/<fmt>", methods=["GET"])
+def job_export_download(id: str, fmt: str):
+    _init_jobs_internal()
+    fmt = (fmt or "").strip().lower()
+    if fmt not in {"json", "csv", "xlsx"}:
+        return jsonify({"error": "unsupported export format"}), 400
+
+    with JOBS_LOCK:
+        job = JOBS.get(id)
+    if not job:
+        return jsonify({"error": "job not found"}), 404
+
+    export_path = (job.get("export_paths") or {}).get(fmt)
+    if not export_path:
+        return jsonify({"error": f"{fmt.upper()} export not available for this job"}), 404
+
+    target = Path(str(export_path))
+    if not target.is_absolute():
+        target = (_root_dir() / target).resolve()
+    else:
+        target = target.resolve()
+
+    try:
+        target.relative_to(_outputs_dir().resolve())
+    except ValueError:
+        return jsonify({"error": "invalid export path"}), 400
+
+    if not target.exists():
+        return jsonify({"error": f"{fmt.upper()} export file is missing"}), 404
+
+    return send_file(target, as_attachment=True, download_name=f"{id}.{fmt}")
 
 
 @bp.route("/api/template-preview", methods=["GET"])

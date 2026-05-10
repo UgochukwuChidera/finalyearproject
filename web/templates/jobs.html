@@ -5,29 +5,48 @@
     <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem">Neural Pipeline Queue</h1>
     <p class="muted">Real-time status of active and completed extraction jobs</p>
   </div>
-  <div class="row" style="margin: 0; gap: 0.75rem">
+  <div class="row" style="margin: 0; gap: 0.75rem; flex-wrap: wrap">
     <div class="badge badge-info" style="padding: 0.5rem 1rem">{{ jobs|length }} Total Active</div>
     {% if selected_batch %}
       <div class="badge badge-warning" style="padding: 0.5rem 1rem">Batch: {{ (selected_batch or '')[:8] }}</div>
     {% endif %}
+    <button type="button" class="danger" id="batch-delete-btn" onclick="deleteSelectedJobs()" disabled>
+      <i class="ph ph-trash"></i> Delete Selected
+    </button>
   </div>
 </div>
 
 <section class="card">
+  <form method="get" action="{{ url_for('web.jobs') }}" class="row" style="gap:0.75rem; margin-bottom:1rem; align-items:center">
+    <input type="text" name="q" value="{{ q or '' }}" placeholder="Search jobs by id, status, config, batch, reviewer, timestamp..." />
+    <input type="hidden" name="sort" value="{{ sort or 'created_at' }}" />
+    <input type="hidden" name="dir" value="{{ direction or 'desc' }}" />
+    {% if selected_batch %}
+    <input type="hidden" name="batch_id" value="{{ selected_batch }}" />
+    {% endif %}
+    <button type="submit" class="primary"><i class="ph ph-magnifying-glass"></i> Search</button>
+    <a href="{{ url_for('web.jobs', sort=sort, dir=direction, batch_id=selected_batch) }}" class="ghost"><i class="ph ph-x"></i> Clear</a>
+  </form>
+  {% set next_dir = 'asc' if direction == 'desc' else 'desc' %}
+  {% set keep_q = q or '' %}
   <table>
     <thead>
       <tr>
-        <th>Engine ID</th>
-        <th>Configuration</th>
-        <th>Status</th>
-        <th>Batch</th>
-        <th>Timestamp</th>
+        <th style="width: 32px"><input type="checkbox" id="select-all-jobs" onchange="toggleSelectAllJobs(this.checked)" /></th>
+        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='job_id', dir=next_dir if sort == 'job_id' else 'asc') }}">Engine ID</a></th>
+        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='config_name', dir=next_dir if sort == 'config_name' else 'asc') }}">Configuration</a></th>
+        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='status', dir=next_dir if sort == 'status' else 'asc') }}">Status</a></th>
+        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='batch_id', dir=next_dir if sort == 'batch_id' else 'asc') }}">Batch</a></th>
+        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='created_at', dir=next_dir if sort == 'created_at' else 'desc') }}">Timestamp</a></th>
+        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='pending', dir=next_dir if sort == 'pending' else 'desc') }}">Pending</a></th>
         <th>Manage</th>
       </tr>
     </thead>
     <tbody>
+    {% if jobs %}
     {% for j in jobs %}
       <tr style="transition: all 0.2s ease">
+        <td><input type="checkbox" class="job-select" value="{{ j.job_id }}" onchange="refreshBatchDeleteState()" /></td>
         <td>
           <div style="display: flex; align-items: center; gap: 0.75rem">
             <i class="ph ph-cpu" style="color: var(--primary); font-size: 1.25rem"></i>
@@ -36,20 +55,91 @@
         </td>
         <td><span style="font-weight: 500">{{ j.config_name }}</span></td>
         <td>
-          <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-muted' if j.status == 'interrupted' else 'badge-info' }}" style="padding: 0.35rem 0.75rem">
+          <span class="badge {{ 'badge-success' if j.status in ['completed','finalized'] else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-muted' if j.status == 'interrupted' else 'badge-info' }}" style="padding: 0.35rem 0.75rem">
             {{ j.status|upper }}
           </span>
         </td>
         <td><span class="muted" style="font-family: monospace">{{ (j.batch_id or '—')[:12] }}</span></td>
         <td><span class="muted" style="font-size: 0.85rem">{{ j.created_at[:19] }}</span></td>
+        <td><span class="badge {{ 'badge-warning' if (j.pending_fields|length) else 'badge-success' }}">{{ j.pending_fields|length if j.pending_fields else 0 }}</span></td>
         <td>
-          <a href="{{ url_for('web.job_detail', id=j.job_id) }}" class="button-link secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem">
+          <a href="{{ url_for('web.job_detail', id=j.job_id) }}" class="button-link secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem; margin-right: 0.4rem">
             <i class="ph ph-magnifying-glass"></i> Inspect
           </a>
+          <button type="button" class="danger" style="padding: 0.5rem 1rem; font-size: 0.8rem" onclick="deleteJob('{{ j.job_id }}')">
+            <i class="ph ph-trash"></i> Delete
+          </button>
         </td>
       </tr>
     {% endfor %}
+    {% else %}
+      <tr>
+        <td colspan="8" style="text-align:center; padding:2rem" class="muted">No jobs match your search/filter.</td>
+      </tr>
+    {% endif %}
     </tbody>
   </table>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function selectedJobIds() {
+    return [...document.querySelectorAll('.job-select:checked')].map(el => el.value);
+  }
+
+  function refreshBatchDeleteState() {
+    const btn = document.getElementById('batch-delete-btn');
+    if (!btn) return;
+    btn.disabled = selectedJobIds().length === 0;
+  }
+
+  function toggleSelectAllJobs(checked) {
+    document.querySelectorAll('.job-select').forEach(el => { el.checked = checked; });
+    refreshBatchDeleteState();
+  }
+
+  async function deleteJob(jobId) {
+    if (!confirm(`Delete job ${jobId.slice(0, 12)}? This removes it from the queue list.`)) return;
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        vfNotify(data.error || 'Failed to delete job', 'danger');
+        return;
+      }
+      vfNotify('Job deleted', 'success');
+      window.location.reload();
+    } catch (e) {
+      vfNotify('Network error while deleting job', 'danger');
+    }
+  }
+
+  async function deleteSelectedJobs() {
+    const ids = selectedJobIds();
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} selected job(s)? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch('/api/jobs/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_ids: ids }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        vfNotify(data.error || 'Failed batch delete', 'danger');
+        return;
+      }
+      const deleted = data.deleted_count || 0;
+      if (deleted === 0) {
+        vfNotify('No selected jobs could be deleted (already removed?)', 'info');
+      } else {
+        vfNotify(`Deleted ${deleted} job(s)`, 'success');
+      }
+      window.location.reload();
+    } catch (e) {
+      vfNotify('Network error while batch deleting jobs', 'danger');
+    }
+  }
+</script>
 {% endblock %}
