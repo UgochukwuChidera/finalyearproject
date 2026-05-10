@@ -98,6 +98,10 @@ def _load_config(name: str) -> dict:
         return json.load(fh)
 
 
+def _list_configs() -> list[str]:
+    return sorted([p.stem for p in _cfg_dir().glob("*.json")])
+
+
 def _save_config(name: str, payload: dict) -> Path:
     path = _config_path(name)
     with path.open("w", encoding="utf-8") as fh:
@@ -193,7 +197,8 @@ def _job_runner(app, job_id: str, image_path: str, config_name: str, original_fi
                 dictionaries_dir=str(_dict_dir()),
                 original_filename=original_filename,
                 job_id=job_id,
-                progress_callback=progress_cb
+                progress_callback=progress_cb,
+                api_key=_get_api_key()
             )
             with JOBS_LOCK:
                 JOBS[job_id].update(result)
@@ -216,24 +221,89 @@ def _job_runner(app, job_id: str, image_path: str, config_name: str, original_fi
 
 _BUILTIN_MODELS = [
     {
-        "id": "google/gemini-pro-1.5",
-        "label": "Gemini 1.5 Pro",
-        "description": "Primary model — Google Gemini 1.5 Pro via OpenRouter (multimodal, cost-effective)",
-    },
-    {
         "id": "openai/gpt-4o-mini",
         "label": "GPT-4o Mini",
-        "description": "Fallback model — OpenAI GPT-4o Mini via OpenRouter (fast, low-cost)",
+        "description": "Best default: fast, cheap, image-capable, reliable logprobs. Recommended for OCR pipeline use.",
+        "vision": True,
+        "logprobs": True,
+        "free_tier": False
     },
     {
-        "id": "openai/gpt-4o",
-        "label": "GPT-4o",
-        "description": "Third option — OpenAI GPT-4o via OpenRouter (highest accuracy, higher cost)",
+        "id": "google/gemini-2.0-flash-001",
+        "label": "Gemini 2.0 Flash",
+        "description": "Fast multimodal model from Google. Supports image input. Logprobs available via OpenRouter.",
+        "vision": True,
+        "logprobs": True,
+        "free_tier": False
     },
+    {
+        "id": "google/gemini-2.5-flash-preview:free",
+        "label": "Gemini 2.5 Flash (Free)",
+        "description": "Free-tier Gemini 2.5 Flash with vision support. Good for bulk OCR within free trial limits. Logprobs may be limited.",
+        "vision": True,
+        "logprobs": False,
+        "free_tier": True
+    },
+    {
+        "id": "google/gemini-2.5-flash-preview",
+        "label": "Gemini 2.5 Flash",
+        "description": "Paid tier Gemini 2.5 Flash. Faster rate limits, image support, logprobs available.",
+        "vision": True,
+        "logprobs": True,
+        "free_tier": False
+    },
+    {
+        "id": "meta-llama/llama-4-maverick:free",
+        "label": "Llama 4 Maverick (Free)",
+        "description": "Meta's Llama 4 Maverick, free tier. Multimodal with image support. Good OCR alternative within free quota.",
+        "vision": True,
+        "logprobs": False,
+        "free_tier": True
+    },
+    {
+        "id": "meta-llama/llama-4-maverick",
+        "label": "Llama 4 Maverick",
+        "description": "Paid tier Llama 4 Maverick. Image support, logprobs returned by OpenRouter.",
+        "vision": True,
+        "logprobs": True,
+        "free_tier": False
+    },
+    {
+        "id": "qwen/qwen2.5-vl-72b-instruct:free",
+        "label": "Qwen 2.5 VL 72B (Free)",
+        "description": "Alibaba's top vision-language model, free tier. Excellent at reading documents, forms, handwriting. High OCR accuracy.",
+        "vision": True,
+        "logprobs": False,
+        "free_tier": True
+    },
+    {
+        "id": "qwen/qwen2.5-vl-72b-instruct",
+        "label": "Qwen 2.5 VL 72B",
+        "description": "Paid tier. Best VLM for document OCR tasks. Supports logprobs via OpenRouter.",
+        "vision": True,
+        "logprobs": True,
+        "free_tier": False
+    },
+    {
+        "id": "qwen/qwen2.5-vl-7b-instruct:free",
+        "label": "Qwen 2.5 VL 7B (Free)",
+        "description": "Smaller, faster Qwen vision model on free tier. Good for high-volume TIFF processing within token quota.",
+        "vision": True,
+        "logprobs": False,
+        "free_tier": True
+    },
+    {
+        "id": "mistralai/mistral-small-3.1-24b-instruct:free",
+        "label": "Mistral Small 3.1 24B (Free)",
+        "description": "Mistral's multimodal model, free tier. Supports image input. Useful as a free fallback for OCR.",
+        "vision": True,
+        "logprobs": False,
+        "free_tier": True
+    }
 ]
 
 _DEFAULT_MODELS_CONFIG: dict = {
-    "active_model": "google/gemini-pro-1.5",
+    "active_model": "openai/gpt-4o-mini",
     "api_key": "",
     "models": _BUILTIN_MODELS,
 }
@@ -258,6 +328,15 @@ def _save_models_config(data: dict) -> None:
     path = _models_config_path()
     with path.open("w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2, ensure_ascii=False)
+
+
+def _get_api_key() -> str:
+    """Resolve API key: models.json -> OPENROUTER_API_KEY env -> empty string."""
+    cfg = _load_models_config()
+    key = cfg.get("api_key", "").strip()
+    if key:
+        return key
+    return os.getenv("OPENROUTER_API_KEY", "").strip()
 
 @bp.route("/")
 def index():
@@ -320,7 +399,7 @@ def config_discover():
         with open(template_path, "rb") as f:
             image_bytes = f.read()
 
-        client = GeminiClient()
+        client = GeminiClient(api_key=_get_api_key())
         prompt = build_discovery_prompt()
         result = client.extract_from_images([image_bytes], [prompt])
         

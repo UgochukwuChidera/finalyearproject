@@ -1,56 +1,56 @@
 {
-  "active_model": "google/gemini-2.0-flash-exp:free",
+  "active_model": "openai/gpt-4o-mini",
   "api_key": "",
   "models": [
     {
-      "id": "google/gemini-2.0-flash-exp:free",
-      "label": "Gemini 2.0 Flash Exp (Free)",
-      "description": "Google's next-generation free-tier model with high speed and multimodal capabilities."
-    },
-    {
-      "id": "nvidia/nemotron-nano-12b-2-vl",
-      "label": "Nemotron Nano 12B VL",
-      "description": "NVIDIA model optimized for OCR, chart reasoning, and multimodal comprehension."
-    },
-    {
-      "id": "openrouter/auto:free",
-      "label": "OpenRouter Auto (Free)",
-      "description": "Auto-selects best available free vision models (e.g. Gemini 2.5 Flash)."
-    },
-    {
-      "id": "google/gemini-2.0-flash",
-      "label": "Gemini 2.0 Flash",
-      "description": "Fast and efficient multimodal model from Google."
-    },
-    {
       "id": "openai/gpt-4o-mini",
       "label": "GPT-4o Mini",
-      "description": "Recommended default — image-capable, reliable JSON extraction, and supports logprobs."
+      "description": "Best default: fast, cheap, image-capable, reliable logprobs. Recommended for OCR pipeline use."
     },
     {
-      "id": "openai/gpt-4o",
-      "label": "GPT-4o",
-      "description": "High-accuracy fallback with image support and logprobs."
+      "id": "google/gemini-2.0-flash-001",
+      "label": "Gemini 2.0 Flash",
+      "description": "Fast multimodal model from Google. Supports image input. Logprobs available via OpenRouter."
     },
     {
-      "id": "qwen/qwen3.6-27b",
-      "label": "Qwen 3.6 27B",
-      "description": "Strong multimodal option with image support and logprobs."
+      "id": "google/gemini-2.5-flash-preview:free",
+      "label": "Gemini 2.5 Flash (Free)",
+      "description": "Free-tier Gemini 2.5 Flash with vision support. Good for bulk OCR within free trial limits. Logprobs may be limited."
     },
     {
-      "id": "qwen/qwen3.5-27b",
-      "label": "Qwen 3.5 27B",
-      "description": "Cost-efficient multimodal model with image support and logprobs."
+      "id": "google/gemini-2.5-flash-preview",
+      "label": "Gemini 2.5 Flash",
+      "description": "Paid tier Gemini 2.5 Flash. Faster rate limits, image support, logprobs available."
     },
     {
-      "id": "moonshotai/kimi-k2.6",
-      "label": "Kimi K2.6",
-      "description": "Reliable image-capable model with logprobs support."
+      "id": "meta-llama/llama-4-maverick:free",
+      "label": "Llama 4 Maverick (Free)",
+      "description": "Meta's Llama 4 Maverick, free tier. Multimodal with image support. Good OCR alternative within free quota."
     },
     {
-      "id": "google/gemma-4-31b-it",
-      "label": "Gemma 4 31B IT",
-      "description": "Google multimodal model that supports image input and logprobs."
+      "id": "meta-llama/llama-4-maverick",
+      "label": "Llama 4 Maverick",
+      "description": "Paid tier Llama 4 Maverick. Image support, logprobs returned by OpenRouter."
+    },
+    {
+      "id": "qwen/qwen2.5-vl-72b-instruct:free",
+      "label": "Qwen 2.5 VL 72B (Free)",
+      "description": "Alibaba's top vision-language model, free tier. Excellent at reading documents, forms, handwriting. High OCR accuracy."
+    },
+    {
+      "id": "qwen/qwen2.5-vl-72b-instruct",
+      "label": "Qwen 2.5 VL 72B",
+      "description": "Paid tier. Best VLM for document OCR tasks. Supports logprobs via OpenRouter."
+    },
+    {
+      "id": "qwen/qwen2.5-vl-7b-instruct:free",
+      "label": "Qwen 2.5 VL 7B (Free)",
+      "description": "Smaller, faster Qwen vision model on free tier. Good for high-volume TIFF processing within token quota."
+    },
+    {
+      "id": "mistralai/mistral-small-3.1-24b-instruct:free",
+      "label": "Mistral Small 3.1 24B (Free)",
+      "description": "Mistral's multimodal model, free tier. Supports image input. Useful as a free fallback for OCR."
     }
   ]
 }

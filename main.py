@@ -147,6 +147,7 @@ def process_form(
     original_filename: str | None = None,
     job_id: str | None = None,
     progress_callback: callable = None,
+    api_key: str | None = None,
 ) -> dict:
     def update_status(stage, message):
         if progress_callback:
@@ -259,7 +260,7 @@ def process_form(
     images = [p["image"] for p in prompt_items]
     prompts = [p["prompt"] for p in prompt_items]
 
-    client = GeminiClient()
+    client = GeminiClient(api_key=api_key)
     ai_payload = client.extract_from_images(images=images, prompts=prompts)
     ai_meta = (ai_payload.get("meta") or {}) if isinstance(ai_payload, dict) else {}
     ai_fields = ai_payload.get("fields", {}) if isinstance(ai_payload, dict) else {}

@@ -86,11 +86,28 @@ class GeminiClient:
                     return {}
             return {}
 
+    def _get_model_config(self, model_id: str) -> dict:
+        """Fetch config for a specific model from models.json."""
+        if _MODELS_JSON_PATH.exists():
+            try:
+                with _MODELS_JSON_PATH.open("r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                models = data.get("models", [])
+                for m in models:
+                    if m.get("id") == model_id:
+                        return m
+            except Exception:
+                pass
+        return {}
+
     def extract_from_images(self, images: List[bytes], prompts: List[str]) -> dict:
         if not self.client:
             return {"error": "GeminiClient not initialized. Check your OPENROUTER_API_KEY environment variable."}
         if not images:
             return {"error": "No images provided to GeminiClient."}
+
+        model_cfg = self._get_model_config(self.model)
+        supports_logprobs = model_cfg.get("logprobs", True)
 
         content = []
         for idx, image_bytes in enumerate(images):
@@ -102,15 +119,18 @@ class GeminiClient:
         last_err = None
         for attempt in range(3):
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": content}],
-                    temperature=0,
-                    max_tokens=self.max_tokens,
-                    response_format={"type": "json_object"},
-                    logprobs=True,
-                    top_logprobs=5,
-                )
+                kwargs = {
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": content}],
+                    "temperature": 0,
+                    "max_tokens": self.max_tokens,
+                    "response_format": {"type": "json_object"},
+                }
+                if supports_logprobs:
+                    kwargs["logprobs"] = True
+                    kwargs["top_logprobs"] = 5
+
+                response = self.client.chat.completions.create(**kwargs)
                 break
             except _RETRYABLE as exc:
                 last_err = exc

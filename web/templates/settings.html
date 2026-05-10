@@ -30,6 +30,23 @@
 </div>
 
 <section class="card" style="max-width: 760px">
+  <div id="settings-feedback" style="display:none; padding:1rem; margin-bottom:1.5rem; text-align:center;"></div>
+
+  <h3 style="margin-bottom: 1.5rem">API Configuration</h3>
+  
+  <div style="margin-bottom: 2rem">
+    <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">OpenRouter API Key</label>
+    <div style="display:flex; gap:0.75rem">
+      <input id="api-key-input" type="password" placeholder="sk-or-v1-..." value="{{ models_config.api_key or '' }}" style="flex:1; box-sizing:border-box" />
+      <button id="btn-save-api-key" class="primary" style="white-space:nowrap">Save Key</button>
+    </div>
+    <p class="muted" style="font-size:0.75rem; margin-top:0.35rem">
+      <i class="ph ph-info"></i> Your key is saved locally in <code>models.json</code>. If left empty, it falls back to the <code>OPENROUTER_API_KEY</code> environment variable.
+    </p>
+  </div>
+
+  <hr style="border:0; border-top:1px solid var(--border); margin:2rem 0" />
+
   <h3 style="margin-bottom: 1.5rem">Active AI Model</h3>
 
   <div id="active-model-display" style="margin-bottom: 2rem">
@@ -103,11 +120,38 @@
     const el = document.getElementById('settings-feedback');
     el.textContent = msg;
     el.style.display = 'block';
-    el.style.background = type === 'success' ? 'var(--bg-main)' : 'var(--bg-main)';
-    el.style.color = type === 'success' ? 'var(--success)' : 'var(--danger)';
-    el.style.border = '1px solid ' + (type === 'success' ? 'var(--success)' : 'var(--danger)');
+    
+    // Add visual classes for toast appearance
+    el.style.borderRadius = '6px';
+    el.style.fontWeight = '500';
+    
+    el.style.background = type === 'success' ? '#dcfce7' : '#fee2e2';
+    el.style.color = type === 'success' ? '#166534' : '#991b1b';
+    el.style.borderColor = type === 'success' ? '#bbf7d0' : '#fecaca';
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => { el.style.display = 'none'; }, 4000);
   }
+
+  document.getElementById('btn-save-api-key').onclick = function() {
+    const key = document.getElementById('api-key-input').value.trim();
+    cfg.api_key = key;
+    this.disabled = true;
+    this.textContent = 'Saving...';
+    
+    saveConfig().then(() => {
+      showFeedback('API Key updated successfully.', 'success');
+      // Visual pulse effect on the input
+      const input = document.getElementById('api-key-input');
+      input.style.borderColor = 'var(--success)';
+      setTimeout(() => { input.style.borderColor = 'var(--border)'; }, 2000);
+    }).catch(() => {
+      showFeedback('Failed to update API Key.', 'error');
+    }).finally(() => {
+      this.disabled = false;
+      this.textContent = 'Save Key';
+    });
+  };
 
   function saveConfig() {
     return fetch('/api/models', {
