@@ -2,6 +2,7 @@ import json
 import io
 import os
 import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,7 +74,18 @@ def _save_jobs_db(jobs_data: dict) -> None:
 def _init_jobs_internal():
     global JOBS
     if not JOBS:
-        JOBS.update(_load_jobs_db())
+        loaded = _load_jobs_db()
+        # Mark any jobs that were still running/queued when the server stopped
+        changed = False
+        for job in loaded.values():
+            if job.get("status") in ("running", "queued"):
+                job["status"] = "interrupted"
+                job["error"] = "Server was restarted while this job was in progress."
+                job["updated_at"] = datetime.now(timezone.utc).isoformat()
+                changed = True
+        JOBS.update(loaded)
+        if changed:
+            _save_jobs_db(JOBS)
 
 
 def _safe_config_name(name: str) -> str:
@@ -164,9 +176,39 @@ def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
+    batch_cfg = _get_batch_settings()
+    sem = _get_job_semaphore(batch_cfg["max_concurrent"])
+    inter_delay = float(batch_cfg.get("inter_request_delay", 0.5))
+
     app = current_app._get_current_object()
-    threading.Thread(target=_job_runner, args=(app, job_id, str(path), cfg, file.filename), daemon=True).start()
+    threading.Thread(
+        target=_job_runner_gated,
+        args=(app, job_id, str(path), cfg, file.filename, sem, inter_delay),
+        daemon=True,
+    ).start()
     return job_id
+
+
+def _job_runner_gated(
+    app, job_id: str, image_path: str, config_name: str, original_filename: str,
+    sem: threading.Semaphore, inter_request_delay: float
+):
+    """Wrapper that rate-limits job execution via a semaphore + inter-request delay."""
+    global _LAST_JOB_START
+    # Wait for a concurrency slot
+    sem.acquire()
+    try:
+        # Enforce minimum gap between consecutive job starts
+        if inter_request_delay > 0:
+            with _RATE_LOCK:
+                now = time.monotonic()
+                elapsed = now - _LAST_JOB_START
+                if elapsed < inter_request_delay:
+                    time.sleep(inter_request_delay - elapsed)
+                _LAST_JOB_START = time.monotonic()
+        _job_runner(app, job_id, image_path, config_name, original_filename)
+    finally:
+        sem.release()
 
 
 def _job_runner(app, job_id: str, image_path: str, config_name: str, original_filename: str):
@@ -328,6 +370,61 @@ def _save_models_config(data: dict) -> None:
     path = _models_config_path()
     with path.open("w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# Batch / Rate-limit settings
+# ---------------------------------------------------------------------------
+
+_BATCH_DEFAULTS: dict = {
+    "max_concurrent": 3,
+    "requests_per_minute": 10,
+    "inter_request_delay": 0.5,
+}
+
+
+def _get_batch_settings() -> dict:
+    cfg = _load_models_config()
+    stored = cfg.get("batch_settings") or {}
+    merged = dict(_BATCH_DEFAULTS)
+    merged.update({k: v for k, v in stored.items() if v is not None})
+    return merged
+
+
+def _save_batch_settings(data: dict) -> None:
+    cfg = _load_models_config()
+    current = cfg.get("batch_settings") or {}
+    current.update(data)
+    cfg["batch_settings"] = current
+    _save_models_config(cfg)
+
+
+# ---------------------------------------------------------------------------
+# Semaphore-based concurrency + rate-limiter
+# ---------------------------------------------------------------------------
+
+_JOB_SEM: threading.Semaphore | None = None
+_JOB_SEM_LOCK = threading.Lock()
+
+# Tracks the last time any job thread actually started work (wall clock).
+_LAST_JOB_START: float = 0.0
+_RATE_LOCK = threading.Lock()
+
+
+def _get_job_semaphore(max_concurrent: int) -> threading.Semaphore:
+    """Return (or lazily create) the global job semaphore."""
+    global _JOB_SEM
+    with _JOB_SEM_LOCK:
+        if _JOB_SEM is None:
+            _JOB_SEM = threading.Semaphore(max(1, max_concurrent))
+    return _JOB_SEM
+
+
+def _reset_job_semaphore(max_concurrent: int) -> None:
+    """Replace the global semaphore (called when settings change)."""
+    global _JOB_SEM
+    with _JOB_SEM_LOCK:
+        _JOB_SEM = threading.Semaphore(max(1, max_concurrent))
 
 
 def _get_api_key() -> str:
@@ -665,6 +762,39 @@ def api_models_update():
 
     _save_models_config(cfg)
     return jsonify({"status": "ok", "active_model": cfg.get("active_model")})
+
+
+@bp.route("/api/settings/batch", methods=["GET"])
+def api_batch_settings_get():
+    return jsonify(_get_batch_settings())
+
+
+@bp.route("/api/settings/batch", methods=["POST"])
+def api_batch_settings_update():
+    payload = request.get_json(silent=True) or {}
+    updates: dict = {}
+
+    max_concurrent = payload.get("max_concurrent")
+    if max_concurrent is not None:
+        updates["max_concurrent"] = max(1, min(int(max_concurrent), 20))
+
+    rpm = payload.get("requests_per_minute")
+    if rpm is not None:
+        updates["requests_per_minute"] = max(1, int(rpm))
+        # Auto-derive inter-request delay from RPM
+        updates["inter_request_delay"] = round(60.0 / updates["requests_per_minute"], 2)
+
+    inter_delay = payload.get("inter_request_delay")
+    if inter_delay is not None and "inter_request_delay" not in updates:
+        updates["inter_request_delay"] = max(0.0, float(inter_delay))
+
+    _save_batch_settings(updates)
+
+    # Reset the semaphore to the new concurrency level
+    new_concurrent = _get_batch_settings()["max_concurrent"]
+    _reset_job_semaphore(new_concurrent)
+
+    return jsonify({"status": "ok", "batch_settings": _get_batch_settings()})
 
 
 @bp.route("/api/jobs/<id>", methods=["DELETE"])

@@ -36,7 +36,7 @@
         </td>
         <td><span style="font-weight: 500">{{ j.config_name }}</span></td>
         <td>
-          <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-info' }}" style="padding: 0.35rem 0.75rem">
+          <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-muted' if j.status == 'interrupted' else 'badge-info' }}" style="padding: 0.35rem 0.75rem">
             {{ j.status|upper }}
           </span>
         </td>
