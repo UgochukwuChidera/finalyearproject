@@ -82,7 +82,7 @@
         <tr>
           <td><code style="color: var(--secondary)">#{{ j.job_id[:8] }}</code></td>
           <td>
-            <span class="badge {{ 'badge-success' if j.status == 'completed' else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-muted' if j.status == 'interrupted' else 'badge-info' }}">
+            <span class="badge {{ 'badge-success' if j.status in ['completed','finalized'] else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-muted' if j.status == 'interrupted' else 'badge-info' }}">
               {{ j.status }}
             </span>
           </td>
