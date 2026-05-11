@@ -57,7 +57,7 @@
     <div class="row" style="justify-content: space-between; margin-top: 3rem; align-items: center">
         <div style="max-width: 320px; width: 100%">
           <label for="reviewer-name">Reviewer</label>
-          <input id="reviewer-name" type="text" placeholder="e.g. qa_officer_1" value="{{ job.review_finalized_by or 'web_user' }}" />
+          <input id="reviewer-name" data-role="reviewer" data-default-reviewer="{{ default_reviewer }}" type="text" placeholder="e.g. qa_officer_1" value="{{ job.review_finalized_by or default_reviewer }}" />
         </div>
         <button type="button" class="primary" onclick="submitReview('{{ job.job_id }}')" style="padding: 1rem 3rem">
           <i class="ph ph-check-circle"></i> Finalize Batch Review

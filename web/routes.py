@@ -23,6 +23,7 @@ bp = Blueprint("web", __name__)
 
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
+DEFAULT_REVIEWER = "web_user"
 
 
 def _root_dir() -> Path:
@@ -628,11 +629,11 @@ def review(id: str):
         return jsonify({"error": "job not found"}), 404
 
     if request.method == "GET":
-        return render_template("review.html", job=job)
+        return render_template("review.html", job=job, default_reviewer=DEFAULT_REVIEWER)
 
     payload = request.get_json(silent=True) or {}
     corrections = payload.get("corrections", {})
-    reviewer = (payload.get("reviewer") or "web_user").strip() or "web_user"
+    reviewer = (payload.get("reviewer") or "").strip() or DEFAULT_REVIEWER
 
     with JOBS_LOCK:
         fields = job.get("fields", [])
@@ -757,6 +758,7 @@ def job_export_download(id: str, fmt: str):
     try:
         target.relative_to(_outputs_dir().resolve())
     except ValueError:
+        current_app.logger.warning("Rejected export path outside outputs for job %s: %s", id, str(target))
         return jsonify({"error": "invalid export path"}), 400
 
     if not target.exists():

@@ -29,16 +29,22 @@
   </form>
   {% set next_dir = 'asc' if direction == 'desc' else 'desc' %}
   {% set keep_q = q or '' %}
+  {% set sortable_columns = [
+    ('job_id', 'Engine ID', 'asc'),
+    ('config_name', 'Configuration', 'asc'),
+    ('status', 'Status', 'asc'),
+    ('batch_id', 'Batch', 'asc'),
+    ('created_at', 'Timestamp', 'desc'),
+    ('pending', 'Pending', 'desc')
+  ] %}
+  {% set jobs_column_count = (sortable_columns|length) + 2 %}
   <table>
     <thead>
       <tr>
         <th style="width: 32px"><input type="checkbox" id="select-all-jobs" onchange="toggleSelectAllJobs(this.checked)" /></th>
-        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='job_id', dir=next_dir if sort == 'job_id' else 'asc') }}">Engine ID</a></th>
-        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='config_name', dir=next_dir if sort == 'config_name' else 'asc') }}">Configuration</a></th>
-        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='status', dir=next_dir if sort == 'status' else 'asc') }}">Status</a></th>
-        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='batch_id', dir=next_dir if sort == 'batch_id' else 'asc') }}">Batch</a></th>
-        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='created_at', dir=next_dir if sort == 'created_at' else 'desc') }}">Timestamp</a></th>
-        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort='pending', dir=next_dir if sort == 'pending' else 'desc') }}">Pending</a></th>
+        {% for key, label, default_dir in sortable_columns %}
+        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort=key, dir=next_dir if sort == key else default_dir) }}">{{ label }}</a></th>
+        {% endfor %}
         <th>Manage</th>
       </tr>
     </thead>
@@ -74,7 +80,7 @@
     {% endfor %}
     {% else %}
       <tr>
-        <td colspan="8" style="text-align:center; padding:2rem" class="muted">No jobs match your search/filter.</td>
+        <td colspan="{{ jobs_column_count }}" style="text-align:center; padding:2rem" class="muted">No jobs match your search/filter.</td>
       </tr>
     {% endif %}
     </tbody>
