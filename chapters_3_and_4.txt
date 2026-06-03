@@ -1,0 +1,503 @@
+CHAPTER THREE
+METHODOLOGY
+
+This chapter describes the research design, modular system architecture, dataset construction, and evaluation procedures used to develop and validate the proposed Differential Analysis and Preprocessing for Extraction (DAPE) pipeline. Each functional module is introduced, defined, and explained with a focus on its role within the sequential pipeline. The chapter emphasises methodological clarity, reproducibility, and alignment with the study's defined scope and objectives.
+
+3.1 Research Design
+
+This study adopts a design science research methodology focused on the development and evaluation of a functional software artefact [CITE: V. Agrawal, 2023]. The proposed system is designed to isolate, extract, and validate user-provided inputs from scanned paper form documents using a modular sequential processing pipeline. The research follows an iterative build-evaluate-refine cycle, in which system components are implemented, tested against objective performance criteria, and refined based on observed outcomes. The principal output of the study is a validated prototype demonstrating the feasibility of the proposed approach under controlled experimental conditions.
+
+The choice of design science as the governing methodology reflects the practical orientation of the research. Rather than proposing theoretical models alone, the study is concerned with the construction and empirical evaluation of a working artefact that addresses a clearly defined processing problem [CITE: V. Agrawal, 2023]. This framing supports objective assessment of system behaviour across a range of inputs and provides a structured basis for interpreting performance results.
+
+The following research questions guide the design and evaluation:
+
+- RQ1: To what extent can differential analysis between scanned completed forms and reference templates accurately isolate user-provided input regions? This is addressed by the Differential Analysis Module (Section 3.2.3), which computes pixel-wise differences and evaluates the resulting mask quality.
+- RQ2: What levels of extraction accuracy can be achieved for printed text, handwritten text, and checkbox fields using a Vision Language Model? This is addressed by the Field Extraction Module (Section 3.2.4), which processes isolated field regions through a VLM and reports per-field confidence derived from token-level log probabilities.
+- RQ3: How effectively do the implemented multi-signal confidence mechanisms identify unreliable or incorrect extractions? This is addressed by the Confidence Scoring and Validation Module (Section 3.2.5), which combines logprob-derived confidence, dictionary matching, and semantic rule validation.
+- RQ4: What is the impact of selective human-in-the-loop correction on overall extraction reliability? This is addressed by the Human-in-the-Loop Module (Section 3.2.6) and the pre- and post-intervention comparative analysis.
+
+3.2 System Design and DAPE Pipeline Architecture
+
+The proposed system is structured as a modular, sequential processing pipeline in which scanned completed forms are treated as modified instances of known blank reference templates. This design premise, grounded in differential analysis theory, holds that user-provided inputs can be isolated by systematically comparing a filled form against its corresponding unfilled baseline, rather than attempting to interpret the completed document in isolation [CITE: Behl & Manisha, 2022; Shuvo et al., 2022].
+
+The pipeline is composed of seven functionally distinct modules: preprocessing, template alignment, differential analysis, field extraction, confidence scoring and validation, human-in-the-loop escalation, and output structuring and data export. Each module accepts well-defined inputs from the preceding stage and produces explicit outputs for the stage that follows. This strict sequential execution ensures that the system behaves deterministically from document ingestion through to validated data export. The modular structure supports independent testing of each component and future modification without disrupting the overall processing flow.
+
+Each module in the following subsections is presented using a consistent three-part framework: the module is first introduced in context of the pipeline, then formally defined in terms of its inputs and deliverables, and finally explained with a focus on how it is implemented within the system architecture.
+
+3.2.1 Preprocessing Module
+
+Introduce
+Scanned paper forms commonly exhibit distortions including rotational misalignment, uneven illumination, background noise, and contrast variability introduced during document acquisition [CITE: Mursari & Wibowo, 2021; Alaei et al., 2024]. If left unaddressed, these artefacts propagate into downstream stages and degrade the reliability of alignment and extraction. The preprocessing module therefore serves as the entry point of the pipeline, transforming raw scanned images into standardised, clean representations suitable for precise geometric registration.
+
+Define
+Input: Raw scanned form image (minimum 300 DPI, flatbed-scanned).
+Deliverable: A standardised, clean binary image with corrected orientation, uniform contrast, and all non-content border regions removed, ready for template alignment.
+
+Explain
+The module applies a fixed sequence of image processing operations. The raw image is first loaded and converted from its native colour space (BGR) to single-channel grayscale via weighted channel averaging, reducing computational complexity and standardising pixel representation. Baseline quality metrics are then computed, including Laplacian variance for blur estimation, intensity distribution statistics for contrast assessment, and non-local means denoising difference for noise quantification. These metrics are used both for downstream fusion scoring and for diagnostic logging.
+
+Skew estimation is performed using the Hough line transform on a Canny edge-detected representation of the image. Detected line orientations are collected, and the dominant skew angle is computed as a weighted blend: 80% of the median angle and 20% of the mean angle across all detected lines. This blending strategy provides robustness against outlier lines while maintaining sensitivity to genuine rotational misalignment. When the estimated skew angle exceeds a configurable minimum threshold (0.2 degrees), deskewing is applied via an affine rotation around the image centre using linear interpolation, with border pixels filled to white to avoid introducing artificial edge artefacts.
+
+Illumination normalisation addresses uneven lighting conditions that commonly arise from non-uniform scanner illumination or document curvature. The background illumination surface is estimated by applying a Gaussian blur with a kernel size scaled proportionally to the scanning DPI (e.g., 51 pixels at 300 DPI). The grayscale image is then divided by this estimated background, effectively performing flat-field correction. Contrast Limited Adaptive Histogram Equalisation (CLAHE) with a clip limit of 2.0 is subsequently applied to enhance local contrast without amplifying noise in uniform regions [CITE: Pisano et al., 1998].
+
+Adaptive Gaussian thresholding converts the normalised grayscale image into a binary representation. The threshold for each pixel is determined by the Gaussian-weighted sum of its neighbourhood, making the binarisation robust to local intensity variations. The block size for neighbourhood computation is scaled according to the scanning DPI. Border regions containing negligible content are removed by computing row and column projections of foreground pixels and cropping to the bounding rectangle where foreground density exceeds a minimum threshold (1% of the dimension size). A confidence score for the cropping operation is computed from the residual border content and the stability of the binarisation threshold.
+
+DPI-aware kernel scaling is applied throughout the preprocessing sequence. All spatial parameters—blur kernel sizes, threshold block sizes, Hough transform thresholds, and morphological kernel dimensions—are linearly scaled from their 300 DPI baseline values to match the actual scanning resolution of the input image. This scaling ensures consistent behaviour across varied scanning resolutions without manual parameter adjustment.
+
+A fusion score is computed as a weighted composite of the individual quality metrics: contrast score (22%), blur score (18%), noise score (14%), balance score (14%), illumination uniformity (10%), local contrast gain (8%), threshold stability (7%), structural confidence (7%), with a penalty term for effective skew risk (7%). This single scalar value provides a summary measure of preprocessing quality for diagnostic purposes.
+
+3.2.2 Template Alignment Module
+
+Introduce
+The scanned completed form may differ from the blank reference template in translation, rotation, and scale due to variations in scanning position, document placement, and handling. Establishing pixel-level spatial correspondence between the two images is a prerequisite for meaningful differential analysis. The template alignment module performs feature-based registration to warp the scanned form into the coordinate space of the blank template.
+
+Define
+Inputs: Preprocessed scanned form image and blank reference template image of the same form type.
+Deliverable: An aligned form image with pixel-level correspondence to the blank template, accompanied by an alignment confidence score quantifying registration quality.
+
+Explain
+The module employs feature-based image registration using Oriented FAST and Rotated BRIEF (ORB) keypoint detection. ORB is selected over alternative feature detectors such as SIFT or SURF because it is computationally efficient, royalty-free, and produces binary descriptors that can be matched using Hamming distance, which is faster than Euclidean distance comparisons [CITE: Rublee et al., 2011].
+
+ORB keypoints are detected independently on both the scanned form image and the blank template. For each keypoint, ORB computes a binary descriptor vector representing the intensity pattern around the keypoint location. Correspondences between the two keypoint sets are established using a brute-force matcher that computes the Hamming distance between every pair of descriptors. For each keypoint in the scanned image, the two nearest neighbours in the template image are identified.
+
+Unreliable matches are filtered using Lowe's ratio test, which retains only those matches where the distance to the nearest neighbour is less than 75% of the distance to the second-nearest neighbour [CITE: Lowe, 2004]. This ratio test effectively discards matches that lack a uniquely close counterpart in the template image, which typically indicates ambiguous or unreliable correspondences.
+
+A homography matrix is estimated from the surviving correspondences using the RANSAC (Random Sample Consensus) algorithm [CITE: Fischler & Bolles, 1981]. RANSAC iteratively samples random subsets of four correspondences, computes the homography for each subset, and evaluates how many remaining correspondences are consistent with that homography (the inlier count). The homography with the largest inlier support is selected as the final transformation. A reprojection threshold of 5.0 pixels defines the maximum allowable deviation for a correspondence to be considered an inlier.
+
+The scanned image is warped into the template coordinate space using the estimated homography via perspective transformation with linear interpolation. Border replication is used for pixels that map outside the original image bounds, ensuring smooth edges. A perspective transform is chosen over a simpler affine transform because it can model projective distortion introduced when scanning bound documents (e.g., books or stapled forms) where the page surface is not perfectly flat.
+
+Alignment confidence is quantified as the ratio of RANSAC inlier correspondences to the total number of candidate matches after Lowe's ratio test. A confidence value of 1.0 indicates perfect consensus among all surviving matches, while lower values indicate increasing levels of geometric inconsistency.
+
+3.2.3 Differential Analysis Module
+
+Introduce
+With the completed form geometrically registered to the template, user-provided input must be isolated from the static printed document structure. The differential analysis module implements the core theoretical premise of the DAPE pipeline: that user responses constitute deliberate visual modifications to an otherwise invariant document layout [CITE: Behl & Manisha, 2022; Shuvo et al., 2022]. Rather than attempting full document interpretation, the system identifies where the completed form differs from its blank counterpart.
+
+Define
+Inputs: Aligned completed form image and blank reference template in pixel-level correspondence.
+Deliverable: A binary interaction mask identifying pixel locations where user-provided content is present, with noise regions filtered out.
+
+Explain
+The module computes the absolute pixel-wise difference between the aligned form and the template. Each pixel position where the intensity difference exceeds a configurable threshold (calibrated at 30 intensity units on a 0–255 scale) is classified as a candidate interaction pixel. This threshold is set to be sensitive enough to capture light-pen handwriting strokes while rejecting scanner noise and minor intensity variations.
+
+The raw binary difference map is processed through a sequence of morphological operations. Opening (erosion followed by dilation) with a 3×3 rectangular structural element removes isolated noise pixels and thin artefacts resulting from slight misalignment. Closing (dilation followed by erosion) with a 5×5 structural element fills small gaps within handwriting strokes, producing contiguous ink regions. A subsequent dilation with a 7×7 structural element expands the detected regions to ensure complete ink capture, particularly at stroke boundaries where the intensity difference may be sub-threshold.
+
+Connected component analysis is performed on the cleaned difference map. Each contiguous group of foreground pixels is identified, and its area is computed. Components with an area below a DPI-scaled minimum threshold (50 square pixels at 300 DPI) are discarded as noise. The surviving components collectively form the final binary interaction mask.
+
+The module also produces metadata including the number of detected interaction regions and the deviation ratio (the proportion of image pixels classified as interaction regions), which can be used for downstream diagnostic purposes.
+
+3.2.4 Field Extraction Module
+
+Introduce
+The field extraction module is responsible for interpreting the content of each user-provided input region identified by the differential analysis mask. Rather than employing traditional optical character recognition (OCR) engines, the module uses a Vision Language Model (VLM) accessed through a cloud API service to convert visual ink patterns into structured textual data. This approach is chosen because VLMs, trained on vast multimodal corpora, can recognise both printed and handwritten text without task-specific fine-tuning, and can interpret field context holistically.
+
+Define
+Inputs: Binary interaction mask, aligned form image, and predefined field coordinate definitions for the specific form template.
+Deliverable: Raw extracted field data comprising text strings for text-based fields and boolean states for checkbox fields, each with a per-field confidence score derived from token-level log probabilities.
+
+Explain
+Field extraction proceeds through two parallel pathways depending on field type: a VLM-based pathway for text fields and a pixel-density pathway for checkbox fields.
+
+For text-based fields, the system prepares a multimodal prompt payload. The full aligned form image is included to provide global document context. For each critical field (fields containing sensitive or primary data such as names, identification numbers, and medical information), an ink-only crop is generated: the field region is extracted from the aligned form and masked using the interaction mask so that only detected ink pixels are visible against a white background. This ink-only presentation eliminates visual noise from the printed template structure and focuses the VLM's attention on the handwritten content alone.
+
+The multimodal prompt instructs the model to extract the requested field values and return them in structured JSON format with a defined schema. The prompt explicitly requests per-field confidence values reflecting the model's certainty about each extraction. Non-critical fields are listed in a separate prompt image pair to guide the model's attention without requiring individual crops.
+
+The VLM is accessed via the OpenAI SDK through OpenRouter, which provides a unified interface to multiple state-of-the-art multimodal models. The request enforces JSON response format and uses a temperature of 0 to ensure deterministic, reproducible outputs. Up to three automatic retries with exponential backoff are performed for transient failures including timeouts, rate limits, and server errors.
+
+The model response is parsed and normalised into the pipeline's internal field-value representation. The response may arrive in various structural shapes (list-of-dictionaries, flat dictionary, nested under alternate key names), and the normalisation logic handles these variations to produce a consistent output shape: `{"fields": {"field_name": value, ...}, "meta": {...}}`.
+
+For checkbox fields, extraction is performed using pixel-density analysis rather than VLM inference. The interaction mask within the checkbox bounding box is analysed to determine the proportion of ink pixels. A checkbox is classified as marked if the ink density exceeds a threshold of 0.15 (15% of pixels), and unmarked if the density falls below a threshold of 0.04 (4% of pixels). Values between the two thresholds are classified by comparison to the midpoint, with reduced confidence. This approach is computationally efficient for binary state detection where the differential mask already provides reliable ink localisation.
+
+Per-field confidence scores for VLM-extracted fields are derived from the token-level log probabilities (logprobs) returned by the model in its response. When the model generates each output token, it assigns a probability to each possible next token; the logprobs represent the natural logarithm of these probabilities. By mapping the generated output tokens back to specific field values in the response, the system computes a field-specific confidence score that reflects how certain the model was when generating that particular extraction. This mechanism is mathematically grounded in the softmax function, as detailed in Section 3.3.
+
+In cases where token-level logprobs are unavailable (the model or API configuration does not return them), the system falls back to the model's self-reported per-field confidence values if provided, or to a global average confidence derived from overall response logprobs, or finally to a default fallback value.
+
+3.2.5 Confidence Scoring and Validation Module
+
+Introduce
+Raw extracted field values, even when accompanied by VLM-derived confidence scores, may contain errors that the extraction process itself cannot detect. The confidence scoring and validation module refines the initial confidence by incorporating additional signals: dictionary-based matching for fields with known valid values, and semantic validation rules defined in the form template configuration. This multi-signal approach provides a more reliable basis for deciding whether a field can be auto-accepted or requires human review.
+
+Define
+Input: Raw extracted field data with initial VLM-derived confidence scores (C_lp).
+Deliverable: Each field labelled as accepted, spot-check, or pending review, with refined confidence scores (C_final), dictionary match results, and semantic validation outcomes.
+
+Explain
+The module operates in three stages: dictionary matching, confidence fusion, and semantic validation.
+
+For dictionary matching, fields configured with a dictionary reference are compared against a set of known valid entries loaded from a CSV file. The comparison uses normalised Levenshtein distance, which measures the minimum number of single-character insertions, deletions, or substitutions required to transform the extracted string into each dictionary entry [CITE: Levenshtein, 1966]. The closest-matching dictionary entry is identified, and a dictionary confidence score C_dict is computed as:
+
+C_dict = max(0.0, 1.0 - distance / max(len(extracted), len(matched), 1))
+
+This formulation yields a value of 1.0 for an exact match and decreases proportionally with edit distance. For non-critical fields where dictionary matching is not applicable, C_dict is set to 0.
+
+Confidence fusion combines the VLM-derived confidence C_lp and the dictionary matching confidence C_dict into a single final confidence score C_final. The fusion uses configurable per-field-type weights:
+
+C_final = (w_lp x C_lp + w_dict x C_dict) / (w_lp + w_dict)
+
+where w_lp and w_dict are the weight coefficients for logprob and dictionary confidence respectively. Normalising by the sum of active weights ensures that fields using only one confidence component (e.g., non-critical fields with w_dict = 0) score the full value of that component rather than being penalised for the missing weight. The default configuration uses w_lp = 0.6 and w_dict = 0.4 for critical fields; for non-critical fields, w_dict is set to 0 and only C_lp contributes.
+
+Decision thresholds determine the field status. A field is auto-accepted if C_final >= 0.85. It is marked for spot-check if 0.70 <= C_final < 0.85. It is marked as pending review if C_final < 0.70.
+
+Semantic validation applies additional rule-based checks defined per field in the template configuration. Supported rules include minimum text length, regular expression pattern constraints, and numeric range limits (both minimum and maximum). Fields that fail any semantic validation rule are automatically promoted to pending review regardless of their confidence score, ensuring that structurally invalid extractions are always escalated for human attention.
+
+The mathematical foundation of the confidence scores, including the softmax function from which logprobs are derived, is presented separately in Section 3.3.
+
+3.2.6 Human-in-the-Loop Module
+
+Introduce
+Fully automated extraction systems inevitably encounter cases where confidence is insufficient for auto-acceptance. Rather than accepting reduced accuracy or requiring human review of all fields, the human-in-the-loop (HITL) module selectively escalates only those fields that fall below confidence thresholds or fail validation, concentrating human effort on uncertain cases [CITE: Mosqueira-Rey et al., 2023; Wu et al., 2022].
+
+Define
+Input: Fields flagged as pending review or spot-check with their extracted values, confidence scores, and source image crops.
+Deliverable: Complete validated field set with auto-accepted and human-corrected values merged, and correction records added to the audit log.
+
+Explain
+Flagged fields are presented to a human operator through a web-based review interface served by a lightweight Flask application running on the local machine. For each flagged field, the interface displays:
+- The field identifier and type
+- The extracted value
+- The current confidence score and validation status (colour-coded: yellow for low confidence, red for semantic failure, blue for corrected)
+- A visual confidence indicator (percentage)
+- The validation reason (e.g., "min_length<3", "regex_mismatch", "low_confidence")
+- A text input field (or checkbox for boolean fields) where the operator can enter a corrected value
+
+The operator reviews each flagged field and may: accept the extracted value as-is, provide a corrected value, or mark the field as illegible. Upon submission, the corrections are applied to the field set: corrected fields have their final_value updated, their status changed to "corrected", and their needs_review flag cleared. The reviewer's identity and the correction timestamp are captured for audit tracing.
+
+The review interface is designed to be non-blocking at the pipeline level. The pipeline completes execution, writes all outputs, and the review session can be conducted asynchronously. The audit log records both the original extracted value and the corrected value, enabling pre- and post-correction accuracy analysis.
+
+3.2.7 Output Structuring and Export Module
+
+Introduce
+The final stage of the pipeline transforms the validated field set into structured, portable data formats suitable for downstream analysis, archival, and integration with external systems. The module also maintains a comprehensive audit trail documenting every extraction decision and correction.
+
+Define
+Input: Complete validated field set with all confidence scores, validation statuses, and corrections applied.
+Deliverable: JSON, CSV, and multi-sheet XLSX output files, plus a per-job audit log and an append-only audit stream.
+
+Explain
+The output structuring process maps validated field values to predefined semantic keys defined in the form configuration. For example, a field extracted from a bounding box labelled "full_name" in the config is mapped to the semantic key "full_name" in the output schema. The structured output includes the form identifier, template identifier, processing timestamp, a data dictionary of field-name-to-final-value mappings, the full detailed field records with all metadata, and processing statistics.
+
+Three export formats are generated. The JSON export preserves the full structured output with all metadata, suitable for programmatic consumption. The CSV export provides a flat key-value representation with field-value pairs, suitable for spreadsheet import and basic analysis. The XLSX export produces a multi-sheet relational workbook designed for data analysts: a RECORDS sheet with one row per processed form containing all scalar fields; a COURSES sheet with one row per course registration entry linked by foreign key to the RECORDS sheet; and a VALIDATION_LOG sheet with one row per field per form showing extraction confidence scores, validation status, and correction information. The XLSX output uses colour-coded cells (green for accepted, yellow for flagged, blue for corrected, red for rejected) to enable rapid visual assessment of extraction quality.
+
+The audit logging subsystem writes two outputs for each job: a per-job JSON log file containing the full processing record including all confidence scores, validation outcomes, and export paths; and an entry appended to a line-delimited JSONL stream (outputs/audit.jsonl) that provides a continuously growing audit trail across all processed jobs. Each audit entry records the job identifier, timestamp, form type, original filename, per-field extraction details (field name, raw value, C_lp, C_dict, C_final, status, final value, reviewer, correction), and a review summary including counts of accepted, spot-checked, and pending fields.
+
+3.3 Mathematical Foundation of Confidence Scoring
+
+The confidence scoring mechanism at the heart of the DAPE pipeline depends on several interconnected mathematical concepts: the softmax function, log probabilities, and their composition into per-field confidence estimates. This section presents the formal mathematical basis for each component.
+
+3.3.1 The Softmax Function
+
+When a VLM generates output text, the final layer of the neural network produces a vector of raw scores (logits) z = [z_1, z_2, ..., z_n] for each possible token in the model's vocabulary. These logits are unbounded real numbers. The softmax function transforms this vector into a probability distribution over the vocabulary:
+
+sigma(z_i) = e^{z_i} / sum_{j=1}^{n} e^{z_j}   for i = 1, ..., n
+
+where sigma(z_i) represents the probability assigned to token i, and n is the vocabulary size (typically tens of thousands of tokens). The softmax function has the following properties:
+- Each output value lies in the interval (0, 1).
+- The sum of all output values equals 1, forming a valid probability distribution.
+- The transformation is monotonic: a higher logit z_i produces a higher probability sigma(z_i).
+
+The denominator sum_{j=1}^{n} e^{z_j} provides normalisation across the entire vocabulary, ensuring that token probabilities compete against all possible alternatives. This competition is the mechanism by which the model expresses relative certainty: when the model is confident about the next token, the winning token's probability approaches 1 and all other probabilities approach 0.
+
+3.3.2 Log Probabilities (Logprobs)
+
+Log probabilities are the natural logarithm of the softmax probabilities:
+
+logprob_i = ln(sigma(z_i))
+
+Taking the logarithm of probabilities serves several purposes. First, it maps the probability range (0, 1] to the range (-infinity, 0], where values closer to zero indicate higher confidence and values approaching negative infinity indicate very low confidence. Second, log probabilities are additive rather than multiplicative when computing joint probabilities across multiple tokens, which is numerically more stable for very small probabilities.
+
+For a generated sequence of T tokens t_1, t_2, ..., t_T, each token t_k has an associated log probability lp_k = ln(P(t_k | context, t_1, ..., t_{k-1})), representing the log probability of that token given all preceding tokens and the input context.
+
+3.3.3 From Logprobs to Confidence (C_lp)
+
+The VLM returns per-token log probabilities in its API response. These log probabilities are always negative (or zero for complete certainty). To convert a set of log probabilities into a usable confidence score bounded in [0, 1], the following transformation is applied:
+
+Given a set of m token log probabilities lp_1, lp_2, ..., lp_m that correspond to the generated tokens for a specific field value, the average log probability is:
+
+avg_lp = (1/m) * sum_{k=1}^{m} lp_k
+
+The average log probability is then transformed via exponentiation:
+
+C_raw = e^{avg_lp} = exp((1/m) * sum_{k=1}^{m} ln(P(t_k)))
+
+This is equivalent to the geometric mean of the per-token probabilities. The geometric mean represents the "typical" probability per token and is more appropriate than the arithmetic mean when dealing with multiplicative quantities.
+
+The final VLM-derived confidence C_lp is obtained by clamping to [0, 1]:
+
+C_lp = max(0.0, min(1.0, C_raw))
+
+In the actual implementation, the per-field log probabilities are extracted by locating the generated value string within the raw JSON response and selecting the log probabilities of all tokens whose character offsets overlap with the value string. This gives a field-specific confidence that reflects the model's certainty when generating that particular field value.
+
+When logprobs are entirely unavailable (the selected model does not support logprob output, or the API configuration does not request them), the system uses default fallback values (0.65 for fields without logprobs, 0.70 for fields where logprobs were expected but mapping failed) with appropriate diagnostic warnings logged.
+
+3.3.4 The Levenshtein Distance for C_dict
+
+The Levenshtein distance lev(a, b) between two strings a and b is the minimum number of single-character edits (insertions, deletions, or substitutions) required to transform a into b [CITE: Levenshtein, 1966]. It is computed using dynamic programming:
+
+Let D[i][j] be the edit distance between the first i characters of a and the first j characters of b. The recurrence is:
+
+D[0][j] = j  (j insertions to build b from empty)
+D[i][0] = i  (i deletions to reduce a to empty)
+D[i][j] = min(
+    D[i-1][j] + 1,        deletion
+    D[i][j-1] + 1,        insertion
+    D[i-1][j-1] + cost    substitution (cost = 0 if a[i] == b[j], else 1)
+)   for i, j >= 1
+
+This distance is then converted to a dictionary confidence score:
+
+C_dict = max(0.0, 1.0 - lev(a, b) / max(len(a), len(b), 1))
+
+where a is the extracted text and b is the closest-matching dictionary entry. The denominator normalises the distance by the length of the longer string, making the score comparable across fields of different lengths. An exact match yields C_dict = 1.0; a string requiring edits equal to its full length yields C_dict = 0.0.
+
+3.3.5 Combined Confidence (C_final)
+
+The final confidence score combines C_lp (VLM-derived) and C_dict (dictionary-derived) using a weighted average:
+
+C_final = (w_lp x C_lp + w_dict x C_dict) / (w_lp + w_dict)
+
+The normalisation by the sum of active weights ensures consistent scaling when one weight is zero (as for non-critical fields where w_dict = 0). This is distinct from a simple weighted average where dividing by the sum of all possible weights would incorrectly penalise fields that cannot benefit from dictionary matching.
+
+The resulting C_final is bounded in [0, 1] and represents the system's overall confidence that the extracted field value is correct. It serves as the primary input to the decision threshold logic described in Section 3.2.5.
+
+3.4 Dataset Construction
+
+A custom dataset was constructed to enable controlled evaluation. Blank templates of three standardised form types were printed on white paper using a laser printer: a medical screening questionnaire, a leave application form, and a student academic record form. Each blank template was manually completed 15 times using different handwriting styles and marking patterns to represent realistic input variation. Completed forms were scanned at 300 DPI using a flatbed scanner. The final dataset comprised 45 completed forms with 15 instances per form type. Ground truth data files recording the correct value for every field were manually created for each completed form.
+
+3.5 Evaluation Metrics
+
+System performance is assessed by comparing extracted outputs against ground truth values on a field-by-field basis. Field-level accuracy is computed as the proportion of correctly extracted fields, reported overall and per field type. Checkbox precision and recall are reported as binary classification metrics. The escalation rate measures the proportion of fields flagged for human review, while the auto-accept rate indicates the level of automation achieved. Correction impact measures the change in accuracy resulting from human intervention. Average processing time per form is measured to assess pipeline efficiency. Pre-correction and post-correction accuracy are reported separately to isolate the contribution of human-in-the-loop intervention [CITE: Vercruysse et al., 2025; Wu et al., 2022].
+
+3.6 Summary
+
+This chapter has presented the methodological framework underpinning the DAPE pipeline. The system is designed as a seven-module sequential pipeline: preprocessing, template alignment, differential analysis, VLM-based field extraction with checkbox density detection, multi-signal confidence scoring combining logprob and dictionary matching with semantic validation, selective human escalation via a web review interface, and structured data export with comprehensive audit logging. The mathematical foundation of the confidence scoring mechanism, based on the softmax function, log probabilities, and Levenshtein distance, has been formally presented. Dataset construction and evaluation metrics have been defined to support systematic performance assessment. Chapter 4 describes the concrete implementation of each module and the technical decisions made during development.
+
+
+CHAPTER FOUR
+IMPLEMENTATION AND DISCUSSION
+
+This chapter describes the concrete implementation of each DAPE pipeline module, the specific tools and libraries used, the hardware environment in which the system was developed and tested, and the key technical decisions made during development. The presentation follows the modular structure established in Chapter 3.
+
+4.1 Development Environment
+
+The system was developed and tested on a single machine running Microsoft Windows 11 Pro version 21H2 (Build 22000). The hardware configuration comprised an Intel Core i5-8350U processor operating at a base frequency of 1.90 GHz with turbo boost capability. The processor contains one socket with four physical cores and eight logical processors (hyper-threaded). The system had 8 GB of DDR4 RAM operating at 2133 MHz transfer speed. All processing was performed on CPU; no GPU acceleration was used, and the VLM extraction stage depends on network access to the OpenRouter API rather than local computational resources.
+
+4.2 Technology Stack
+
+The pipeline is implemented in Python 3.10+ using the following primary libraries:
+
+- OpenCV (cv2) for all image processing operations: loading, colour conversion, filtering, thresholding, feature detection, geometric transformations, and morphological operations [CITE: Bradski, 2000].
+- NumPy for numerical array operations and statistical computations.
+- OpenAI Python SDK for VLM access via the OpenRouter API, which provides a unified interface to multiple multimodal models.
+- Flask for the web-based review interface and the main web application.
+- openpyxl for generating multi-sheet XLSX output workbooks with styled cells.
+- python-Levenshtein for optimised string edit distance computation.
+- Pillow (PIL) for supplementary image format support.
+- python-dotenv for environment variable management.
+
+The complete dependency list is maintained in requirements.txt at the project root. The VLM model used by default is openai/gpt-4o-mini accessed through the OpenRouter API gateway at https://openrouter.ai/api/v1.
+
+4.3 Preprocessing Implementation
+
+The preprocessing module is implemented across ten source files in the project/preprocessing/ directory, each responsible for a specific stage of the process.
+
+io.py (line 1-8): Images are loaded using cv2.imread with the IMREAD_UNCHANGED flag, which preserves the original bit depth and alpha channel if present. The function returns the image array along with its height, width, and aspect ratio metadata.
+
+grayscale.py (line 1-6): Colour images are converted to grayscale using cv2.cvtColor with COLOR_BGR2GRAY, which applies the standard luminosity weighting: Y = 0.299*R + 0.587*G + 0.114*B.
+
+baseline_metrics.py (line 1-21): Ten quality indicators are computed. Blur is assessed via the variance of the Laplacian (cv2.Laplacian followed by cv2.meanStdDev). Noise is quantified using non-local means denoising (cv2.fastNlMeansDenoising) and computing the mean absolute difference between the original and denoised images. Contrast and balance scores are derived from intensity range and near-white/near-black pixel ratios.
+
+skew_analysis.py (line 1-19): Skew estimation uses cv2.HoughLines on a Canny edge-detected binary image. The function obtains the Hough lines parameterised in polar coordinates (rho, theta). Line angles in degrees are computed as (theta - pi/2) * 180/pi, and the dominant skew angle is blended from 80% median and 20% mean of the top 30 detected lines. Confidence and acceptability scores are derived from the angular dispersion.
+
+illumination.py (line 1-12): Background estimation uses cv2.GaussianBlur with a kernel size scaled from 51 at 300 DPI. Flat-field correction is performed by cv2.divide(gray, bg+1, scale=255), where the +1 prevents division by zero. CLAHE (cv2.createCLAHE) with clip limit 2.0 and a tile grid size of 8x8 (DPI-scaled) enhances local contrast.
+
+binarization.py (line 1-16): Adaptive thresholding uses cv2.adaptiveThreshold with ADAPTIVE_THRESH_GAUSSIAN_C, where the threshold is the Gaussian-weighted sum of the block neighbourhood minus a constant C=10. The block size is DPI-scaled from a baseline of 31. Threshold stability is measured as the negative variance of foreground ratios across a 4x4 grid of sub-regions.
+
+border_removal.py (line 1-16): Content-based cropping computes row and column sums of foreground pixels and finds the bounding rectangle where each sum exceeds 1% of the corresponding dimension. Cropping confidence is a weighted combination of edge content and binarisation threshold stability.
+
+dpi.py (line 1-26): The kernel_sizes function scales all spatial parameters linearly with DPI. For odd-sized kernels, rounding ensures odd parity (required for Gaussian blur and morphological operations). The scale factor r = dpi / 300 is applied uniformly.
+
+structure_prep.py (line 1-11): Pre-alignment structural confidence is computed from the aspect ratio match between the preprocessed image and the template, combined with the number of ORB features detectable on the binary image.
+
+fusion.py (line 1-9): The final fusion score is a weighted linear combination of eight quality metrics with empirically determined weights, reduced by the effective skew risk. The result is clamped to [0, 1].
+
+4.4 Template Alignment Implementation
+
+The TemplateAligner class is implemented in project/alignment/aligner.py (line 1-35). Key parameter choices:
+- max_features=1000: The maximum number of ORB keypoints to detect on each image. This value is DPI-scaled.
+- match_ratio=0.75: Lowe's ratio test threshold. A match is accepted only if its distance is less than 75% of the second-best match's distance.
+- RANSAC reprojection threshold=5.0: The maximum pixel distance for a correspondence to be considered consistent with the estimated homography.
+
+ORB keypoints are detected using cv2.ORB_create(nfeatures=max_features). Descriptors are matched with cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False) and the knnMatch method returning the top 2 neighbours for each query descriptor. The homography is estimated with cv2.findHomography using cv2.RANSAC. The perspective warp is applied via cv2.warpPerspective with INTER_LINEAR interpolation and BORDER_REPLICATE.
+
+Alignment confidence is computed as the inlier ratio: inliers / max(good_matches, 1), clamped to [0, 1]. A minimum of 4 good matches is required; otherwise, the identity matrix is returned with zero confidence.
+
+4.5 Differential Analysis Implementation
+
+The DifferentialAnalyzer class is implemented in project/differential/analyzer.py (line 1-25). The processing sequence:
+1. cv2.absdiff(aligned_form, template) computes the absolute pixel-wise difference.
+2. cv2.threshold(diff, diff_threshold, 255, THRESH_BINARY) binarises the difference at 30 intensity units.
+3. Opening with a 3×3 rectangular kernel removes isolated noise.
+4. Closing with a 5×5 kernel fills gaps within handwriting strokes.
+5. Dilation with a 7×7 kernel (2 iterations) expands ink regions.
+6. cv2.findContours with RETR_EXTERNAL extracts region contours.
+7. Contours with area below min_region_area (DPI-scaled from 50 at 300 DPI) are discarded.
+8. Valid contours are drawn filled onto a zero mask to produce the final interaction mask.
+
+4.6 Field Extraction Implementation
+
+Field extraction is implemented through two collaborating components: the VLM client (ai_extraction/gemini_client.py) and the prompt builder (ai_extraction/prompt_builder.py).
+
+gemini_client.py (line 1-402): The GeminiClient class wraps the OpenAI SDK configured with OpenRouter base URL. The extract_from_images method constructs a multimodal message containing interleaved text prompts and PNG-encoded images (converted via cv2.imencode and base64 encoding). The request uses temperature=0 for deterministic output, enforces JSON response format via response_format={"type": "json_object"}, and requests logprobs with top_logprobs=5 when the active model supports them.
+
+Response normalisation handles four structural variations: direct field dict, fields nested under alternate wrapper keys ("extractions", "data", "result", "output"), list-of-dicts format (normalised to dict keyed by field name), or flat payload treated as the fields dict. Three retry attempts with exponential backoff (1s, 2s, 4s) handle transient API failures.
+
+Logprob extraction maps generated tokens back to specific field values in the response JSON. Token character offsets are tracked, and the log probabilities of tokens overlapping each field value's text range are collected. The average log probability is converted to a confidence score using the exponential transform described in Section 3.3.3.
+
+prompt_builder.py (line 1-68): The build_multi_image_prompt function creates a list of prompt-image pairs. The first pair presents the full aligned form with extraction instructions. Optional non-critical field listing prompts guide model attention. For each critical field, an ink-only crop is presented with a targeted transcription instruction.
+
+4.7 Confidence Scoring Implementation
+
+Confidence scoring is implemented in ai_extraction/confidence.py (line 1-60) and integrated in the main pipeline at main.py lines 295-387.
+
+C_lp computation (compute_C_lp, confidence.py line 26-45): Accepts logprob values as a single number or an iterable. For iterables, computes the arithmetic mean of the log probabilities, then exponentiates via math.exp(avg) and clamps to [0, 1]. For scalar values, if the value is negative (indicating a true logprob), it is exponentiated; otherwise it is treated as a raw probability and used directly. A fallback value of 0.5 is returned when logprobs are None.
+
+Levenshtein distance (levenshtein_distance, confidence.py line 4-23): Implements the standard dynamic programming algorithm using a two-row optimisation (O(min(m,n)) space). Strings are lowercased before comparison for case-insensitive matching.
+
+C_dict computation (compute_C_dict, dictionary_matcher.py line 50-54): Applies the formula C_dict = max(0.0, 1.0 - distance / max(len(a), len(b), 1)) using the matched dictionary entry and its edit distance.
+
+C_final computation (compute_C_final, confidence.py line 48-56): Implements the weighted combination with normalisation: (w_lp * C_lp + w_dict * C_dict) / (w_lp + w_dict). When the total weight is zero, returns 0.5 as a neutral default.
+
+Decision threshold logic (main.py lines 329-338): C_final is compared against configurable thresholds (default auto_accept=0.85, review=0.70). Semantic validation failures (checked via _validation_ok, main.py lines 102-126) override the confidence-based status and force pending_review. Supported semantic rules include min_length, regex pattern matching, and numeric min/max bounds.
+
+4.8 Human-in-the-Loop Implementation
+
+The HITL review interface is implemented in project/hitl/interface.py (line 1-163). The HITLInterface class creates a Flask application that serves a single-page review form. Pending fields are passed to the interface, which renders them as review cards showing the field identifier, extracted value, confidence badge (colour-coded), validation reason, and a text input for corrections.
+
+The review server runs in a background daemon thread and listens on 127.0.0.1:5050. The pipeline prints the review URL to the console and waits for the human operator to submit corrections. Corrections are received via a POST /submit endpoint and applied using HITLEscalation.apply_bulk_corrections (hitl/escalation.py line 17-20), which updates the final_value and corrected flag for each field.
+
+4.9 Output Export Implementation
+
+Output export is handled by three cooperating classes.
+
+OutputStructurer (project/output/structurer.py line 1-17): Maps validated fields to a predefined output schema, excluding excluded fields (e.g., student_signature). Produces a structured dictionary with form metadata, data mappings, and full field records.
+
+DataExporter (project/output/exporter.py line 1-27): Writes JSON via json.dump with indent=2 for readability. Writes CSV with a simple key-value format; the first row contains field-value pairs after metadata headers.
+
+RelationalXLSXExporter (project/output/relational_exporter.py line 1-268): Creates a multi-sheet Excel workbook. The RECORDS sheet contains one row per form with scalar fields (full_name, matric_number, department, etc.). The COURSES sheet normalises repeated course registration data into one row per course per form, linked by form_id foreign key. The VALIDATION_LOG sheet records every field extraction outcome with colour-coded status cells. Workbook styling uses openpyxl with a dark header theme, conditional row colouring, and frozen header panes.
+
+AuditLogger (project/output/audit_logger.py line 1-88): Writes per-job detailed JSON logs to the logs/ directory and appends to a line-delimited JSONL stream at outputs/audit.jsonl. Each audit entry captures the full extraction record, review summary, and export paths.
+
+4.10 Integration and Pipeline Orchestration
+
+The full pipeline is orchestrated by the process_form function in main.py (line 139-434), which sequentially invokes each module and passes outputs between stages. Job execution in the web context uses Python threading.Thread with concurrency limited by threading.Semaphore (default 5 simultaneous jobs). Status updates are communicated via a progress callback mechanism that allows the web interface to display real-time progress through each pipeline stage.
+
+The DAPEOrchestrator class in project/orchestrator.py (line 1-182) provides an alternative standalone orchestration interface that follows the same module sequence: preprocessing, template alignment, differential analysis, field extraction, confidence validation, HITL escalation, output structuring, and export.
+
+4.11 Discussion
+
+4.11.1 Tool Selection Rationale
+
+OpenCV was selected as the primary image processing library because it provides a comprehensive, well-tested set of computer vision functions—feature detection (ORB), geometric transformations (homography estimation and perspective warping), morphological operations (opening, closing, dilation), and adaptive thresholding—within a single consistent API [CITE: Bradski, 2000]. Alternatives such as scikit-image or MATLAB were considered but OpenCV's performance characteristics and widespread use in document processing research favoured its adoption.
+
+The OpenAI SDK was chosen for VLM access through OpenRouter because it provides a unified interface to multiple state-of-the-art multimodal models without requiring separate SDKs per provider, simplifying the extraction architecture while retaining model flexibility [CITE: OpenAI, 2024]. OpenRouter additionally provides access to logprob data from supported models, which is essential for the confidence scoring mechanism.
+
+Flask was selected for the review interface and main web application for its minimal overhead, straightforward integration with the existing pipeline code, and built-in support for serving static files and template rendering.
+
+4.11.2 Motivation
+
+The study was motivated by the practical gap between the continued use of paper forms in organisational data collection and the limited reliability of fully automated extraction methods. Traditional OCR-based approaches perform poorly on handwritten content and mixed-type forms, while purely manual processing is inefficient at scale [CITE: Abdallah et al., 2024]. The DAPE pipeline was conceived to combine the structural advantages of template-based differential analysis with the recognition capabilities of modern VLMs, producing a system that could operate near human accuracy levels while processing multiple documents concurrently. The key departure from earlier form processing systems is the replacement of OCR engines with VLM-based extraction, which provides superior handwritten text recognition and eliminates the need for task-specific training.
+
+4.11.3 Objective Mapping
+
+The three specific objectives from Chapter 1 and their implementation outcomes are summarised below:
+
+Table 4.1: Objective-to-Outcome Mapping
+
+Objective | Implementation Outcome | Result
+----------|----------------------|--------
+Design a DAPE pipeline comparing completed forms against reference templates | Modules 3.2.1–3.2.3: preprocessing, alignment, differential analysis producing an interaction mask | User-provided regions isolated via pixel-wise comparison after geometric registration; ink masks generated for all 45 test forms
+Implement the pipeline with quality-aware preprocessing, registration, classification, and extraction | Modules 3.2.4–3.2.5: VLM-based field extraction with logprob confidence, checkbox density detection, and dictionary matching | Text fields extracted via VLM through OpenRouter; checkboxes classified through density thresholds with configurable acceptance levels; confidence derived from token-level logprobs
+Evaluate extraction accuracy, validation performance, and HITL impact | Modules 3.2.5–3.2.7: confidence scoring with semantic validation, web review interface, structured audit logging | Pre- and post-correction accuracy measured per field type; escalation rate and correction impact computed from audit trail
+
+4.11.4 Results and Justification of the Topic
+
+The pipeline demonstrated that differential analysis can effectively isolate handwritten input in structured forms when alignment quality is adequate. The VLM-based extraction achieved reliable recognition of both printed and handwritten text across the three form types, without the need for OCR-specific training or configuration. The confidence scoring mechanism, combining logprob-derived certainty (grounded in the softmax probability distribution of token generation) with dictionary matching (grounded in Levenshtein edit distance), provided a meaningful distinction between high-confidence extractions suitable for auto-acceptance and uncertain cases requiring human review. These results justify the original aim by showing that a differential approach augmented with modern VLM extraction can achieve processing throughput exceeding human capability while maintaining accuracy through selective validation.
+
+4.11.5 Contribution to Knowledge
+
+The primary contribution is a validated pipeline architecture demonstrating that template-based differential analysis can be productively combined with VLM-based extraction in a production-style processing workflow. Unlike end-to-end deep learning approaches that require task-specific training data, the DAPE pipeline operates on preconfigured templates and pre-trained general-purpose VLMs, making it adaptable to new form types without model retraining. The integration of logprob-derived confidence as a validation signal—derived from the mathematical framework of softmax probability distributions in large language models—represents a methodological contribution applicable to other document processing contexts where modern LLM/VLM APIs are used. This is a significant departure from traditional OCR confidence mechanisms, which are typically based on character-level recognition scores rather than token-level generation probabilities.
+
+4.11.6 Limitations
+
+Several limitations constrained the comprehensiveness of the outcomes. The dependency on network access to the OpenRouter API introduced latency variability and occasional reliability issues during batch processing; the retry logic mitigated but did not eliminate these interruptions. The differential analysis threshold (30 intensity units) and checkbox density thresholds (0.15/0.04) were calibrated on the specific form types and scanner used in this study and may not generalise without recalibration. The evaluation was limited to 45 forms across three templates at 300 DPI; performance on larger datasets, different form layouts, or lower scan resolutions was not assessed. The system processes only English-language text and does not handle barcodes, signatures, or complex tabular structures as noted in the scope.
+
+4.11.7 Recommendations for Improvement
+
+Future work could improve the system in several directions. Implementing a token-bucket rate limiter instead of the current fixed inter-request delay would allow better burst utilisation of the API while respecting per-minute rate caps. The differential analysis could be made adaptive by learning per-template difference thresholds from a small set of blank scans. Confidence calibration could be enhanced by collecting human correction data over time and adjusting acceptance thresholds through a feedback loop. Support for additional field types (signatures, barcodes) and integration with a local OCR as a fallback when the API is unavailable would broaden operational robustness. The logprob-based confidence mechanism could be extended by incorporating top-alternative logprobs (the probabilities of the second and third most likely tokens) to measure decision margin rather than absolute probability.
+
+4.11.8 Personal Takeaway
+
+The project demonstrated that a modular, explainable pipeline architecture can achieve practically useful levels of form processing automation without requiring custom-trained machine learning models. The key insight was that differential analysis and VLM extraction are complementary rather than competing approaches: differential analysis handles the structural problem of locating input regions, while the VLM handles the recognition problem of interpreting their content. This separation of concerns proved effective and is a design principle applicable to broader document intelligence tasks.
+
+4.12 Summary
+
+This chapter described the implementation of each DAPE pipeline module, the specific tools and algorithms used, the hardware environment (Windows 11, Intel Core i5-8350U, 8 GB DDR4), and the challenges encountered. The discussion mapped objectives to outcomes, justified design decisions, acknowledged limitations, and identified directions for improvement.
+
+
+CHAPTER FIVE
+CONCLUSION
+
+This chapter concludes the study by summarising the work undertaken, discussing the implications of the findings, acknowledging the limitations encountered, and suggesting directions for future research.
+
+5.1 Summary of the Study
+
+This research set out to develop and evaluate an automated paper form processing system capable of reliably extracting user-provided data from scanned structured forms. The study was motivated by the continued prevalence of paper-based data collection in organisational settings and the limitations of existing OCR-based approaches when applied to forms containing handwritten content, checkbox selections, and mixed input types.
+
+The DAPE (Differential Analysis and Preprocessing for Extraction) pipeline was designed as a modular seven-stage architecture grounded in differential analysis theory. The system compares scanned completed forms against blank reference templates to isolate user-provided input regions, then applies Vision Language Model-based extraction for text fields and pixel-density analysis for checkbox fields. Confidence scoring combines logprob-derived certainty (mathematically grounded in the softmax function) with dictionary matching (grounded in Levenshtein distance), and a web-based human-in-the-loop interface enables selective manual correction of low-confidence extractions.
+
+The pipeline was implemented in Python using OpenCV for image processing, the OpenAI SDK for VLM access via OpenRouter, and Flask for the review interface. The development environment was Windows 11 Pro 21H2 running on an Intel Core i5-8350U processor with 8 GB DDR4 RAM (2133 MHz). A dataset of 45 completed forms across three distinct form types was constructed and annotated with ground truth values to support controlled evaluation.
+
+5.2 Achievement of Research Objectives
+
+The first objective—designing a DAPE pipeline that compares completed forms against reference templates—was achieved through the development of the preprocessing, alignment, and differential analysis modules. These stages produce a binary interaction mask that successfully isolates user-provided regions from static template content when alignment quality is adequate.
+
+The second objective—implementing the pipeline with quality-aware preprocessing, registration, classification, and extraction—was achieved through the integration of adaptive thresholding, CLAHE-based illumination normalisation, ORB feature matching with RANSAC homography estimation, VLM-based field transcription with logprob confidence derived from the softmax probability distribution, and pixel-density checkbox classification.
+
+The third objective—evaluating extraction accuracy, validation performance, and HITL impact—was addressed through the confidence scoring and validation module, which applies multi-signal confidence computation (combining C_lp and C_dict into C_final) and semantic rule checking, supported by a structured audit logging system that enables pre- and post-correction comparative analysis.
+
+5.3 Contributions to Knowledge
+
+This study makes the following contributions. First, it presents a validated pipeline architecture demonstrating that template-based differential analysis can be effectively combined with VLM-based extraction in a production-style workflow, offering an alternative to end-to-end deep learning approaches that require task-specific training data. Second, it introduces the integration of token-level logprob confidence from LLM/VLM API responses as a validation signal for form extraction, providing a mathematically principled confidence measure derived from the softmax distribution over the model's token vocabulary. Third, it provides a structured evaluation framework that links preprocessing quality metrics, extraction confidence, validation outcomes, and human correction impact within a single measurable pipeline.
+
+5.4 Limitations
+
+The study is subject to several limitations. The dependency on network access to the OpenRouter API introduces latency variability and potential availability concerns during batch processing. The differential analysis threshold and checkbox density thresholds were calibrated on the specific form types and scanner used and may require recalibration for different inputs. The evaluation was limited to 45 forms across three templates at 300 DPI; performance on larger datasets or varied scan qualities was not assessed. The system processes English-language text only and does not handle signatures, barcodes, or complex tables.
+
+5.5 Recommendations for Future Work
+
+Future research could extend this work in several directions. Implementing adaptive threshold learning from blank template scans would improve differential analysis generalisation across form types. A token-bucket rate limiter would enable better API utilisation while respecting per-minute caps. Local OCR integration as a fallback when cloud API services are unavailable would improve operational robustness. The logprob-based confidence mechanism could be enhanced by analysing the margin between the top token probability and alternative token probabilities, providing a more nuanced measure of model certainty. Expanding field type support to include signatures and barcodes would broaden applicability. Collecting human correction data over time to calibrate confidence thresholds through a feedback loop would enhance validation accuracy. Evaluating the pipeline on larger, more diverse datasets at varying scan resolutions would establish performance boundaries more comprehensively.
+
+5.6 Concluding Remarks
+
+The DAPE pipeline demonstrates that a modular, explainable architecture combining classical computer vision with modern VLM capabilities can achieve practically useful levels of form processing automation. The key insight is that differential analysis and VLM extraction address complementary aspects of the form processing problem: differential analysis handles the structural challenge of locating input regions within a known layout, while the VLM addresses the recognition challenge of interpreting their content. The mathematical grounding of extraction confidence in token-level log probabilities derived from the softmax function provides a principled and interpretable basis for automated decision-making. This separation of concerns proved effective and represents a design principle applicable to broader document intelligence tasks. While the system does not eliminate the need for human validation, it reduces the manual review burden to uncertain cases only, enabling processing throughput that exceeds purely manual approaches while maintaining accuracy through targeted oversight.
+
+
+CITATION MAP
+
+[CITE: V. Agrawal, 2023] — Sections 3.1
+[CITE: Alaei et al., 2024] — Sections 3.2.1
+[CITE: Pisano et al., 1998] — Sections 3.2.1, 4.3
+[CITE: Lowe, 2004] — Sections 3.2.2, 4.4
+[CITE: Rublee et al., 2011] — Sections 3.2.2, 4.4
+[CITE: Fischler & Bolles, 1981] — Sections 3.2.2, 4.4
+[CITE: Behl & Manisha, 2022] — Sections 3.2.3
+[CITE: Shuvo et al., 2022] — Sections 3.2.3
+[CITE: OpenAI, 2024] — Sections 3.2.4, 4.2, 4.6, 4.11.1
+[CITE: Brown et al., 2020] — Sections 3.2.4, 4.6
+[CITE: Mursari & Wibowo, 2021] — Sections 3.2.4
+[CITE: Levenshtein, 1966] — Sections 3.2.5, 3.3.4, 4.7
+[CITE: Mosqueira-Rey et al., 2023] — Sections 3.2.6
+[CITE: Vercruysse et al., 2025] — Sections 3.5
+[CITE: Bradski, 2000] — Sections 4.2, 4.11.1
+[CITE: Harris et al., 2020] — Sections 4.2
+[CITE: Abdallah et al., 2024] — Sections 4.11.2

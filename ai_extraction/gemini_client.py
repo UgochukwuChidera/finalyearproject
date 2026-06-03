@@ -7,13 +7,42 @@ from pathlib import Path
 from typing import List
 
 import httpx
-from openai import APIConnectionError, APITimeoutError, OpenAI
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    InternalServerError,
+    RateLimitError,
+    OpenAI,
+)
 
 from ai_extraction.confidence import compute_C_lp
 
 logger = logging.getLogger(__name__)
 
-_RETRYABLE = (APITimeoutError, APIConnectionError, httpx.TimeoutException, httpx.ConnectError)
+_RETRYABLE = (
+    APITimeoutError,
+    APIConnectionError,
+    RateLimitError,
+    InternalServerError,
+    APIStatusError,
+    httpx.TimeoutException,
+    httpx.ConnectError,
+)
+
+
+def _error_detail(exc: Exception) -> str:
+    if isinstance(exc, APIStatusError):
+        body = exc.response.text[:500] if exc.response else ""
+        return f"HTTP {exc.status_code}: {body or exc.message}"
+    if isinstance(exc, RateLimitError):
+        body = exc.response.text[:300] if exc.response else ""
+        return f"Rate limited (HTTP 429): {body or exc.message}"
+    if isinstance(exc, (APITimeoutError, httpx.TimeoutException)):
+        return "Request timed out"
+    if isinstance(exc, (APIConnectionError, httpx.ConnectError)):
+        return f"Connection failed: {exc}"
+    return str(exc)
 
 # Hardcoded fallback used only when models.json is absent and no env var is set.
 _BUILTIN_DEFAULT_MODEL = "openai/gpt-4o-mini"
@@ -133,18 +162,19 @@ class GeminiClient:
                 response = self.client.chat.completions.create(**kwargs)
                 break
             except _RETRYABLE as exc:
-                last_err = exc
+                detail = _error_detail(exc)
+                last_err = detail
                 if attempt < 2:
                     wait = 2 ** attempt
-                    logger.warning("API call attempt %d failed (%s). Retrying in %ds…", attempt + 1, exc, wait)
+                    logger.warning("API call attempt %d failed: %s. Retrying in %ds…", attempt + 1, detail, wait)
                     time.sleep(wait)
                 else:
-                    logger.warning("API call attempt %d failed (%s). No more retries.", attempt + 1, exc)
+                    logger.warning("API call attempt %d failed: %s. No more retries.", attempt + 1, detail)
             except Exception as exc:
-                return {"error": str(exc)}
+                return {"error": f"API error: {_error_detail(exc)}"}
 
         if response is None:
-            return {"error": f"API call failed after 3 attempts: {last_err}"}
+            return {"error": f"API call failed after 3 retries: {last_err}"}
 
         raw = (response.choices[0].message.content if response.choices else "") or ""
         payload = self._safe_json_extract(raw)

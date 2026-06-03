@@ -7,6 +7,6 @@ def illumination_normalization(gray, grayscale_std, blur_size=51, clahe_tile=8):
     clahe = cv2.createCLAHE(2.0,(clahe_tile,clahe_tile))
     normalized = clahe.apply(corrected)
     illum_std = float(np.std(bg))
-    uniformity = float(np.clip(1-illum_std/60,0,1))
-    gain = float(np.clip((np.std(normalized)/(grayscale_std+1e-5))/1.5,0,1))
+    uniformity = float(np.clip(1 - illum_std / 60, 0, 1))
+    gain = float(np.clip(float(np.std(normalized)) / (float(grayscale_std) + 1e-5) / 1.5, 0, 1))
     return normalized, {"illumination_uniformity":uniformity,"local_contrast_gain":gain}

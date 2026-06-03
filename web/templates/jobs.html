@@ -43,7 +43,7 @@
       <tr>
         <th style="width: 32px"><input type="checkbox" id="select-all-jobs" onchange="toggleSelectAllJobs(this.checked)" /></th>
         {% for key, label, default_dir in sortable_columns %}
-        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort=key, dir=next_dir if sort == key else default_dir) }}">{{ label }}</a></th>
+        <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort=key, dir=next_dir if sort == key else default_dir) }}" class="sort-header{% if sort == key %} {{ direction or 'desc' }}{% endif %}">{{ label }}</a></th>
         {% endfor %}
         <th>Manage</th>
       </tr>

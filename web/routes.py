@@ -382,8 +382,8 @@ def _save_models_config(data: dict) -> None:
 # ---------------------------------------------------------------------------
 
 _BATCH_DEFAULTS: dict = {
-    "max_concurrent": 3,
-    "requests_per_minute": 10,
+    "max_concurrent": 5,
+    "requests_per_minute": 30,
     "inter_request_delay": 0.5,
 }
 

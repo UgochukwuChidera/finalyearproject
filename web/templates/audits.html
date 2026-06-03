@@ -20,10 +20,10 @@
   <table>
     <thead>
       <tr>
-        <th><a href="{{ url_for('web.audits', q=q, sort='job_id', dir=next_dir if sort == 'job_id' else 'asc') }}">Job</a></th>
-        <th><a href="{{ url_for('web.audits', q=q, sort='form_type', dir=next_dir if sort == 'form_type' else 'asc') }}">Form Type</a></th>
-        <th><a href="{{ url_for('web.audits', q=q, sort='timestamp', dir=next_dir if sort == 'timestamp' else 'desc') }}">Timestamp</a></th>
-        <th><a href="{{ url_for('web.audits', q=q, sort='pending', dir=next_dir if sort == 'pending' else 'desc') }}">Review</a></th>
+        <th><a href="{{ url_for('web.audits', q=q, sort='job_id', dir=next_dir if sort == 'job_id' else 'asc') }}" class="sort-header{% if sort == 'job_id' %} {{ direction or 'asc' }}{% endif %}">Job</a></th>
+        <th><a href="{{ url_for('web.audits', q=q, sort='form_type', dir=next_dir if sort == 'form_type' else 'asc') }}" class="sort-header{% if sort == 'form_type' %} {{ direction or 'asc' }}{% endif %}">Form Type</a></th>
+        <th><a href="{{ url_for('web.audits', q=q, sort='timestamp', dir=next_dir if sort == 'timestamp' else 'desc') }}" class="sort-header{% if sort == 'timestamp' %} {{ direction or 'desc' }}{% endif %}">Timestamp</a></th>
+        <th><a href="{{ url_for('web.audits', q=q, sort='pending', dir=next_dir if sort == 'pending' else 'desc') }}" class="sort-header{% if sort == 'pending' %} {{ direction or 'desc' }}{% endif %}">Review</a></th>
         <th>Open</th>
       </tr>
     </thead>

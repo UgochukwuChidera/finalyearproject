@@ -357,14 +357,16 @@ button.secondary:hover {
   background: rgba(0, 0, 0, 0.05);
 }
 
-button.ghost {
+button.ghost, .button-link.ghost {
   background: transparent;
-  color: var(--text-main);
-  border: none;
+  color: var(--text-muted);
+  border: 1px solid transparent;
 }
 
-button.ghost:hover {
-  background: rgba(0, 0, 0, 0.05);
+button.ghost:hover, .button-link.ghost:hover {
+  color: var(--text-main);
+  border-color: var(--border);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 button.danger {
@@ -392,6 +394,55 @@ th {
   font-weight: 700;
   font-size: 0.875rem;
   border-bottom: 1px solid var(--border);
+}
+
+/* Sortable header links styled as sleek buttons */
+th a.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-main);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  margin: -0.35rem -0.75rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+
+th a.sort-header:hover {
+  background: var(--bg-main);
+  border-color: var(--border);
+}
+
+th a.sort-header::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  opacity: 0.3;
+  transition: var(--transition);
+}
+
+th a.sort-header:hover::after {
+  opacity: 0.7;
+}
+
+th a.sort-header.asc::after {
+  content: '';
+  border-bottom: 5px solid var(--text-main);
+  border-top: none;
+  opacity: 1;
+}
+
+th a.sort-header.desc::after {
+  content: '';
+  border-top: 5px solid var(--text-main);
+  border-bottom: none;
+  opacity: 1;
 }
 
 td {
