@@ -2,20 +2,20 @@
 {% block content %}
 <div class="card-header">
   <h2><i class="ph ph-chart-bar"></i> Evaluation Results</h2>
-  <div class="row" style="margin: 0; gap: 0.75rem">
+  <div class="row m-0 gap-3">
     <span class="badge badge-info">{{ results|length }} Pipeline(s)</span>
-    <a href="#" class="ghost" style="font-size: 0.875rem" onclick="window.location.reload()">
+    <a href="#" class="ghost text-sm" onclick="window.location.reload()">
       <i class="ph ph-arrows-clockwise"></i> Refresh
     </a>
   </div>
 </div>
 
 {% if not results %}
-<section class="card" style="text-align: center; padding: 3rem">
-  <i class="ph ph-chart-bar" style="font-size: 4rem; color: var(--text-dim); margin-bottom: 1rem; display: block"></i>
+<section class="card text-center p-12">
+  <i class="ph ph-chart-bar block mb-4" style="font-size:4rem;color:var(--text-dim)"></i>
   <h3>No Evaluation Results</h3>
   <p class="muted">Run the evaluation pipeline to generate results.</p>
-  <pre class="muted" style="background:var(--bg-secondary); color:var(--text-main); padding:1.25rem; display:inline-block; text-align:left; margin-top:1.5rem; border:1px solid var(--border-strong); font-size:0.8125rem">python run_evaluation.py --forms-dir form --template-id medical_screening_v1</pre>
+  <pre class="muted inline-block text-left mt-6 border-strong p-5" style="background:var(--bg-secondary);color:var(--text-main);font-size:0.8125rem">python run_evaluation.py --forms-dir form --template-id medical_screening_v1</pre>
 </section>
 {% else %}
 {% for pipeline_name, data in results.items() %}
@@ -26,22 +26,22 @@
 
   {# ── HITL Impact Summary ──────────────────────────────────────────── #}
   {% set impact = data.get('hitl_impact', {}) %}
-  <div class="grid-3" style="margin-bottom: 2rem">
-    <div style="background: var(--bg-secondary); border: 1px solid var(--border-strong); padding: 1.5rem; text-align: center">
-      <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">Pre-HITL Accuracy</div>
-      <div style="font-size: 2rem; font-weight: 700; color: var(--warning)">
+  <div class="grid-3 mb-8">
+    <div class="border-strong text-center p-6" style="background:var(--bg-secondary)">
+      <div class="muted text-xs uppercase mb-2">Pre-HITL Accuracy</div>
+      <div class="text-2xl font-bold text-warning">
         {{ '%.1f'|format((impact.get('pre_hitl_accuracy', 0)) * 100) }}%
       </div>
     </div>
-    <div style="background: var(--bg-secondary); border: 1px solid var(--border-strong); padding: 1.5rem; text-align: center">
-      <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">Post-HITL Accuracy</div>
-      <div style="font-size: 2rem; font-weight: 700; color: var(--success)">
+    <div class="border-strong text-center p-6" style="background:var(--bg-secondary)">
+      <div class="muted text-xs uppercase mb-2">Post-HITL Accuracy</div>
+      <div class="text-2xl font-bold text-success">
         {{ '%.1f'|format((impact.get('post_hitl_accuracy', 0)) * 100) }}%
       </div>
     </div>
-    <div style="background: var(--bg-secondary); border: 1px solid var(--border-strong); padding: 1.5rem; text-align: center">
-      <div class="muted" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.5rem">HITL Gain</div>
-      <div style="font-size: 2rem; font-weight: 700; color: var(--info)">
+    <div class="border-strong text-center p-6" style="background:var(--bg-secondary)">
+      <div class="muted text-xs uppercase mb-2">HITL Gain</div>
+      <div class="text-2xl font-bold text-info">
         +{{ '%.1f'|format(impact.get('hitl_gain_pct', 0)) }}%
       </div>
     </div>
@@ -50,8 +50,8 @@
   {# ── Aggregate Pre-HITL Metrics ───────────────────────────────────── #}
   {% set agg = data.get('pre_hitl_aggregate', {}) %}
   {% if agg %}
-  <h4 style="color: var(--text-muted); margin-bottom: 1rem">Aggregate Metrics (Pre-HITL · {{ agg.get('n_forms', 0) }} forms)</h4>
-  <div style="overflow-x: auto; margin-bottom: 2rem">
+  <h4 class="text-secondary-color mb-4">Aggregate Metrics (Pre-HITL · {{ agg.get('n_forms', 0) }} forms)</h4>
+  <div class="overflow-auto mb-8">
     <table>
       <thead>
         <tr>
@@ -66,7 +66,7 @@
                         'escalation_rate', 'processing_time_s'] %}
         {% if 'mean_' + key in agg %}
         <tr>
-          <td><code style="color: var(--secondary)">{{ key }}</code></td>
+          <td><code>{{ key }}</code></td>
           <td>{{ '%.4f'|format(agg['mean_' + key]) }}</td>
           <td class="muted">{{ '%.4f'|format(agg.get('std_' + key, 0)) }}</td>
         </tr>
@@ -88,10 +88,10 @@
   {% set forms = data.get('pre_hitl_forms', []) %}
   {% if forms %}
   <details>
-    <summary style="cursor: pointer; color: var(--text-muted); margin-bottom: 1rem; user-select: none">
+    <summary class="mb-4" style="cursor:pointer;user-select:none">
       <i class="ph ph-list"></i> Per-Form Breakdown ({{ forms|length }} forms)
     </summary>
-    <div style="overflow-x: auto; margin-top: 1rem">
+    <div class="overflow-auto mt-4">
       <table>
         <thead>
           <tr>
@@ -107,12 +107,12 @@
           {% for f in forms %}
           {% set m = f.get('pre_hitl_metrics', {}) %}
           <tr>
-            <td><code style="color: var(--secondary)">{{ f.form_id }}</code></td>
+            <td><code>{{ f.form_id }}</code></td>
             <td>
               {% if f.has_ground_truth %}
-              <span class="badge badge-success" style="font-size: 0.7rem">yes</span>
+              <span class="badge badge-success text-xs">yes</span>
               {% else %}
-              <span class="badge badge-danger" style="font-size: 0.7rem">no</span>
+              <span class="badge badge-danger text-xs">no</span>
               {% endif %}
             </td>
             <td>{{ '%.3f'|format(m.get('field_accuracy', 0)) }}</td>
