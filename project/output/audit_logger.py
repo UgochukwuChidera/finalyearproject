@@ -21,10 +21,10 @@ class AuditLogger:
         self,
         form_id: str,
         template_id: str,
-        processing_stats: dict,
-        validated_fields: list[dict],
-        export_paths: dict | None,
-    ) -> dict:
+        processing_stats: dict[str, Any],
+        validated_fields: list[dict[str, Any]],
+        export_paths: dict[str, Any] | None,
+    ) -> dict[str, Any]:
         ts = datetime.now(timezone.utc)
         total = len(validated_fields)
         flagged = sum(1 for f in validated_fields if f.get("needs_review", False))
@@ -55,11 +55,11 @@ class AuditLogger:
         self,
         form_id: str,
         template_id: str,
-        processing_stats: dict,
-        validated_fields: list[dict],
-        export_paths: dict | None = None,
+        processing_stats: dict[str, Any],
+        validated_fields: list[dict[str, Any]],
+        export_paths: dict[str, Any] | None = None,
         original_filename: str | None = None,
-        extra: dict | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> str:
         entry = self._base_entry(form_id, template_id, processing_stats, validated_fields, export_paths)
 

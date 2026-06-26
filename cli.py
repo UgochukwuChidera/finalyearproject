@@ -3,20 +3,21 @@ from __future__ import annotations
 
 import argparse
 import json
+from typing import Any
 
 from pipeline import process_form
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="DAPE form processing")
-    p.add_argument("--image", required=True, help="Path to filled form image")
-    p.add_argument("--config-name", default=None, help="Config name in configs/<name>.json")
-    p.add_argument("--config-path", default=None, help="Absolute/relative config path")
-    p.add_argument("--output-dir", default="outputs")
-    p.add_argument("--log-dir", default="logs")
-    p.add_argument("--dictionaries-dir", default="dictionaries")
-    p.add_argument("--dpi", type=int, default=300)
-    return p.parse_args()
+    parser = argparse.ArgumentParser(description="DAPE form processing")
+    parser.add_argument("--image", required=True, help="Path to filled form image")
+    parser.add_argument("--config-name", default=None, help="Config name in configs/<name>.json")
+    parser.add_argument("--config-path", default=None, help="Absolute/relative config path")
+    parser.add_argument("--output-dir", default="outputs")
+    parser.add_argument("--log-dir", default="logs")
+    parser.add_argument("--dictionaries-dir", default="dictionaries")
+    parser.add_argument("--dpi", type=int, default=300)
+    return parser.parse_args()
 
 
 def main() -> None:

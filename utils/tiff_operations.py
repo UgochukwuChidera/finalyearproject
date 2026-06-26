@@ -21,7 +21,7 @@ from PIL import Image
 # 1. MERGE MULTIPLE TIFF FILES INTO ONE MULTI-PAGE TIFF
 # ================================================================
 
-def merge_tiffs(input_files: list[str], output_path: str) -> None:
+def merge_tiffs(input_files: list[str], output_path: str | Path) -> None:
     """
     Joins multiple TIFF files (or any image files) into a single
     multi-page TIFF. Equivalent to merging PDFs.
@@ -63,7 +63,7 @@ def merge_tiffs(input_files: list[str], output_path: str) -> None:
 # 2. APPEND PAGES TO AN EXISTING MULTI-PAGE TIFF
 # ================================================================
 
-def append_to_tiff(existing_tiff: str, new_files: list[str], output_path: str) -> None:
+def append_to_tiff(existing_tiff: str, new_files: list[str], output_path: str | Path) -> None:
     """
     Loads an existing multi-page TIFF, then appends additional
     pages from new_files. Saves result to output_path.
@@ -105,7 +105,7 @@ def append_to_tiff(existing_tiff: str, new_files: list[str], output_path: str) -
 # 3. EXTRACT SPECIFIC PAGES FROM A MULTI-PAGE TIFF
 # ================================================================
 
-def extract_pages(input_tiff: str, page_indices: list[int], output_path: str) -> None:
+def extract_pages(input_tiff: str, page_indices: list[int], output_path: str | Path) -> None:
     """
     Extracts only the specified pages (0-indexed) from a TIFF.
 
@@ -144,7 +144,7 @@ def extract_pages(input_tiff: str, page_indices: list[int], output_path: str) ->
 # 4. DELETE SPECIFIC PAGES FROM A MULTI-PAGE TIFF
 # ================================================================
 
-def delete_pages(input_tiff: str, page_indices: list[int], output_path: str) -> None:
+def delete_pages(input_tiff: str, page_indices: list[int], output_path: str | Path) -> None:
     """
     Removes specific pages (0-indexed) from a TIFF and saves the rest.
 
@@ -183,7 +183,7 @@ def delete_pages(input_tiff: str, page_indices: list[int], output_path: str) -> 
 # 5. SPLIT MULTI-PAGE TIFF INTO INDIVIDUAL FILES
 # ================================================================
 
-def split_tiff(input_tiff: str, output_folder: str, prefix: str = 'page') -> None:
+def split_tiff(input_tiff: str, output_folder: str | Path, prefix: str = 'page') -> None:
     """
     Splits a multi-page TIFF into individual single-page TIFF files.
     Saves them as page_001.tif, page_002.tif, etc.
@@ -210,7 +210,7 @@ def split_tiff(input_tiff: str, output_folder: str, prefix: str = 'page') -> Non
 # 6. CONVERT PDF TO MULTI-PAGE TIFF
 # ================================================================
 
-def pdf_to_tiff(pdf_path: str, output_path: str, dpi: int = 300) -> None:
+def pdf_to_tiff(pdf_path: str, output_path: str | Path, dpi: int = 300) -> None:
     """
     Converts a PDF into a single multi-page TIFF.
     Useful for archiving or feeding into TIFF-based pipelines.

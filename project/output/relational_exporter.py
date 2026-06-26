@@ -39,10 +39,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.worksheet import Worksheet
 
 
 # ── Style constants ────────────────────────────────────────────────────────────
@@ -80,14 +82,14 @@ class RelationalXLSXExporter:
 
     # ── Single-form export ─────────────────────────────────────────────────────
 
-    def export(self, structured: dict, output_path: str) -> str:
+    def export(self, structured: dict[str, Any], output_path: str) -> str:
         return self.export_batch([structured], output_path)
 
     # ── Batch export ───────────────────────────────────────────────────────────
 
     def export_batch(
         self,
-        structured_list: list[dict],
+        structured_list: list[dict[str, Any]],
         output_path: str,
     ) -> str:
         """
@@ -119,7 +121,7 @@ class RelationalXLSXExporter:
 
     # ── RECORDS sheet ──────────────────────────────────────────────────────────
 
-    def _build_records(self, ws, records: list[dict]) -> None:
+    def _build_records(self, ws: Worksheet, records: list[dict[str, Any]]) -> None:
         cols = ["form_id", "template_id", "processed_at"] + _RECORD_FIELDS
         self._write_header(ws, cols)
         ws.freeze_panes = "A2"
@@ -159,7 +161,7 @@ class RelationalXLSXExporter:
 
     # ── COURSES sheet ──────────────────────────────────────────────────────────
 
-    def _build_courses(self, ws, records: list[dict]) -> None:
+    def _build_courses(self, ws: Worksheet, records: list[dict[str, Any]]) -> None:
         cols = ["form_id", "row_number"] + _COURSE_FIELDS
         self._write_header(ws, cols)
         ws.freeze_panes = "A2"
@@ -202,7 +204,7 @@ class RelationalXLSXExporter:
 
     # ── VALIDATION_LOG sheet ───────────────────────────────────────────────────
 
-    def _build_vallog(self, ws, records: list[dict]) -> None:
+    def _build_vallog(self, ws: Worksheet, records: list[dict[str, Any]]) -> None:
         cols = [
             "form_id", "field_id", "field_type",
             "extracted_value", "final_value",
@@ -260,7 +262,7 @@ class RelationalXLSXExporter:
     # ── Shared header writer ───────────────────────────────────────────────────
 
     @staticmethod
-    def _write_header(ws, cols: list[str]) -> None:
+    def _write_header(ws: Worksheet, cols: list[str]) -> None:
         for col_idx, label in enumerate(cols, start=1):
             cell = ws.cell(row=1, column=col_idx, value=label)
             cell.font      = _H_FONT

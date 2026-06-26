@@ -19,7 +19,7 @@ from werkzeug.utils import safe_join, secure_filename
 # Job Persistence & Management
 # ---------------------------------------------------------------------------
 
-JOBS: dict[str, dict] = {}
+JOBS: dict[str, dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
 DEFAULT_REVIEWER = "web_user"
 
@@ -52,7 +52,7 @@ def _jobs_db_path() -> Path:
     return _logs_dir() / "jobs_db.json"
 
 
-def _load_jobs_db() -> dict:
+def _load_jobs_db() -> dict[str, Any]:
     path = _jobs_db_path()
     if path.exists():
         try:
@@ -63,7 +63,7 @@ def _load_jobs_db() -> dict:
     return {}
 
 
-def _save_jobs_db(jobs_data: dict) -> None:
+def _save_jobs_db(jobs_data: dict[str, Any]) -> None:
     path = _jobs_db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
@@ -87,7 +87,7 @@ def _init_jobs_internal() -> None:
             _save_jobs_db(JOBS)
 
 
-def _safe_config_name(name: str) -> str:
+def _safe_config_name(name: str | None) -> str:
     import re
     cleaned = (name or "").strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]+", cleaned):
@@ -103,7 +103,7 @@ def _config_path(name: str) -> Path:
     return Path(joined)
 
 
-def _load_config(name: str) -> dict:
+def _load_config(name: str) -> dict[str, Any]:
     path = _config_path(name)
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
@@ -113,7 +113,7 @@ def _list_configs() -> list[str]:
     return sorted([p.stem for p in _cfg_dir().glob("*.json")])
 
 
-def _save_config(name: str, payload: dict) -> Path:
+def _save_config(name: str, payload: dict[str, Any]) -> Path:
     path = _config_path(name)
     with path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2, ensure_ascii=False)
@@ -125,7 +125,7 @@ def _allowed_ext(filename: str) -> bool:
     return ext in {".tif", ".tiff", ".png", ".jpg", ".jpeg"}
 
 
-def _read_audit_entries(limit: int = 200) -> list[dict]:
+def _read_audit_entries(limit: int = 200) -> list[dict[str, Any]]:
     audit_path = _outputs_dir() / "audit.jsonl"
     if not audit_path.exists():
         return []
@@ -142,7 +142,7 @@ def _read_audit_entries(limit: int = 200) -> list[dict]:
     return list(reversed(items[-limit:]))
 
 
-def _append_review_event(job: dict, reviewer: str, corrections: dict) -> None:
+def _append_review_event(job: dict[str, Any], reviewer: str, corrections: dict[str, Any]) -> None:
     audit_path = _outputs_dir() / "audit.jsonl"
     audit_path.parent.mkdir(parents=True, exist_ok=True)
     event = {
@@ -258,7 +258,7 @@ def _models_config_path() -> Path:
     return _root_dir() / "models.json"
 
 
-def _load_models_config() -> dict:
+def _load_models_config() -> dict[str, Any]:
     path = _models_config_path()
     if path.exists():
         try:
@@ -269,7 +269,7 @@ def _load_models_config() -> dict:
     return dict(_DEFAULT_MODELS_CONFIG)
 
 
-def _save_models_config(data: dict) -> None:
+def _save_models_config(data: dict[str, Any]) -> None:
     path = _models_config_path()
     with path.open("w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2, ensure_ascii=False)
@@ -286,7 +286,7 @@ _BATCH_DEFAULTS: dict[str, int | float] = {
 }
 
 
-def _get_batch_settings() -> dict:
+def _get_batch_settings() -> dict[str, Any]:
     cfg = _load_models_config()
     stored = cfg.get("batch_settings") or {}
     merged = dict(_BATCH_DEFAULTS)
@@ -294,7 +294,7 @@ def _get_batch_settings() -> dict:
     return merged
 
 
-def _save_batch_settings(data: dict) -> None:
+def _save_batch_settings(data: dict[str, Any]) -> None:
     cfg = _load_models_config()
     current = cfg.get("batch_settings") or {}
     current.update(data)

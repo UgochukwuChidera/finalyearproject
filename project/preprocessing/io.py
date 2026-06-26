@@ -6,7 +6,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def load_image(image_path: str) -> tuple:
+import numpy as np
+
+
+def load_image(image_path: str) -> tuple[np.ndarray, int, int, float]:
     try:
         image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
         if image is None:

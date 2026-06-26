@@ -76,7 +76,7 @@ class DAPEOrchestrator:
         self._enable_hitl = enable_hitl
         self._hitl_ui = HITLInterface(hitl_host, hitl_port) if enable_hitl else None
 
-    def process(self, image_path: str, template_id: str, form_id: str | None = None) -> dict:
+    def process(self, image_path: str, template_id: str, form_id: str | None = None) -> dict[str, Any]:
         form_id = form_id or Path(image_path).stem
         stats: dict[str, Any] = {}
         images: dict[str, Any] = {}
@@ -162,8 +162,8 @@ class DAPEOrchestrator:
                 "stats":             stats,
                 "images":            images}
 
-    def process_batch(self, image_paths: list[str], template_id: str) -> list[dict]:
-        results: list[dict] = []
+    def process_batch(self, image_paths: list[str], template_id: str) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
         for path in image_paths:
             form_id = Path(path).stem
             try:

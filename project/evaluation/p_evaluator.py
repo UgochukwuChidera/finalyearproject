@@ -8,7 +8,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-def evaluate_p_file(filepath: str) -> dict:
+def evaluate_p_file(filepath: str) -> dict[str, Any]:
     """Read and evaluate a .p (pickle) file.
     
     Args:
@@ -63,7 +63,7 @@ def evaluate_p_file(filepath: str) -> dict:
         }
 
 
-def extract_evaluation_results(filepath: str) -> dict:
+def extract_evaluation_results(filepath: str) -> dict[str, Any]:
     """Extract evaluation results from a .p file with metrics if available.
     
     Looks for common structures in pickled data:
@@ -111,6 +111,6 @@ def extract_evaluation_results(filepath: str) -> dict:
     return {**result, **extracted}
 
 
-def batch_evaluate(p_files: list[str]) -> list[dict]:
+def batch_evaluate(p_files: list[str]) -> list[dict[str, Any]]:
     """Evaluate multiple .p files and return aggregated results."""
     return [extract_evaluation_results(f) for f in p_files]

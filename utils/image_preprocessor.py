@@ -5,6 +5,7 @@ Image preprocessing utilities for scanned forms.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np

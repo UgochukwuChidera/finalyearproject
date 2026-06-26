@@ -27,7 +27,7 @@ class TemplateRegistry:
     def list_templates(self) -> list[str]:
         return list(self._data.keys())
 
-    def get_entry(self, template_id: str) -> dict:
+    def get_entry(self, template_id: str) -> dict[str, Any]:
         if template_id not in self._data:
             raise KeyError(f"Template '{template_id}' not found. Available: {self.list_templates()}")
         return self._data[template_id]
@@ -39,18 +39,18 @@ class TemplateRegistry:
             raise FileNotFoundError(f"Template image not found: {entry['image_path']}")
         return img
 
-    def get_field_definitions(self, template_id: str) -> list[dict]:
+    def get_field_definitions(self, template_id: str) -> list[dict[str, Any]]:
         return self.get_entry(template_id).get("fields", [])
 
-    def get_output_schema(self, template_id: str) -> dict:
+    def get_output_schema(self, template_id: str) -> dict[str, Any]:
         return self.get_entry(template_id).get("output_schema", {})
 
     def register_template(
         self,
         template_id: str,
         image_path: str,
-        fields: list[dict],
-        output_schema: dict | None = None,
+        fields: list[dict[str, Any]],
+        output_schema: dict[str, Any] | None = None,
     ) -> None:
         self._data[template_id] = {
             "image_path":    image_path,

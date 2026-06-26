@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from PIL import Image
 from pdf2image import convert_from_path
@@ -35,7 +36,7 @@ def get_pages(file_path: str) -> list[Image.Image]:
     return pages
 
 
-def group_into_sets(pages_data: list, pages_per_record: int = 3) -> list[dict]:
+def group_into_sets(pages_data: list[Any], pages_per_record: int = 3) -> list[dict[str, Any]]:
     groups: list[dict] = []
     for i in range(0, len(pages_data), pages_per_record):
         chunk = pages_data[i : i + pages_per_record]
@@ -43,7 +44,7 @@ def group_into_sets(pages_data: list, pages_per_record: int = 3) -> list[dict]:
     return groups
 
 
-def process_document(file_path: str, pages_per_record: int = 3) -> list[dict]:
+def process_document(file_path: str, pages_per_record: int = 3) -> list[dict[str, Any]]:
     pages = get_pages(file_path)
     return group_into_sets(pages, pages_per_record)
 

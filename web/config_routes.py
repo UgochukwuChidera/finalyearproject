@@ -55,7 +55,7 @@ def config_edit(name: str) -> Any:
 
 
 @bp.route("/api/config/discover", methods=["POST"])
-def config_discover() -> Any:
+def config_discover() -> dict[str, Any] | tuple[dict[str, str], int]:
     file = request.files.get("template_file")
     if not file:
         return jsonify({"error": "template_file is required"}), 400
@@ -84,7 +84,7 @@ def config_discover() -> Any:
 
 
 @bp.route("/configs/<name>/delete", methods=["POST"])
-def config_delete(name: str) -> Any:
+def config_delete(name: str) -> str:
     safe_name = _safe_config_name(name)
     path = _config_path(safe_name)
     if path.exists():
@@ -93,7 +93,7 @@ def config_delete(name: str) -> Any:
 
 
 @bp.route("/upload", methods=["POST"])
-def upload() -> Any:
+def upload() -> str | tuple[dict[str, Any], int]:
     cfg = request.form.get("config_name", "").strip()
     files = request.files.getlist("form_files")
     if not files:

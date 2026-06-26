@@ -31,16 +31,16 @@ def border_removal(
         if len(rows) == 0 or len(cols) == 0:
             logger.debug("border_removal: no content rows/cols — no-op")
             return binary, dict(_empty_meta)
-        t, b = rows[0], rows[-1]
-        l, r = cols[0], cols[-1]
-        cropped = binary[t:b, l:r]
-        removed = (t + (h - b)) * w + (l + (w - r)) * h
+        top, bottom = rows[0], rows[-1]
+        left, right = cols[0], cols[-1]
+        cropped = binary[top:bottom, left:right]
+        removed = (top + (h - bottom)) * w + (left + (w - right)) * h
         thick = float(removed / (h * w))
         ec = 1 - np.mean([
-            np.mean(binary[t:t+10, :] > 0),
-            np.mean(binary[b-10:b, :] > 0),
-            np.mean(binary[:, l:l+10] > 0),
-            np.mean(binary[:, r-10:r] > 0),
+            np.mean(binary[top:top+10, :] > 0),
+            np.mean(binary[bottom-10:bottom, :] > 0),
+            np.mean(binary[:, left:left+10] > 0),
+            np.mean(binary[:, right-10:right] > 0),
         ])
         conf = float(np.clip(0.6 * ec + 0.4 * threshold_stability, 0, 1))
         return cropped, {"border_thickness": thick, "cropping_confidence": conf}

@@ -95,8 +95,8 @@ def _deskew_image(gray: np.ndarray, angle_deg: float) -> np.ndarray:
         return gray
     h, w = gray.shape[:2]
     center = (w / 2.0, h / 2.0)
-    m = cv2.getRotationMatrix2D(center, angle_deg, 1.0)
-    return cv2.warpAffine(gray, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=255)
+    rotation_matrix = cv2.getRotationMatrix2D(center, angle_deg, 1.0)
+    return cv2.warpAffine(gray, rotation_matrix, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=255)
 
 
 def _validation_ok(value: object, field: dict) -> tuple[bool, str]:

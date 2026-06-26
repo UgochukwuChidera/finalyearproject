@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
 
 class OutputStructurer:
@@ -9,11 +10,11 @@ class OutputStructurer:
 
     def structure(
         self,
-        validated_fields: list[dict],
+        validated_fields: list[dict[str, Any]],
         form_id: str,
         template_id: str,
-        processing_stats: dict | None = None,
-    ) -> dict:
+        processing_stats: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         data: dict[str, object] = {}
         for field in validated_fields:
             fid = field["field_id"]

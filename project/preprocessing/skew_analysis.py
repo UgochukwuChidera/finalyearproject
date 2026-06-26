@@ -47,7 +47,7 @@ def skew_analysis(gray: np.ndarray, hough_threshold: int = 200) -> dict[str, flo
     skew_acceptability = 1.0
     if lines is not None:
         try:
-            angles = np.array([(t - np.pi/2) * 180/np.pi for r, t in lines[:30, 0]])
+            angles = np.array([(theta - np.pi/2) * 180/np.pi for rho, theta in lines[:30, 0]])
             med = np.median(angles)
             mean_angle = np.mean(angles)
             skew_angle = float(0.8 * med + 0.2 * mean_angle)

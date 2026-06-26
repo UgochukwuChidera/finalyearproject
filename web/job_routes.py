@@ -79,7 +79,7 @@ def _job_runner_gated(
 def _job_runner(
     app: Any, job_id: str, image_path: str, config_name: str, original_filename: str
 ) -> None:
-    def progress_cb(stage: str, message: str) -> None:
+    def progress_cb(stage: str, message: str) -> None:  # type: ignore[no-untyped-def]
         with JOBS_LOCK:
             if job_id in JOBS:
                 JOBS[job_id]["current_stage"] = stage
