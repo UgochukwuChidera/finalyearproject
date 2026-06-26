@@ -1,0 +1,42 @@
+{
+  "agent": "executor",
+  "status": "complete",
+  "timestamp": "2026-06-26T14:00:00Z",
+  "files_changed": [
+    "project/preprocessing/io.py",
+    "project/preprocessing/grayscale.py",
+    "project/preprocessing/baseline_metrics.py",
+    "project/preprocessing/skew_analysis.py",
+    "project/preprocessing/illumination.py",
+    "project/preprocessing/binarization.py",
+    "project/preprocessing/border_removal.py",
+    "project/preprocessing/fusion.py",
+    "project/preprocessing/dpi.py",
+    "project/preprocessing/structure_prep.py"
+  ],
+  "next_steps": ["commit via commit-crafter"],
+  "report": {
+    "io.py": "Added logging import + module-level logger. Wrapped load_image() in try/except catching FileNotFoundError, ValueError (cv2 decode failure), and generic Exception. Logs at error level for each case; re-raises ValueError with context for callers.",
+    "grayscale.py": "Added logging + guards for None input, non-ndarray type, unexpected dimensions (not 2 or 3), and empty images. Returns None for None input, returns input unchanged for other failures. Existing conversion wrapped in try/except.",
+    "baseline_metrics.py": "Added logging + module-level _DEFAULTS dict. Guards for None, non-ndarray, empty image, wrong ndim. Whole computation wrapped in try/except returning defaults. Edge case: min_intensity/max_intensity now returned as float for type consistency.",
+    "skew_analysis.py": "Added logging + module-level _DEFAULTS dict. Guards for None, non-ndarray, empty, wrong ndim. Each OpenCV stage (adaptiveThreshold, Canny, HoughLines) individually wrapped. Angle computation from lines also guarded. Returns safe defaults on any failure.",
+    "illumination.py": "Added logging + _empty_meta dict. Guards for None, non-ndarray, empty. GaussianBlur, cv2.divide, CLAHE creation/application, and metrics computation each individually wrapped in try/except. Falls back to original gray + empty meta.",
+    "binarization.py": "Added logging + _empty_meta dict. Guards for None, non-ndarray, empty, wrong ndim. block_size validation: even numbers are bumped to odd, < 3 clamped to 3. adaptiveThreshold and metrics computation individually wrapped. Falls back to normalized + empty meta.",
+    "border_removal.py": "Added logging + _empty_meta dict. Guards for None, non-ndarray, empty, wrong ndim. Already handled no-content case (no rows/cols). Added debug-level logging for expected no-ops. Whole processing wrapped in try/except.",
+    "fusion.py": "Added logging + math import for isfinite checks. Guards for None and non-dict. Missing/None/NaN/Inf keys replaced with 0.0 with warning. All 9 required keys validated individually. Whole score computation wrapped in try/except, returns 0.0 on failure.",
+    "dpi.py": "Added logging. scale() and kernel_sizes() both guard against None or non-positive dpi, warn and fall back to default 300 DPI.",
+    "structure_prep.py": "Added logging + _defaults dict. Guards for None, non-ndarray, empty, wrong ndim. Invalid template_size (None or wrong length) replaced with image dimensions. ORB detection and whole processing wrapped in try/except."
+  },
+  "edge_cases_discovered": [
+    "cv2.imread returns None (not raises) on corrupt/missing files — now caught and wrapped in ValueError with logging",
+    "Single-value images (all black/white) cause Otsu/adaptiveThreshold to fail — now caught with fallback",
+    "NaN/Inf metrics propagate silently into fusion score — now sanitized to 0.0 per key",
+    "Even block_size for adaptiveThreshold causes OpenCV error — now auto-corrected to nearest odd",
+    "CLAHE clahe.apply() can fail on unexpected image types — now caught with corrected image fallback",
+    "DPI metadata may be missing or invalid (None, 0, negative) — now defaults to 300 DPI with warning",
+    "HoughLines returning empty/trivially parseable lines — angle computation now guarded",
+    "findContours (though not used directly) replaced by numpy-based content detection — np.where on empty slices handled"
+  ],
+  "verification": "All 10 files pass ast.parse()",
+  "packages_installed": []
+}
