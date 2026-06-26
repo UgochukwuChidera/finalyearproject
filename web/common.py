@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import io
 import os
+import re
 import threading
 import time
 import uuid
@@ -88,7 +89,6 @@ def _init_jobs_internal() -> None:
 
 
 def _safe_config_name(name: str | None) -> str:
-    import re
     cleaned = (name or "").strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]+", cleaned):
         raise ValueError("Invalid config name")
