@@ -1,10 +1,13 @@
 """DAPE pipeline orchestration — form processing, field extraction, export."""
+from __future__ import annotations
+
 import json
 import logging
 import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Callable
 
 import cv2
 import numpy as np
@@ -96,7 +99,7 @@ def _deskew_image(gray: np.ndarray, angle_deg: float) -> np.ndarray:
     return cv2.warpAffine(gray, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=255)
 
 
-def _validation_ok(value, field: dict) -> tuple[bool, str]:
+def _validation_ok(value: object, field: dict) -> tuple[bool, str]:
     rules = field.get("validation", {}) or {}
     s = "" if value is None else str(value)
 
@@ -127,7 +130,7 @@ def _is_checkbox(field: dict) -> bool:
     return t in {"checkbox_group", "checkbox", "boolean"}
 
 
-def _differs_from_template(value, baseline) -> bool:
+def _differs_from_template(value: object, baseline: object) -> bool:
     if value is None:
         return False
     return str(value).strip() != str(baseline if baseline is not None else "").strip()
@@ -143,10 +146,10 @@ def process_form(
     dpi: int = 300,
     original_filename: str | None = None,
     job_id: str | None = None,
-    progress_callback: callable = None,
+    progress_callback: Callable[[str, str], None] | None = None,
     api_key: str | None = None,
 ) -> dict:
-    def update_status(stage, message):
+    def update_status(stage: str, message: str) -> None:
         if progress_callback:
             progress_callback(stage, message)
 
@@ -172,7 +175,7 @@ def process_form(
     store = DictionaryStore(dictionaries_dir)
     dictionaries = store.load()
 
-    stats: dict = {"dpi": dpi}
+    stats: dict[str, Any] = {"dpi": dpi}
 
     update_status("PREPROCESSING", "Analyzing image metrics and deskewing...")
     image, h, w, aspect = load_image(image_path)
@@ -284,9 +287,9 @@ def process_form(
         )
 
     update_status("VALIDATION", "Applying business logic and scoring results...")
-    final_fields = []
-    pending = []
-    extraction_entries = []
+    final_fields: list[dict[str, Any]] = []
+    pending: list[dict[str, Any]] = []
+    extraction_entries: list[dict[str, Any]] = []
     text_diff_changed_count = 0
 
     for field in fields:
@@ -339,7 +342,7 @@ def process_form(
         if not crop_path.exists():
             cv2.imwrite(str(crop_path), crop)
 
-        out = {
+        out: dict[str, Any] = {
             "field_id": name,
             "field_type": "checkbox" if _is_checkbox(field) else "string",
             "x": x,

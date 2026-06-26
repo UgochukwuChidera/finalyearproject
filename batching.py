@@ -1,4 +1,5 @@
 """Batch processing utilities for parallel form processing."""
+from __future__ import annotations
 
 import concurrent.futures
 import logging
@@ -8,17 +9,28 @@ from functools import partial
 logger = logging.getLogger(__name__)
 
 
-def _wrap_job_call(func, *args, **kwargs):
+def _wrap_job_call(func, *args, **kwargs) -> dict:
     """Execute a callable, logging and returning errors instead of raising."""
     try:
-        return func(*args, **kwargs)
+        result = func(*args, **kwargs)
+        return result
     except Exception as e:
         logger.exception("Job call failed: %s", e)
         return {"error": str(e), "fields": [], "confidence": 0.0}
 
 
-def _worker(config_name, config_path, image_path, output_dir, log_dir,
-            dictionaries_dir, dpi, original_filename, job_id, api_key):
+def _worker(
+    config_name: str,
+    config_path: str,
+    image_path: str,
+    output_dir: str,
+    log_dir: str,
+    dictionaries_dir: str,
+    dpi: int,
+    original_filename: str,
+    job_id: str,
+    api_key: str,
+) -> dict:
     """Worker function for multiprocessing. Lazily imports process_form."""
     from pipeline import process_form
     return _wrap_job_call(

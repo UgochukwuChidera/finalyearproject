@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import cv2
 import numpy as np
 
+
 class DifferentialAnalyzer:
-    def __init__(self, diff_threshold=30, min_region_area=50):
+    def __init__(self, diff_threshold: int = 30, min_region_area: int = 50) -> None:
         self.diff_threshold  = diff_threshold
         self.min_region_area = min_region_area
 
-    def analyze(self, aligned_form, template):
+    def analyze(self, aligned_form: np.ndarray, template: np.ndarray) -> tuple[np.ndarray, dict[str, float]]:
         diff = cv2.absdiff(aligned_form, template)
         _,binary_diff = cv2.threshold(diff,self.diff_threshold,255,cv2.THRESH_BINARY)
         k_open  = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))

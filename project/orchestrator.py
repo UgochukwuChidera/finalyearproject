@@ -12,7 +12,10 @@ Executes the full pipeline:
   8. Export and Audit Log
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any
 
 from .preprocessing.io               import load_image
 from .preprocessing.grayscale        import to_grayscale
@@ -41,15 +44,15 @@ from .output.audit_logger             import AuditLogger
 class DAPEOrchestrator:
     def __init__(
         self,
-        registry_path        = "templates/registry.json",
-        output_dir           = "outputs",
-        log_dir              = "logs",
-        confidence_threshold = 0.60,
-        enable_hitl          = True,
-        hitl_host            = "127.0.0.1",
-        hitl_port            = 5050,
-        dpi                  = 300,
-    ):
+        registry_path: str = "templates/registry.json",
+        output_dir: str = "outputs",
+        log_dir: str = "logs",
+        confidence_threshold: float = 0.60,
+        enable_hitl: bool = True,
+        hitl_host: str = "127.0.0.1",
+        hitl_port: int = 5050,
+        dpi: int = 300,
+    ) -> None:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._dpi      = dpi
@@ -73,10 +76,10 @@ class DAPEOrchestrator:
         self._enable_hitl = enable_hitl
         self._hitl_ui = HITLInterface(hitl_host, hitl_port) if enable_hitl else None
 
-    def process(self, image_path, template_id, form_id=None):
+    def process(self, image_path: str, template_id: str, form_id: str | None = None) -> dict:
         form_id = form_id or Path(image_path).stem
-        stats: dict = {}
-        images: dict = {}
+        stats: dict[str, Any] = {}
+        images: dict[str, Any] = {}
 
         # ── Stage 1: Preprocessing ────────────────────────────────────────────
         image, h, w, aspect = load_image(image_path)
@@ -159,8 +162,8 @@ class DAPEOrchestrator:
                 "stats":             stats,
                 "images":            images}
 
-    def process_batch(self, image_paths, template_id):
-        results = []
+    def process_batch(self, image_paths: list[str], template_id: str) -> list[dict]:
+        results: list[dict] = []
         for path in image_paths:
             form_id = Path(path).stem
             try:
@@ -172,7 +175,7 @@ class DAPEOrchestrator:
             results.append(result)
         return results
 
-    def _get_template_size(self, template_id):
+    def _get_template_size(self, template_id: str) -> tuple[int, int]:
         import cv2
         entry = self._registry.get_entry(template_id)
         img   = cv2.imread(entry["image_path"], cv2.IMREAD_GRAYSCALE)

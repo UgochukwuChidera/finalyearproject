@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import cv2
 import numpy as np
 
+
 class TemplateAligner:
-    def __init__(self, max_features=1000, match_ratio=0.75):
+    def __init__(self, max_features: int = 1000, match_ratio: float = 0.75) -> None:
         self.max_features = max_features
         self.match_ratio  = match_ratio
 
-    def align(self, scanned, template):
+    def align(self, scanned: np.ndarray, template: np.ndarray) -> tuple[np.ndarray, np.ndarray, dict[str, float]]:
         _NULL = (scanned.copy(), np.eye(3,dtype=np.float64),
                  {"alignment_confidence":0.0,"inlier_count":0,"match_count":0})
         orb = cv2.ORB_create(self.max_features)
@@ -22,14 +25,14 @@ class TemplateAligner:
                     {"alignment_confidence":0.0,"inlier_count":0,"match_count":len(good)})
         src = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1,1,2)
         dst = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1,1,2)
-        M,mask = cv2.findHomography(src,dst,cv2.RANSAC,5.0)
-        if M is None:
+        homography, mask = cv2.findHomography(src,dst,cv2.RANSAC,5.0)
+        if homography is None:
             return (scanned.copy(),np.eye(3,dtype=np.float64),
                     {"alignment_confidence":0.0,"inlier_count":0,"match_count":len(good)})
         inliers = int(mask.sum()) if mask is not None else 0
         h,w = template.shape[:2]
-        aligned = cv2.warpPerspective(scanned,M,(w,h),
+        aligned = cv2.warpPerspective(scanned,homography,(w,h),
                                       flags=cv2.INTER_LINEAR,
                                       borderMode=cv2.BORDER_REPLICATE)
         conf = float(np.clip(inliers/max(len(good),1),0.0,1.0))
-        return aligned,M,{"alignment_confidence":conf,"inlier_count":inliers,"match_count":len(good)}
+        return aligned,homography,{"alignment_confidence":conf,"inlier_count":inliers,"match_count":len(good)}

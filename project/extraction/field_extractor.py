@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import cv2
+import numpy as np
 
 from .checkbox_extractor import CheckboxExtractor
 
@@ -6,18 +9,23 @@ from .checkbox_extractor import CheckboxExtractor
 class FieldExtractor:
     """Differential field extractor without local OCR engines."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.checkbox = CheckboxExtractor()
 
-    def extract_fields(self, aligned_form, interaction_mask, field_definitions):
-        results = []
+    def extract_fields(
+        self,
+        aligned_form: np.ndarray,
+        interaction_mask: np.ndarray,
+        field_definitions: list[dict],
+    ) -> list[dict]:
+        results: list[dict] = []
         for fdef in field_definitions:
             fid = fdef["id"]
             ftype = fdef["type"]
             x, y, w, h = int(fdef["x"]), int(fdef["y"]), int(fdef["w"]), int(fdef["h"])
-            ih, iw = aligned_form.shape[:2]
+            img_h, img_w = aligned_form.shape[:2]
             x1, y1 = max(x, 0), max(y, 0)
-            x2, y2 = min(x + w, iw), min(y + h, ih)
+            x2, y2 = min(x + w, img_w), min(y + h, img_h)
             if x2 <= x1 or y2 <= y1:
                 results.append(self._empty(fid, ftype, x, y, w, h))
                 continue
@@ -36,7 +44,9 @@ class FieldExtractor:
         return results
 
     @staticmethod
-    def _empty(fid, ftype, x, y, w, h):
+    def _empty(
+        fid: str, ftype: str, x: int, y: int, w: int, h: int
+    ) -> dict:
         return {
             "field_id": fid,
             "field_type": ftype,

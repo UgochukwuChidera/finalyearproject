@@ -1,8 +1,11 @@
 """API utility and static routes: dictionaries, audits, templates, settings, previews."""
+from __future__ import annotations
+
 import io
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import cv2
 from flask import jsonify, render_template, request, send_file, send_from_directory
@@ -20,7 +23,7 @@ from .common import (
 
 
 @bp.route("/api/dictionaries/upload", methods=["POST"])
-def api_upload_dictionary():
+def api_upload_dictionary() -> Any:
     file = request.files.get("dictionary_file")
     if not file:
         return jsonify({"error": "dictionary_file is required"}), 400
@@ -38,7 +41,7 @@ def api_upload_dictionary():
 
 
 @bp.route("/audits", methods=["GET"])
-def audits():
+def audits() -> str:
     entries = _read_audit_entries(limit=500)
     q = (request.args.get("q") or "").strip()
     sort_key = (request.args.get("sort") or "timestamp").strip()
@@ -73,7 +76,7 @@ def audits():
 
 
 @bp.route("/api/template-preview", methods=["GET"])
-def api_template_preview():
+def api_template_preview() -> Any:
     template_path = (request.args.get("template_path") or "").strip()
     if not template_path:
         return jsonify({"error": "template_path is required"}), 400
@@ -96,22 +99,22 @@ def api_template_preview():
 
 
 @bp.route("/templates/<path:filename>")
-def templates_static(filename: str):
+def templates_static(filename: str) -> Any:
     return send_from_directory(_root_dir() / "templates", filename)
 
 
 @bp.route("/uploads/<path:filename>")
-def uploads_static(filename: str):
+def uploads_static(filename: str) -> Any:
     return send_from_directory(_uploads_dir(), filename)
 
 
 @bp.route("/outputs/<path:filename>")
-def outputs_static(filename: str):
+def outputs_static(filename: str) -> Any:
     return send_from_directory(_outputs_dir(), filename)
 
 
 @bp.route("/api/utils/convert-to-png", methods=["POST"])
-def api_utils_convert_to_png():
+def api_utils_convert_to_png() -> Any:
     file = request.files.get("file")
     if not file:
         return jsonify({"error": "No file uploaded"}), 400
@@ -133,7 +136,7 @@ def api_utils_convert_to_png():
 
 
 @bp.route("/evaluation", methods=["GET"])
-def evaluation():
+def evaluation() -> str:
     results_path = _root_dir() / "evaluation" / "results" / "full_results.json"
     results: dict = {}
     if results_path.exists():
@@ -146,20 +149,20 @@ def evaluation():
 
 
 @bp.route("/settings", methods=["GET"])
-def settings():
+def settings() -> str:
     cfg = _load_models_config()
     return render_template("settings.html", models_config=cfg, active_model=get_active_model())
 
 
 @bp.route("/api/models", methods=["GET"])
-def api_models_get():
+def api_models_get() -> Any:
     cfg = _load_models_config()
     cfg["resolved_active"] = get_active_model()
     return jsonify(cfg)
 
 
 @bp.route("/api/models", methods=["POST"])
-def api_models_update():
+def api_models_update() -> Any:
     payload = request.get_json(silent=True) or {}
 
     active = (payload.get("active_model") or "").strip()
@@ -195,12 +198,12 @@ def api_models_update():
 
 
 @bp.route("/api/settings/batch", methods=["GET"])
-def api_batch_settings_get():
+def api_batch_settings_get() -> Any:
     return jsonify(_get_batch_settings())
 
 
 @bp.route("/api/settings/batch", methods=["POST"])
-def api_batch_settings_update():
+def api_batch_settings_update() -> Any:
     payload = request.get_json(silent=True) or {}
     updates: dict = {}
 
@@ -211,7 +214,6 @@ def api_batch_settings_update():
     rpm = payload.get("requests_per_minute")
     if rpm is not None:
         updates["requests_per_minute"] = max(1, int(rpm))
-        # Auto-derive inter-request delay from RPM; guard denominator even though max(1,...) already ensures >= 1
         safe_rpm = max(1, updates["requests_per_minute"])
         updates["inter_request_delay"] = round(60.0 / safe_rpm, 2)
 
@@ -229,5 +231,5 @@ def api_batch_settings_update():
 
 
 @bp.route("/help")
-def help_center():
+def help_center() -> str:
     return render_template("help.html")

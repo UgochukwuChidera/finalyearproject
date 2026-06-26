@@ -1,5 +1,8 @@
 """Review-related routes: accept/reject field corrections on job results."""
+from __future__ import annotations
+
 from datetime import datetime, timezone
+from typing import Any
 
 from flask import jsonify, render_template, request
 
@@ -11,7 +14,7 @@ from .common import (
 
 
 @bp.route("/jobs/<id>/review", methods=["GET", "POST"])
-def review(id: str):
+def review(id: str) -> Any:
     _init_jobs_internal()
     with JOBS_LOCK:
         job = JOBS.get(id)

@@ -1,11 +1,13 @@
 """Command-line interface for DAPE form processing."""
+from __future__ import annotations
+
 import argparse
 import json
 
 from pipeline import process_form
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="DAPE form processing")
     p.add_argument("--image", required=True, help="Path to filled form image")
     p.add_argument("--config-name", default=None, help="Config name in configs/<name>.json")
@@ -17,7 +19,7 @@ def parse_args():
     return p.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
     result = process_form(
         image_path=args.image,

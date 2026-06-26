@@ -1,16 +1,30 @@
+from __future__ import annotations
+
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 
 class AuditLogger:
-    def __init__(self, log_dir="logs", audit_jsonl_path="outputs/audit.jsonl"):
+    def __init__(
+        self,
+        log_dir: str = "logs",
+        audit_jsonl_path: str = "outputs/audit.jsonl",
+    ) -> None:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.audit_jsonl_path = Path(audit_jsonl_path)
         self.audit_jsonl_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def _base_entry(self, form_id, template_id, processing_stats, validated_fields, export_paths):
+    def _base_entry(
+        self,
+        form_id: str,
+        template_id: str,
+        processing_stats: dict,
+        validated_fields: list[dict],
+        export_paths: dict | None,
+    ) -> dict:
         ts = datetime.now(timezone.utc)
         total = len(validated_fields)
         flagged = sum(1 for f in validated_fields if f.get("needs_review", False))
@@ -39,14 +53,14 @@ class AuditLogger:
 
     def log(
         self,
-        form_id,
-        template_id,
-        processing_stats,
-        validated_fields,
-        export_paths=None,
-        original_filename=None,
-        extra=None,
-    ):
+        form_id: str,
+        template_id: str,
+        processing_stats: dict,
+        validated_fields: list[dict],
+        export_paths: dict | None = None,
+        original_filename: str | None = None,
+        extra: dict | None = None,
+    ) -> str:
         entry = self._base_entry(form_id, template_id, processing_stats, validated_fields, export_paths)
 
         ts = datetime.now(timezone.utc)
@@ -55,7 +69,7 @@ class AuditLogger:
         with p.open("w", encoding="utf-8") as fh:
             json.dump(entry, fh, indent=2, default=str, ensure_ascii=False)
 
-        ai_extractions = []
+        ai_extractions: list[dict[str, Any]] = []
         for f in validated_fields:
             ai_extractions.append(
                 {
@@ -71,7 +85,7 @@ class AuditLogger:
                 }
             )
 
-        jsonl_entry = {
+        jsonl_entry: dict[str, Any] = {
             "job_id": form_id,
             "timestamp": ts.isoformat(),
             "form_type": template_id,

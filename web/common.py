@@ -1,4 +1,6 @@
 """Shared helper functions, state, and configuration for web routes."""
+from __future__ import annotations
+
 import json
 import io
 import os
@@ -7,6 +9,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import cv2
 from flask import current_app
@@ -67,7 +70,7 @@ def _save_jobs_db(jobs_data: dict) -> None:
         json.dump(jobs_data, fh, indent=2, ensure_ascii=False)
 
 
-def _init_jobs_internal():
+def _init_jobs_internal() -> None:
     global JOBS
     if not JOBS:
         loaded = _load_jobs_db()
@@ -139,7 +142,7 @@ def _read_audit_entries(limit: int = 200) -> list[dict]:
     return list(reversed(items[-limit:]))
 
 
-def _append_review_event(job: dict, reviewer: str, corrections: dict):
+def _append_review_event(job: dict, reviewer: str, corrections: dict) -> None:
     audit_path = _outputs_dir() / "audit.jsonl"
     audit_path.parent.mkdir(parents=True, exist_ok=True)
     event = {
@@ -153,7 +156,7 @@ def _append_review_event(job: dict, reviewer: str, corrections: dict):
         fh.write(json.dumps(event, ensure_ascii=False) + "\n")
 
 
-def _norm_text(value) -> str:
+def _norm_text(value: Any) -> str:
     return str(value or "").strip().lower()
 
 
@@ -161,7 +164,7 @@ def _norm_text(value) -> str:
 # Model configuration helpers
 # ---------------------------------------------------------------------------
 
-_BUILTIN_MODELS = [
+_BUILTIN_MODELS: list[dict[str, Any]] = [
     {
         "id": "openai/gpt-4o-mini",
         "label": "GPT-4o Mini",
@@ -244,7 +247,7 @@ _BUILTIN_MODELS = [
     }
 ]
 
-_DEFAULT_MODELS_CONFIG: dict = {
+_DEFAULT_MODELS_CONFIG: dict[str, Any] = {
     "active_model": "openai/gpt-4o-mini",
     "api_key": "",
     "models": _BUILTIN_MODELS,
@@ -276,7 +279,7 @@ def _save_models_config(data: dict) -> None:
 # Batch / Rate-limit settings
 # ---------------------------------------------------------------------------
 
-_BATCH_DEFAULTS: dict = {
+_BATCH_DEFAULTS: dict[str, int | float] = {
     "max_concurrent": 5,
     "requests_per_minute": 30,
     "inter_request_delay": 0.5,

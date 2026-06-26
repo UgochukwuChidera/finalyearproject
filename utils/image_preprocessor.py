@@ -2,6 +2,8 @@
 Image preprocessing utilities for scanned forms.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import cv2
@@ -9,22 +11,22 @@ import numpy as np
 from PIL import Image
 
 
-def pil_to_cv(pil_img):
+def pil_to_cv(pil_img: Image.Image) -> np.ndarray:
     return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
 
-def cv_to_pil(cv_img):
+def cv_to_pil(cv_img: np.ndarray) -> Image.Image:
     return Image.fromarray(cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB))
 
 
-def deskew(image):
+def deskew(image: np.ndarray) -> np.ndarray:
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     lines = cv2.HoughLinesP(binary, rho=1, theta=np.pi / 180, threshold=100, minLineLength=100, maxLineGap=10)
     if lines is None:
         return image
 
-    angles = []
+    angles: list[float] = []
     for line in lines:
         x1, y1, x2, y2 = line[0]
         angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
@@ -43,11 +45,13 @@ def deskew(image):
     return cv2.warpAffine(image, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
 
-def detect_and_crop_dark_borders(image, dark_threshold=50, min_content_percent=70):
+def detect_and_crop_dark_borders(
+    image: np.ndarray, dark_threshold: int = 50, min_content_percent: int = 70
+) -> np.ndarray:
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     h, w = gray.shape
 
-    def find_border(strip, threshold, min_content):
+    def find_border(strip: np.ndarray, threshold: int, min_content: int) -> int:
         for i, row in enumerate(strip):
             light_pixels = np.sum(row > threshold)
             if light_pixels > (len(row) * min_content / 100):
@@ -68,7 +72,7 @@ def detect_and_crop_dark_borders(image, dark_threshold=50, min_content_percent=7
     return image[top:bottom, left:right]
 
 
-def align_to_template(image, template):
+def align_to_template(image: np.ndarray, template: np.ndarray) -> np.ndarray:
     gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray_tmpl = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
 
@@ -94,13 +98,20 @@ def align_to_template(image, template):
     return cv2.warpPerspective(image, H, (w, h))
 
 
-def clean_image(image):
+def clean_image(image: np.ndarray) -> np.ndarray:
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     denoised = cv2.fastNlMeansDenoising(gray, h=10)
     return cv2.adaptiveThreshold(denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, blockSize=11, C=2)
 
 
-def preprocess(image, template=None, do_deskew=True, do_crop=True, do_align=True, do_clean=True):
+def preprocess(
+    image: np.ndarray,
+    template: np.ndarray | None = None,
+    do_deskew: bool = True,
+    do_crop: bool = True,
+    do_align: bool = True,
+    do_clean: bool = True,
+) -> Image.Image:
     cv_img = pil_to_cv(image) if isinstance(image, Image.Image) else image.copy()
     cv_tmpl = pil_to_cv(template) if isinstance(template, Image.Image) else template
 
@@ -117,7 +128,11 @@ def preprocess(image, template=None, do_deskew=True, do_crop=True, do_align=True
     return cv_to_pil(cv_img)
 
 
-def preprocess_for_ai(image, template=None, **kwargs):
+def preprocess_for_ai(
+    image: np.ndarray,
+    template: np.ndarray | None = None,
+    **kwargs: bool,
+) -> Image.Image:
     return preprocess(image, template, **kwargs)
 
 

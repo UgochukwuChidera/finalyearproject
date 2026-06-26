@@ -3,6 +3,8 @@ Adaptable document processing helpers.
 Supports PDF and image formats by returning page images for downstream AI extraction.
 """
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -10,10 +12,10 @@ from PIL import Image
 from pdf2image import convert_from_path
 
 
-def get_pages(file_path: str) -> list:
+def get_pages(file_path: str) -> list[Image.Image]:
     path = Path(file_path)
     ext = path.suffix.lower()
-    pages = []
+    pages: list[Image.Image] = []
 
     if ext == ".pdf":
         pages = convert_from_path(file_path, dpi=300)
@@ -33,15 +35,15 @@ def get_pages(file_path: str) -> list:
     return pages
 
 
-def group_into_sets(pages_data: list, pages_per_record: int = 3) -> list:
-    groups = []
+def group_into_sets(pages_data: list, pages_per_record: int = 3) -> list[dict]:
+    groups: list[dict] = []
     for i in range(0, len(pages_data), pages_per_record):
         chunk = pages_data[i : i + pages_per_record]
         groups.append({"record": (i // pages_per_record) + 1, "pages": chunk})
     return groups
 
 
-def process_document(file_path: str, pages_per_record: int = 3):
+def process_document(file_path: str, pages_per_record: int = 3) -> list[dict]:
     pages = get_pages(file_path)
     return group_into_sets(pages, pages_per_record)
 

@@ -35,6 +35,8 @@ Usage
     path = exporter.export_batch(list_of_structured_outputs, "outputs/batch.xlsx")
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from pathlib import Path
 

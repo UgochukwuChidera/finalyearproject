@@ -1,11 +1,15 @@
 """Job-related routes: queue, run, list, delete, export."""
+from __future__ import annotations
+
 import threading
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Callable
 
 from flask import current_app, jsonify, redirect, render_template, request, send_file
+from werkzeug.datastructures import FileStorage
 
 from main import process_form
 from .bp import bp
@@ -18,7 +22,7 @@ from .common import (
 )
 
 
-def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
+def _queue_job(cfg: str, file: FileStorage, batch_id: str | None = None) -> str:
     ext = Path(file.filename or "").suffix.lower()
     job_id = str(uuid.uuid4())
     save_name = f"{job_id}{ext}"
@@ -51,9 +55,9 @@ def _queue_job(cfg: str, file, batch_id: str | None = None) -> str:
 
 
 def _job_runner_gated(
-    app, job_id: str, image_path: str, config_name: str, original_filename: str,
+    app: Any, job_id: str, image_path: str, config_name: str, original_filename: str,
     sem: threading.Semaphore, inter_request_delay: float
-):
+) -> None:
     """Wrapper that rate-limits job execution via a semaphore + inter-request delay."""
     global _LAST_JOB_START
     # Wait for a concurrency slot
@@ -72,8 +76,10 @@ def _job_runner_gated(
         sem.release()
 
 
-def _job_runner(app, job_id: str, image_path: str, config_name: str, original_filename: str):
-    def progress_cb(stage, message):
+def _job_runner(
+    app: Any, job_id: str, image_path: str, config_name: str, original_filename: str
+) -> None:
+    def progress_cb(stage: str, message: str) -> None:
         with JOBS_LOCK:
             if job_id in JOBS:
                 JOBS[job_id]["current_stage"] = stage
@@ -119,7 +125,7 @@ def _job_runner(app, job_id: str, image_path: str, config_name: str, original_fi
 
 
 @bp.route("/")
-def index():
+def index() -> str:
     _init_jobs_internal()
     with JOBS_LOCK:
         jobs = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
@@ -127,7 +133,7 @@ def index():
 
 
 @bp.route("/jobs", methods=["GET"])
-def jobs():
+def jobs() -> str:
     _init_jobs_internal()
     with JOBS_LOCK:
         items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
@@ -181,7 +187,7 @@ def jobs():
 
 
 @bp.route("/jobs/<id>", methods=["GET"])
-def job_detail(id: str):
+def job_detail(id: str) -> str:
     _init_jobs_internal()
     with JOBS_LOCK:
         job = JOBS.get(id)
@@ -193,7 +199,7 @@ def job_detail(id: str):
 
 
 @bp.route("/api/jobs", methods=["GET"])
-def api_jobs():
+def api_jobs() -> Any:
     _init_jobs_internal()
     with JOBS_LOCK:
         items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
@@ -201,7 +207,7 @@ def api_jobs():
 
 
 @bp.route("/api/jobs/<id>", methods=["DELETE"])
-def api_job_delete(id: str):
+def api_job_delete(id: str) -> Any:
     with JOBS_LOCK:
         if id in JOBS:
             del JOBS[id]
@@ -211,7 +217,7 @@ def api_job_delete(id: str):
 
 
 @bp.route("/api/jobs/batch-delete", methods=["POST"])
-def api_jobs_batch_delete():
+def api_jobs_batch_delete() -> Any:
     payload = request.get_json(silent=True) or {}
     ids = payload.get("job_ids", [])
     if not isinstance(ids, list):
@@ -229,7 +235,7 @@ def api_jobs_batch_delete():
 
 
 @bp.route("/jobs/<id>/exports/<fmt>", methods=["GET"])
-def job_export_download(id: str, fmt: str):
+def job_export_download(id: str, fmt: str) -> Any:
     _init_jobs_internal()
     fmt = (fmt or "").strip().lower()
     if fmt not in {"json", "csv", "xlsx"}:

@@ -1,7 +1,10 @@
 """Config-related routes: list, create, edit, discover, delete, and upload."""
+from __future__ import annotations
+
 import json
 import uuid
 from pathlib import Path
+from typing import Any
 
 from flask import jsonify, redirect, render_template, request, url_for
 
@@ -16,12 +19,12 @@ from .job_routes import _queue_job
 
 
 @bp.route("/configs", methods=["GET"])
-def configs_page():
+def configs_page() -> str:
     return render_template("configs.html", configs=_list_configs())
 
 
 @bp.route("/configs/new", methods=["GET", "POST"])
-def config_new():
+def config_new() -> Any:
     if request.method == "GET":
         return render_template("config_editor.html", mode="new", config_name="", config_text="{}", config={})
 
@@ -32,7 +35,7 @@ def config_new():
 
 
 @bp.route("/configs/<name>/edit", methods=["GET", "POST"])
-def config_edit(name: str):
+def config_edit(name: str) -> Any:
     safe_name = _safe_config_name(name)
     cfg = _load_config(safe_name)
 
@@ -52,7 +55,7 @@ def config_edit(name: str):
 
 
 @bp.route("/api/config/discover", methods=["POST"])
-def config_discover():
+def config_discover() -> Any:
     file = request.files.get("template_file")
     if not file:
         return jsonify({"error": "template_file is required"}), 400
@@ -81,7 +84,7 @@ def config_discover():
 
 
 @bp.route("/configs/<name>/delete", methods=["POST"])
-def config_delete(name: str):
+def config_delete(name: str) -> Any:
     safe_name = _safe_config_name(name)
     path = _config_path(safe_name)
     if path.exists():
@@ -90,7 +93,7 @@ def config_delete(name: str):
 
 
 @bp.route("/upload", methods=["POST"])
-def upload():
+def upload() -> Any:
     cfg = request.form.get("config_name", "").strip()
     files = request.files.getlist("form_files")
     if not files:

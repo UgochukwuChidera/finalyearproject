@@ -5,8 +5,12 @@ Opens automatically when low-confidence fields are detected.
 Access at http://127.0.0.1:5050 (or configured port).
 """
 
+from __future__ import annotations
+
 import json
 import threading
+from typing import Any
+
 from flask import Flask, jsonify, render_template_string, request
 
 _PAGE = """
@@ -146,35 +150,35 @@ function submitReview(){
 
 
 class HITLInterface:
-    def __init__(self, host="127.0.0.1", port=5050):
+    def __init__(self, host: str = "127.0.0.1", port: int = 5050) -> None:
         self.host = host
         self.port = port
         self._app = Flask(__name__)
-        self._pending: list = []
-        self._corrections: dict = {}
+        self._pending: list[dict[str, Any]] = []
+        self._corrections: dict[str, object] = {}
         self._done = threading.Event()
         self._started = False
         self._register_routes()
 
-    def _register_routes(self):
+    def _register_routes(self) -> None:
         app = self._app
 
         @app.route("/")
-        def index():
+        def index() -> str:
             return render_template_string(_PAGE, fields=self._pending)
 
         @app.route("/fields")
-        def get_fields():
+        def get_fields() -> Any:
             return jsonify(self._pending)
 
         @app.route("/submit", methods=["POST"])
-        def submit():
+        def submit() -> Any:
             data = request.get_json(silent=True) or {}
             self._corrections = data.get("corrections", {})
             self._done.set()
             return jsonify({"status": "ok"})
 
-    def run_review(self, flagged_fields: list) -> dict:
+    def run_review(self, flagged_fields: list[dict[str, Any]]) -> dict[str, object]:
         self._pending = flagged_fields
         self._corrections = {}
         self._done.clear()
