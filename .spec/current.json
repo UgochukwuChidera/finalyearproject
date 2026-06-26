@@ -1,0 +1,53 @@
+{
+  "session": {
+    "id": "refactor-session-main-routes",
+    "start_time": "2026-06-26T12:00:00Z",
+    "phase": "completed"
+  },
+  "status": "completed",
+  "task": "Refactor main.py and routes.py: fix batching/error handling, add p_evaluator, split monoliths",
+  "workItems": [
+    {"id": "phase-2-batching", "description": "Fix multiprocessing batching in main.py (create batching.py with ProcessPoolExecutor)", "status": "done"},
+    {"id": "phase-3-error-handling", "description": "Fix error swallowing in _wrap_job_call with logging and error propagation", "status": "done"},
+    {"id": "phase-4-p-evaluator", "description": "Create project/evaluation/p_evaluator.py for .p file handling", "status": "done"},
+    {"id": "phase-5a-split-main", "description": "Split main.py into pipeline.py, batching.py, cli.py, main.py (thin)", "status": "done"},
+    {"id": "phase-5b-split-routes", "description": "Split routes.py into job_routes.py, config_routes.py, api_routes.py, review_routes.py, routes.py (thin)", "status": "done"},
+    {"id": "verify", "description": "Verify imports work correctly", "status": "done"}
+  ],
+  "session": {
+    "work_items_total": 6,
+    "work_items_completed": 6
+  },
+  "decisions": [
+    "Use concurrent.futures.ProcessPoolExecutor replacing broken multiprocessing.Pool pattern",
+    "Log exceptions with traceback in _wrap_job_call and store error in returned dict",
+    "Split main.py into pipeline.py (process_form), batching.py (batch funcs), cli.py (CLI entry), main.py (re-export)",
+    "Split routes.py into sub-modules with shared bp defined in web/bp.py and common helpers in web/common.py",
+    "Routes sub-modules import from web/bp.py for the blueprint and web/common.py for shared state/helpers",
+    "Use absolute imports between top-level modules (no __init__.py at project root)"
+  ],
+  "files_created_or_modified": [
+    "main.py (rewritten as thin re-export, 32 lines)",
+    "pipeline.py (new — extracted process_form + helpers, 431 lines)",
+    "batching.py (new — ProcessPoolExecutor batching + error handling, 76 lines)",
+    "cli.py (new — CLI entry point extracted, 35 lines)",
+    "project/evaluation/p_evaluator.py (new — .p file evaluation module, 116 lines)",
+    "project/evaluation/__init__.py (new — package init)",
+    "web/bp.py (new — shared Blueprint instance, 4 lines)",
+    "web/common.py (new — shared helpers + state, 340 lines)",
+    "web/job_routes.py (new — job CRUD routes, 262 lines)",
+    "web/config_routes.py (new — config CRUD routes, 116 lines)",
+    "web/api_routes.py (new — API utility routes, 233 lines)",
+    "web/review_routes.py (new — HITL review routes, 62 lines)",
+    "web/routes.py (rewritten as thin import module, 6 lines)"
+  ],
+  "cleanup": {
+    "files_removed": 3,
+    "space_freed_bytes": 2526,
+    "space_freed_human": "2.5 KB",
+    "packages_removed": [],
+    "directories_scanned": [".spec/agents/"],
+    "dry_run": false,
+    "timestamp": "2026-06-26T13:21:00Z"
+  }
+}
