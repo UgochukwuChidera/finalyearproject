@@ -18,31 +18,62 @@ _PAGE = """
 <title>DAPE – Field Review</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#f4f5f7;color:#1a1a2e}
-header{background:#1a1a2e;color:#fff;padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem}
+:root {
+    --bg: #ffffff;
+    --surface: #f8f8f8;
+    --text: #111111;
+    --text-secondary: #666666;
+    --border: #dddddd;
+    --border-strong: #cfcfcf;
+    --primary: #000000;
+    --primary-hover: #222222;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --info: #2563eb;
+    --radius: 6px;
+    --shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+[data-theme="dark"] {
+    --bg: #0f0f0f;
+    --surface: #181818;
+    --text: #f7f7f7;
+    --text-secondary: #b5b5b5;
+    --border: #2a2a2a;
+    --border-strong: #3b3b3b;
+    --primary: #ffffff;
+    --primary-hover: #e5e5e5;
+    --success: #2e9b88;
+    --danger: #e8494a;
+    --warning: #d4a84b;
+    --info: #4dabf7;
+    --shadow: 0 4px 12px rgba(0,0,0,.35);
+}
+body{font-family:system-ui,sans-serif;background:var(--surface);color:var(--text)}
+header{background:var(--primary);color:var(--bg);padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem}
 header h1{font-size:1.1rem;font-weight:600}
-.badge{background:#e74c3c;color:#fff;border-radius:999px;padding:.15rem .55rem;font-size:.8rem}
+.badge{background:var(--danger);color:var(--bg);padding:.15rem .55rem;font-size:.8rem}
 main{max-width:860px;margin:2rem auto;padding:0 1rem}
-.card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.1);padding:1.25rem 1.5rem;margin-bottom:1.2rem}
+.card{background:var(--bg);box-shadow:var(--shadow);padding:1.25rem 1.5rem;margin-bottom:1.2rem}
 .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem}
 .field-id{font-weight:700;font-size:.95rem}
-.field-type{font-size:.78rem;color:#666;text-transform:uppercase;letter-spacing:.05em}
-.status-badge{font-size:.75rem;padding:.2rem .5rem;border-radius:4px}
+.field-type{font-size:.78rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em}
+.status-badge{font-size:.75rem;padding:.2rem .5rem}
 .low_confidence{background:#fff3cd;color:#856404}
 .semantic_failure{background:#f8d7da;color:#842029}
 .rejected{background:#f8d7da;color:#842029}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-label{font-size:.82rem;color:#555;display:block;margin-bottom:.2rem}
-.current-value{background:#f4f5f7;border:1px solid #ddd;border-radius:4px;padding:.45rem .6rem;font-size:.9rem;color:#444;word-break:break-all}
-input[type=text]{width:100%;border:1.5px solid #bbb;border-radius:4px;padding:.45rem .6rem;font-size:.9rem;transition:border-color .15s}
-input[type=text]:focus{outline:none;border-color:#3b82f6}
-.reason{font-size:.78rem;color:#888;margin-top:.4rem}
-.conf{font-size:.78rem;color:#666}
-footer-bar{display:block;position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;padding:1rem 1.5rem;display:flex;justify-content:flex-end;gap:.75rem}
-button{cursor:pointer;border:none;border-radius:6px;padding:.55rem 1.2rem;font-size:.9rem;font-weight:600}
-.btn-primary{background:#3b82f6;color:#fff}
-.btn-primary:hover{background:#2563eb}
-.no-flags{text-align:center;padding:3rem 1rem;color:#666}
+label{font-size:.82rem;color:var(--text-secondary);display:block;margin-bottom:.2rem}
+.current-value{background:var(--surface);border:1px solid var(--border);padding:.45rem .6rem;font-size:.9rem;color:var(--text);word-break:break-all}
+input[type=text]{width:100%;border:1.5px solid var(--border);padding:.45rem .6rem;font-size:.9rem;transition:border-color .15s;font-family:inherit}
+input[type=text]:focus{outline:none;border-color:var(--info)}
+.reason{font-size:.78rem;color:var(--text-secondary);margin-top:.4rem}
+.conf{font-size:.78rem;color:var(--text-secondary)}
+footer-bar{display:block;position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:1rem 1.5rem;display:flex;justify-content:flex-end;gap:.75rem}
+button{cursor:pointer;border:none;padding:.55rem 1.2rem;font-size:.9rem;font-weight:600;font-family:inherit}
+.btn-primary{background:var(--info);color:var(--bg)}
+.btn-primary:hover{background:#1d4ed8}
+.no-flags{text-align:center;padding:3rem 1rem;color:var(--text-secondary)}
 .checkbox-wrap{display:flex;align-items:center;gap:.5rem;margin-top:.5rem}
 .checkbox-wrap input[type=checkbox]{width:auto}
 </style>
@@ -105,7 +136,7 @@ function submitReview(){
   });
   fetch('/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({corrections})})
     .then(r=>r.json()).then(()=>{
-      document.body.innerHTML='<div style="text-align:center;padding:4rem;font-family:system-ui"><h2 style="color:#16a34a">✅ Corrections submitted. You may close this tab.</h2></div>';
+      document.body.innerHTML='<div style="text-align:center;padding:4rem;font-family:system-ui"><h2 style="color:var(--success)">✅ Corrections submitted. You may close this tab.</h2></div>';
     });
 }
 </script>

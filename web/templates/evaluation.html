@@ -15,7 +15,7 @@
   <i class="ph ph-chart-bar block mb-4" style="font-size:4rem;color:var(--text-dim)"></i>
   <h3>No Evaluation Results</h3>
   <p class="muted">Run the evaluation pipeline to generate results.</p>
-  <pre class="muted inline-block text-left mt-6 border-strong p-5" style="background:var(--bg-secondary);color:var(--text-main);font-size:0.8125rem">python run_evaluation.py --forms-dir form --template-id medical_screening_v1</pre>
+  <pre class="muted inline-block text-left mt-6 border-strong p-5" style="background:var(--surface);color:var(--text);font-size:0.8125rem">python run_evaluation.py --forms-dir form --template-id medical_screening_v1</pre>
 </section>
 {% else %}
 {% for pipeline_name, data in results.items() %}
@@ -27,19 +27,19 @@
   {# ── HITL Impact Summary ──────────────────────────────────────────── #}
   {% set impact = data.get('hitl_impact', {}) %}
   <div class="grid-3 mb-8">
-    <div class="border-strong text-center p-6" style="background:var(--bg-secondary)">
+    <div class="border-strong text-center p-6" style="background:var(--surface)">
       <div class="muted text-xs uppercase mb-2">Pre-HITL Accuracy</div>
       <div class="text-2xl font-bold text-warning">
         {{ '%.1f'|format((impact.get('pre_hitl_accuracy', 0)) * 100) }}%
       </div>
     </div>
-    <div class="border-strong text-center p-6" style="background:var(--bg-secondary)">
+    <div class="border-strong text-center p-6" style="background:var(--surface)">
       <div class="muted text-xs uppercase mb-2">Post-HITL Accuracy</div>
       <div class="text-2xl font-bold text-success">
         {{ '%.1f'|format((impact.get('post_hitl_accuracy', 0)) * 100) }}%
       </div>
     </div>
-    <div class="border-strong text-center p-6" style="background:var(--bg-secondary)">
+    <div class="border-strong text-center p-6" style="background:var(--surface)">
       <div class="muted text-xs uppercase mb-2">HITL Gain</div>
       <div class="text-2xl font-bold text-info">
         +{{ '%.1f'|format(impact.get('hitl_gain_pct', 0)) }}%
