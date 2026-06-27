@@ -42,12 +42,24 @@
     "web/routes.py (rewritten as thin import module, 6 lines)"
   ],
   "cleanup": {
-    "files_removed": 3,
-    "space_freed_bytes": 2526,
-    "space_freed_human": "2.5 KB",
+    "files_removed": 7,
+    "space_freed_bytes": 3585,
+    "space_freed_human": "3.5 KB",
     "packages_removed": [],
-    "directories_scanned": [".spec/agents/"],
+    "directories_scanned": [".spec/agents/", "__pycache__/"],
     "dry_run": false,
-    "timestamp": "2026-06-26T13:21:00Z"
+    "timestamp": "2026-06-26T14:05:00Z",
+    "files_removed_detail": [
+      ".spec/agents/commit-crafter-test-suite.json (412 B)",
+      ".spec/agents/git-wrangler-type-hints-commit.json (1,180 B)",
+      ".spec/agents/test-writer-pytest-suite.json (1,834 B)",
+      "__pycache__/main.cpython-314.pyc",
+      "__pycache__/cli.cpython-314.pyc",
+      "__pycache__/batching.cpython-314.pyc",
+      "__pycache__/pipeline.cpython-314.pyc"
+    ],
+    "gitignore_updates": [
+      "Added .pytest_cache/ entry"
+    ]
   }
 }

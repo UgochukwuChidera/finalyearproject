@@ -1,114 +1,61 @@
 {% extends "base.html" %}
-{% block styles %}
-<style>
-  .model-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.25rem;
-    border: 1px solid var(--border);
-    background: var(--bg-main);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .model-card:hover {
-    border-color: var(--primary);
-  }
-  .model-card.model-active {
-    border-color: var(--primary);
-    background: var(--bg-secondary);
-  }
-  #settings-feedback {
-    border: 1px solid transparent;
-    transition: all 0.3s ease;
-  }
-  .settings-section-title {
-    font-size: 1.35rem;
-    font-weight: 700;
-    margin: 0 0 0.25rem;
-  }
-  .range-row {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-  .range-row input[type="range"] {
-    flex: 1;
-    width: auto;
-    padding: 0;
-    border: none;
-    background: transparent;
-    accent-color: var(--primary);
-    cursor: pointer;
-  }
-  .range-val {
-    min-width: 3rem;
-    text-align: right;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-  #batch-feedback {
-    border: 1px solid transparent;
-    transition: all 0.3s ease;
-  }
-</style>
-{% endblock %}
+{% block styles %}{% endblock %}
 {% block content %}
-<div class="card-header" style="margin-bottom: 2.5rem">
+<div class="card-header mb-10">
   <div>
-    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem">Settings</h1>
+    <h1 class="text-4xl mb-2">Settings</h1>
     <p class="muted">AI model configuration and batch processing rate limits</p>
   </div>
 </div>
 
 <!-- ── Model Settings ──────────────────────────────────────────────── -->
 <section class="card" style="max-width: 760px">
-  <div id="settings-feedback" style="display:none; padding:1rem; margin-bottom:1.5rem; text-align:center;"></div>
+  <div id="settings-feedback" class="hidden p-4 mb-6 text-center"></div>
 
   <h3 class="settings-section-title"><i class="ph ph-sliders"></i> Model Settings</h3>
-  <p class="muted" style="margin-bottom: 2rem; font-size: 0.875rem">Configure the AI model used for form extraction.</p>
+  <p class="muted mb-8 text-sm">Configure the AI model used for form extraction.</p>
 
-  <div style="margin-bottom: 2rem">
-    <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">OpenRouter API Key</label>
-    <div style="display:flex; gap:0.75rem">
-      <input id="api-key-input" type="password" placeholder="sk-or-v1-..." value="{{ models_config.api_key or '' }}" style="flex:1; box-sizing:border-box" />
+  <div class="mb-8">
+    <label class="muted text-xs block mb-1">OpenRouter API Key</label>
+    <div class="flex gap-3">
+      <input id="api-key-input" type="password" placeholder="sk-or-v1-..." value="{{ models_config.api_key or '' }}" class="flex-1" />
       <button id="btn-save-api-key" class="primary" style="white-space:nowrap">Save Key</button>
     </div>
-    <p class="muted" style="font-size:0.75rem; margin-top:0.35rem">
+    <p class="muted text-xs mt-1">
       <i class="ph ph-info"></i> Your key is saved locally in <code>models.json</code>. If left empty, it falls back to the <code>OPENROUTER_API_KEY</code> environment variable.
     </p>
   </div>
 
   <hr style="border:0; border-top:1px solid var(--border); margin:2rem 0" />
 
-  <h3 style="margin-bottom: 1.5rem">Active AI Model</h3>
+  <h3 class="mb-6">Active AI Model</h3>
 
-  <div id="active-model-display" style="margin-bottom: 2rem">
-    <label class="muted" style="font-size:0.75rem; text-transform:uppercase">Currently Active</label>
-    <p style="margin:0.35rem 0 0; font-size:1.05rem; font-weight:600; color:var(--primary)" id="active-model-label">
+  <div id="active-model-display" class="mb-8">
+    <label class="muted text-xs uppercase">Currently Active</label>
+    <p class="mt-1 text-xl font-semibold text-primary" id="active-model-label">
       {{ active_model }}
     </p>
   </div>
 
-  <h4 style="margin-bottom: 1rem">Available Models</h4>
-  <div id="models-list" style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:2rem">
+  <h4 class="mb-4">Available Models</h4>
+  <div id="models-list" class="flex flex-col gap-3 mb-8">
     {% for m in models_config.models %}
     <div class="model-card {{ 'model-active' if m.id == active_model else '' }}"
          data-id="{{ m.id }}">
       <div>
-        <p style="margin:0; font-weight:600">{{ m.label }}</p>
-        <p class="muted" style="margin:0.2rem 0 0; font-size:0.8rem">{{ m.id }}</p>
+        <p class="m-0 font-semibold">{{ m.label }}</p>
+        <p class="muted mt-1 text-sm">{{ m.id }}</p>
         {% if m.description %}
-        <p class="muted" style="margin:0.2rem 0 0; font-size:0.75rem">{{ m.description }}</p>
+        <p class="muted mt-1 text-xs">{{ m.description }}</p>
         {% endif %}
       </div>
-      <div style="display:flex; gap:0.5rem; align-items:center">
+      <div class="flex gap-2 items-center">
         {% if m.id == active_model %}
         <span class="badge badge-success">active</span>
         {% else %}
-        <button class="btn-set-active secondary" data-id="{{ m.id }}" style="font-size:0.8rem; padding:0.3rem 0.75rem">Set Active</button>
+        <button class="btn-set-active secondary text-sm" data-id="{{ m.id }}" style="padding:0.3rem 0.75rem">Set Active</button>
         {% endif %}
-        <button class="btn-remove-model ghost" data-id="{{ m.id }}" style="font-size:0.8rem; padding:0.3rem 0.6rem; color:var(--danger)" title="Remove model">
+        <button class="btn-remove-model ghost text-sm text-danger" data-id="{{ m.id }}" style="padding:0.3rem 0.6rem" title="Remove model">
           <i class="ph ph-trash"></i>
         </button>
       </div>
@@ -116,24 +63,24 @@
     {% endfor %}
   </div>
 
-  <h4 style="margin-bottom: 1rem">Add a Custom Model</h4>
-  <form id="add-model-form" style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.5rem">
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem">
+  <h4 class="mb-4">Add a Custom Model</h4>
+  <form id="add-model-form" class="flex flex-col gap-3 mb-6">
+    <div class="gap-3" style="display:grid;grid-template-columns:1fr 1fr">
       <div>
-        <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">OpenRouter Model ID <span style="color:var(--danger)">*</span></label>
-        <input id="new-model-id" type="text" placeholder="e.g. anthropic/claude-3-haiku" style="width:100%; box-sizing:border-box" required />
+        <label class="muted text-xs block mb-1">OpenRouter Model ID <span class="text-danger">*</span></label>
+        <input id="new-model-id" type="text" placeholder="e.g. anthropic/claude-3-haiku" class="w-full" required />
       </div>
       <div>
-        <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">Display Label</label>
-        <input id="new-model-label" type="text" placeholder="e.g. Claude 3 Haiku" style="width:100%; box-sizing:border-box" />
+        <label class="muted text-xs block mb-1">Display Label</label>
+        <input id="new-model-label" type="text" placeholder="e.g. Claude 3 Haiku" class="w-full" />
       </div>
     </div>
     <div>
-      <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:0.35rem">Description (optional)</label>
-      <input id="new-model-desc" type="text" placeholder="Short description" style="width:100%; box-sizing:border-box" />
+      <label class="muted text-xs block mb-1">Description (optional)</label>
+      <input id="new-model-desc" type="text" placeholder="Short description" class="w-full" />
     </div>
     <div>
-      <button type="submit" class="primary" style="width:auto">
+      <button type="submit" class="primary w-auto">
         <i class="ph ph-plus"></i> Add Model
       </button>
     </div>
@@ -141,20 +88,20 @@
 </section>
 
 <!-- ── Batch / Rate-limit Settings ────────────────────────────────── -->
-<section class="card" style="max-width: 760px; margin-top: 2rem" id="batch-section">
-  <div id="batch-feedback" style="display:none; padding:1rem; margin-bottom:1.5rem;"></div>
+<section class="card mt-8" style="max-width:760px" id="batch-section">
+  <div id="batch-feedback" class="hidden p-4 mb-6"></div>
 
   <h3 class="settings-section-title"><i class="ph ph-stack"></i> Batch Processing &amp; Rate Limits</h3>
-  <p class="muted" style="margin-bottom: 2rem; font-size: 0.875rem">
+  <p class="muted mb-8 text-sm">
     Control how many files are processed in parallel and how quickly requests are sent.
     This is especially important for free-tier models which have low requests-per-minute (RPM) caps.
   </p>
 
-  <div style="display:flex; flex-direction:column; gap:1.75rem">
+  <div class="flex flex-col gap-6">
 
     <div>
-      <label style="margin-bottom:0.25rem">Max Concurrent Requests</label>
-      <p class="muted" style="font-size:0.8rem; margin-bottom:0.75rem">
+      <label class="mb-1">Max Concurrent Requests</label>
+      <p class="muted text-sm mb-3">
         How many extraction jobs run at the same time. Set to <strong>1</strong> to process files strictly one-by-one.
       </p>
       <div class="range-row">
@@ -164,8 +111,8 @@
     </div>
 
     <div>
-      <label style="margin-bottom:0.25rem">Requests Per Minute (RPM) Limit</label>
-      <p class="muted" style="font-size:0.8rem; margin-bottom:0.75rem">
+      <label class="mb-1">Requests Per Minute (RPM) Limit</label>
+      <p class="muted text-sm mb-3">
         Match this to your provider's RPM cap. Free-tier OpenRouter models are often limited to <strong>10 RPM</strong>.
         Setting this automatically adjusts the delay between consecutive job starts.
       </p>
@@ -176,8 +123,8 @@
     </div>
 
     <div>
-      <label style="margin-bottom:0.25rem">Inter-request Delay (seconds)</label>
-      <p class="muted" style="font-size:0.8rem; margin-bottom:0.75rem">
+      <label class="mb-1">Inter-request Delay (seconds)</label>
+      <p class="muted text-sm mb-3">
         Minimum pause between consecutive job starts. Auto-calculated as <code>60 ÷ RPM</code> when you change RPM above, but you can also set it manually here.
       </p>
       <div class="range-row">
@@ -188,11 +135,11 @@
 
   </div>
 
-  <div style="margin-top:2rem; display:flex; align-items:center; gap:1rem">
+  <div class="mt-8 flex items-center gap-4">
     <button class="primary" id="btn-save-batch">
       <i class="ph ph-floppy-disk"></i> Save Batch Settings
     </button>
-    <span class="muted" style="font-size:0.8rem" id="batch-hint"></span>
+    <span class="muted text-sm" id="batch-hint"></span>
   </div>
 </section>
 
@@ -253,15 +200,15 @@
       card.dataset.id = m.id;
       card.innerHTML =
         '<div>' +
-          '<p style="margin:0;font-weight:600">' + escHtml(m.label || m.id) + '</p>' +
-          '<p class="muted" style="margin:0.2rem 0 0;font-size:0.8rem">' + escHtml(m.id) + '</p>' +
-          (m.description ? '<p class="muted" style="margin:0.2rem 0 0;font-size:0.75rem">' + escHtml(m.description) + '</p>' : '') +
+          '<p class="m-0 font-semibold">' + escHtml(m.label || m.id) + '</p>' +
+          '<p class="muted mt-1 text-sm">' + escHtml(m.id) + '</p>' +
+          (m.description ? '<p class="muted mt-1 text-xs">' + escHtml(m.description) + '</p>' : '') +
         '</div>' +
-        '<div style="display:flex;gap:0.5rem;align-items:center">' +
+        '<div class="flex gap-2 items-center">' +
           (isActive
             ? '<span class="badge badge-success">active</span>'
-            : '<button class="btn-set-active secondary" data-id="' + escHtml(m.id) + '" style="font-size:0.8rem;padding:0.3rem 0.75rem">Set Active</button>') +
-          '<button class="btn-remove-model ghost" data-id="' + escHtml(m.id) + '" style="font-size:0.8rem;padding:0.3rem 0.6rem;color:var(--danger)" title="Remove model"><i class="ph ph-trash"></i></button>' +
+            : '<button class="btn-set-active secondary text-sm" data-id="' + escHtml(m.id) + '" style="padding:0.3rem 0.75rem">Set Active</button>') +
+          '<button class="btn-remove-model ghost text-sm text-danger" data-id="' + escHtml(m.id) + '" style="padding:0.3rem 0.6rem" title="Remove model"><i class="ph ph-trash"></i></button>' +
         '</div>';
       list.appendChild(card);
     });

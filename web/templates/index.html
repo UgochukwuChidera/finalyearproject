@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card-header" style="margin-bottom: 2.5rem">
+<div class="card-header mb-10">
   <div>
-    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem">Nexus Command Center</h1>
+    <h1 class="text-4xl mb-2">Nexus Command Center</h1>
     <p class="muted">Unified Intelligence Interface for Form Extraction & Processing</p>
   </div>
-  <div class="row" style="margin: 0">
-    <div class="badge badge-info" style="font-size: 0.8rem; padding: 0.5rem 1rem">
+  <div class="row m-0">
+    <div class="badge badge-info text-sm p-2">
       <i class="ph ph-lightning"></i> AI Engine Active
     </div>
   </div>
@@ -18,7 +18,7 @@
       <h3><i class="ph ph-upload-simple"></i> Process New Form</h3>
     </div>
     <form method="post" action="{{ url_for('web.upload') }}" enctype="multipart/form-data">
-      <div style="margin-bottom: 1.5rem">
+      <div class="mb-6">
         <label for="config-select">Extraction Blueprint</label>
         <select name="config_name" id="config-select" required>
           {% for c in configs %}
@@ -29,21 +29,21 @@
         </select>
       </div>
       
-      <div style="margin-bottom: 2.5rem">
+      <div class="mb-10">
         <label for="form-upload">Source Documents (TIFF, PNG, JPG)</label>
         <div class="drop-zone">
-          <div class="icon-stack" style="position: relative; margin-bottom: 1.5rem">
+          <div class="icon-stack relative mb-6">
             <i class="ph ph-file-plus" style="font-size: 3.5rem; color: var(--primary)"></i>
             <div style="position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background: var(--success)"></div>
           </div>
-          <h4 style="margin-bottom: 0.5rem">Select Document Stream</h4>
-          <p class="muted" style="font-size: 0.9rem">Drag and drop or click to ingest multiple files</p>
-          <input type="file" name="form_files" id="form-upload" multiple accept=".tif,.tiff,.png,.jpg,.jpeg" required style="position: absolute; inset: 0; opacity: 0; cursor: pointer" />
+          <h4 class="mb-2">Select Document Stream</h4>
+          <p class="muted text-sm">Drag and drop or click to ingest multiple files</p>
+          <input type="file" name="form_files" id="form-upload" multiple accept=".tif,.tiff,.png,.jpg,.jpeg" required class="absolute" style="inset:0;opacity:0;cursor:pointer" />
         </div>
-        <div id="file-list-preview" style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem"></div>
+        <div id="file-list-preview" class="mt-4 flex flex-wrap gap-2"></div>
       </div>
       
-      <button type="submit" class="primary" style="width: 100%; height: 56px; font-size: 1.1rem">
+      <button type="submit" class="primary w-full" style="height: 56px; font-size: 1.1rem">
         <i class="ph ph-sparkle"></i> Initialize Neural Extraction
       </button>
     </form>
@@ -54,8 +54,7 @@
         preview.innerHTML = '';
         [...e.target.files].forEach(f => {
           const b = document.createElement('div');
-          b.className = 'badge badge-info';
-          b.style.fontSize = '0.75rem';
+          b.className = 'badge badge-info text-xs';
           b.textContent = f.name;
           preview.appendChild(b);
         });
@@ -66,7 +65,7 @@
   <section class="card">
     <div class="card-header">
       <h3><i class="ph ph-activity"></i> Recent Pipelines</h3>
-      <a href="{{ url_for('web.jobs') }}" class="ghost" style="font-size: 0.875rem">View all</a>
+      <a href="{{ url_for('web.jobs') }}" class="ghost text-sm">View all</a>
     </div>
     <table>
       <thead>
@@ -80,7 +79,7 @@
       <tbody>
         {% for j in jobs[:8] %}
         <tr>
-          <td><code style="color: var(--secondary)">#{{ j.job_id[:8] }}</code></td>
+          <td><code>#{{ j.job_id[:8] }}</code></td>
           <td>
             <span class="badge {{ 'badge-success' if j.status in ['completed','finalized'] else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-muted' if j.status == 'interrupted' else 'badge-info' }}">
               {{ j.status }}
@@ -88,7 +87,7 @@
           </td>
           <td>{{ j.config_name }}</td>
           <td>
-            <a href="{{ url_for('web.job_detail', id=j.job_id) }}" class="ghost" style="padding: 0.5rem">
+            <a href="{{ url_for('web.job_detail', id=j.job_id) }}" class="ghost p-2">
               <i class="ph ph-arrow-square-out"></i>
             </a>
           </td>

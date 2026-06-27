@@ -489,15 +489,31 @@ const illegibleFields = {};
 function markIllegible(field){
   illegibleFields[field]=true;
   const i=document.querySelector(`input[name="${field}"]`);
-  if(i)i.value='';
+  if(i){
+    if(i.type === 'checkbox') {
+      i.checked = false;
+    } else {
+      i.value='[ILLEGIBLE]';
+      i.style.color='var(--danger)';
+    }
+  }
 }
 
 async function submitReview(jobId){
   const corrections={};
+  
   document.querySelectorAll('#review-form input[type="text"]').forEach((el)=>{
     if (el.dataset.role === 'reviewer') return;
+    if (el.value !== '[ILLEGIBLE]') {
+      delete illegibleFields[el.name];
+    }
     corrections[el.name]=illegibleFields[el.name]?'__ILLEGIBLE__':el.value;
   });
+
+  document.querySelectorAll('#review-form input[type="checkbox"]').forEach((el)=>{
+    corrections[el.name]=illegibleFields[el.name]?'__ILLEGIBLE__':el.checked;
+  });
+
   if(!confirm('Finalize this review and store verified extraction values?')) return;
   const reviewerInput=document.getElementById('reviewer-name');
   const defaultReviewer=(reviewerInput&&reviewerInput.dataset.defaultReviewer)||'web_user';

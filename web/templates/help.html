@@ -1,49 +1,4 @@
 {% extends "base.html" %}
-{% block styles %}
-<style>
-  .help-section {
-    margin-bottom: 3rem;
-  }
-  .help-section h3 {
-    margin-bottom: 1rem;
-    color: var(--primary);
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.5rem;
-  }
-  .help-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-  }
-  .help-card {
-    padding: 1.5rem;
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-  }
-  .help-card i {
-    font-size: 2rem;
-    color: var(--primary);
-    margin-bottom: 1rem;
-    display: block;
-  }
-  .help-card h4 {
-    margin-bottom: 0.75rem;
-  }
-  .help-card p {
-    font-size: 0.9rem;
-    line-height: 1.5;
-    color: var(--text-muted);
-  }
-  code {
-    background: var(--bg-secondary);
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-    font-family: monospace;
-  }
-</style>
-{% endblock %}
 
 {% block content %}
 <div class="card-header">
@@ -85,12 +40,12 @@
   <div class="help-section">
     <h3>Model Settings</h3>
     <p>You can configure which AI model DAPE uses in the <strong>Model Settings</strong> page. We recommend <code>openai/gpt-4o-mini</code> for a balance of speed and cost-effectiveness.</p>
-    <p style="margin-top: 1rem"><strong>API Key:</strong> You can set your OpenRouter API key directly in the settings or via the <code>OPENROUTER_API_KEY</code> environment variable in your <code>.env</code> file.</p>
+    <p class="mt-4"><strong>API Key:</strong> You can set your OpenRouter API key directly in the settings or via the <code>OPENROUTER_API_KEY</code> environment variable in your <code>.env</code> file.</p>
   </div>
 
   <div class="help-section">
     <h3>Advanced Concepts</h3>
-    <div style="display:flex; flex-direction:column; gap:1rem">
+    <div class="flex flex-col gap-4">
       <div>
         <strong>Confidence Scores:</strong> DAPE calculates a "Final Confidence" (C_final) for every field based on AI logprobs and dictionary matching.
       </div>

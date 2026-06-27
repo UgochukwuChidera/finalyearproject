@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card-header" style="margin-bottom: 2.5rem">
+<div class="card-header mb-10">
   <div>
-    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem">Extraction Blueprints</h1>
+    <h1 class="text-4xl mb-2">Extraction Blueprints</h1>
     <p class="muted">Manage and configure neural extraction templates</p>
   </div>
   <a class="button-link primary" href="{{ url_for('web.config_new') }}">
@@ -13,24 +13,24 @@
 <section>
   <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem">
     {% for c in configs %}
-    <div class="card" style="padding: 1.75rem; position: relative">
-      <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem">
-        <div style="width: 56px; height: 56px; background: var(--bg-secondary); border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; color: var(--primary)">
+    <div class="card relative">
+      <div class="flex items-start justify-between mb-6">
+        <div class="flex items-center justify-center border-strong" style="width:56px;height:56px;color:var(--primary)">
           <i class="ph ph-file-code" style="font-size: 2rem"></i>
         </div>
         <form method="post" action="{{ url_for('web.config_delete', name=c) }}" onsubmit="return confirm('Delete blueprint {{ c }}?')">
-          <button type="submit" class="ghost" style="color: var(--danger); padding: 0.5rem" title="Delete">
+          <button type="submit" class="ghost text-danger p-2" title="Delete">
             <i class="ph ph-trash"></i>
           </button>
         </form>
       </div>
 
       <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem">{{ c }}</h3>
-      <p class="muted" style="font-size: 0.875rem; margin-bottom: 1.5rem">Production-ready extraction schema for specialized form processing.</p>
+      <p class="muted text-sm mb-6">Production-ready extraction schema for specialized form processing.</p>
       
-      <div class="row" style="margin: 0; justify-content: space-between">
-        <div class="badge badge-info" style="font-size: 0.7rem">v1.0.4</div>
-        <a href="{{ url_for('web.config_edit', name=c) }}" class="button-link secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem">
+      <div class="row m-0 justify-between">
+        <div class="badge badge-info text-xs">v1.0.4</div>
+        <a href="{{ url_for('web.config_edit', name=c) }}" class="button-link secondary p-2 text-sm">
           Edit Blueprint <i class="ph ph-arrow-right"></i>
         </a>
       </div>
@@ -41,9 +41,9 @@
 
 <section class="card">
   <h3><i class="ph ph-books" style="color: var(--secondary)"></i> Data Dictionaries</h3>
-  <p class="muted" style="margin-bottom: 1.5rem">Upload CSV files to enable fuzzy-matching validation for specific fields.</p>
+  <p class="muted mb-6">Upload CSV files to enable fuzzy-matching validation for specific fields.</p>
   <form method="post" action="{{ url_for('web.api_upload_dictionary') }}" enctype="multipart/form-data" class="row">
-    <input type="file" name="dictionary_file" accept=".csv" required style="flex: 1" />
+    <input type="file" name="dictionary_file" accept=".csv" required class="flex-1" />
     <button type="submit" class="secondary">Upload Dictionary</button>
   </form>
 </section>
