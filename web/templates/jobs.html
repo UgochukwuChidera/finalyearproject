@@ -41,7 +41,14 @@
   <table>
     <thead>
       <tr>
-        <th style="width: 32px"><input type="checkbox" id="select-all-jobs" onchange="toggleSelectAllJobs(this.checked)" /></th>
+        <th style="width: 32px">
+          <label class="custom-checkbox-container" style="margin:0">
+            <input type="checkbox" id="select-all-jobs" onchange="toggleSelectAllJobs(this.checked)">
+            <span class="custom-checkbox-box" style="width:18px;height:18px;margin:0">
+              <i class="ph ph-check"></i>
+            </span>
+          </label>
+        </th>
         {% for key, label, default_dir in sortable_columns %}
         <th><a href="{{ url_for('web.jobs', q=keep_q, batch_id=selected_batch, sort=key, dir=next_dir if sort == key else default_dir) }}" class="sort-header{% if sort == key %} {{ direction or 'desc' }}{% endif %}">{{ label }}</a></th>
         {% endfor %}
@@ -52,7 +59,14 @@
     {% if jobs %}
     {% for j in jobs %}
       <tr>
-        <td><input type="checkbox" class="job-select" value="{{ j.job_id }}" onchange="refreshBatchDeleteState()" /></td>
+        <td>
+          <label class="custom-checkbox-container" style="margin:0">
+            <input type="checkbox" class="job-select" value="{{ j.job_id }}" onchange="refreshBatchDeleteState()">
+            <span class="custom-checkbox-box" style="width:18px;height:18px;margin:0">
+              <i class="ph ph-check"></i>
+            </span>
+          </label>
+        </td>
         <td>
           <div class="flex items-center gap-3">
             <i class="ph ph-cpu" style="color: var(--primary); font-size: 1.25rem"></i>

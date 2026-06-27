@@ -1,48 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-/* Custom styled boxy checkbox */
-.custom-checkbox-container {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-}
-.custom-checkbox-container input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    cursor: pointer;
-    height: 0;
-    width: 0;
-}
+/* Custom styled boxy checkbox — global styles in style.css */
+/* Review-specific checkbox sizing */
 .custom-checkbox-box {
     height: 28px;
     width: 28px;
-    background-color: var(--surface);
-    border: 2px solid var(--border-strong);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s, border-color 0.2s;
     margin-right: 0.75rem;
 }
 .custom-checkbox-box i {
     font-size: 1.25rem;
-    font-weight: bold;
-    color: var(--bg);
-    display: none;
-}
-/* Shading the box and showing check icon when checked */
-.custom-checkbox-container input[type="checkbox"]:checked ~ .custom-checkbox-box {
-    background-color: var(--primary) !important;
-    border-color: var(--primary) !important;
-}
-.custom-checkbox-container input[type="checkbox"]:checked ~ .custom-checkbox-box i {
-    display: block !important;
-}
-.custom-checkbox-container input[type="checkbox"]:focus-visible ~ .custom-checkbox-box {
-    outline: 2px solid var(--info);
 }
 </style>
 

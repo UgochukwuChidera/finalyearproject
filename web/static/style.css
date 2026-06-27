@@ -980,3 +980,60 @@ code {
     flex-direction: column;
     gap: 0.75rem;
 }
+
+/* ==========================================
+   Custom Checkboxes
+========================================== */
+
+.custom-checkbox-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.custom-checkbox-container input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.custom-checkbox-box {
+    height: 20px;
+    width: 20px;
+    background: var(--bg);
+    border: 2px solid var(--border-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+}
+
+.custom-checkbox-box i {
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--bg);
+    display: none;
+}
+
+.custom-checkbox-container:hover .custom-checkbox-box {
+    border-color: var(--text-secondary);
+}
+
+.custom-checkbox-container input[type="checkbox"]:checked ~ .custom-checkbox-box {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+.custom-checkbox-container input[type="checkbox"]:checked ~ .custom-checkbox-box i {
+    display: block !important;
+    color: var(--bg) !important;
+}
+
+.custom-checkbox-container input[type="checkbox"]:focus-visible ~ .custom-checkbox-box {
+    outline: 2px solid var(--info);
+    outline-offset: 2px;
+}
