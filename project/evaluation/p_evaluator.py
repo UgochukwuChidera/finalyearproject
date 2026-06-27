@@ -35,6 +35,8 @@ def evaluate_p_file(filepath: str) -> dict[str, Any]:
         logger.warning("File %s does not have a standard pickle extension", filepath)
     try:
         with path.open("rb") as fh:
+            # SECURITY: pickle.load() is unsafe on untrusted data. Only use on .p files
+            # from the local pipeline output. Do NOT accept .p files from user uploads.
             data = pickle.load(fh)
         return {
             "filepath": filepath,

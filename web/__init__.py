@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from flask import Flask
@@ -9,6 +10,7 @@ from ai_extraction.dictionary_matcher import DictionaryStore
 
 def create_app(root_dir: str | None = None) -> Flask:
     app = Flask(__name__, template_folder="templates", static_folder="static")
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
     base = Path(root_dir or Path(__file__).resolve().parents[1])
 
     app.config["ROOT_DIR"] = str(base)
