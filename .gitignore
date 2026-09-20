@@ -17,3 +17,7 @@ models.json
 skills/
 
 thesis/
+
+.venv/
+.spec/
+openrouter_models.json

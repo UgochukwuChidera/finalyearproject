@@ -42,24 +42,71 @@
     "web/routes.py (rewritten as thin import module, 6 lines)"
   ],
   "cleanup": {
-    "files_removed": 7,
-    "space_freed_bytes": 3585,
-    "space_freed_human": "3.5 KB",
+    "total_files_removed": 12,
+    "total_space_freed_bytes": 7391,
+    "total_space_freed_human": "7.4 KB",
     "packages_removed": [],
     "directories_scanned": [".spec/agents/", "__pycache__/"],
     "dry_run": false,
-    "timestamp": "2026-06-26T14:05:00Z",
-    "files_removed_detail": [
-      ".spec/agents/commit-crafter-test-suite.json (412 B)",
-      ".spec/agents/git-wrangler-type-hints-commit.json (1,180 B)",
-      ".spec/agents/test-writer-pytest-suite.json (1,834 B)",
-      "__pycache__/main.cpython-314.pyc",
-      "__pycache__/cli.cpython-314.pyc",
-      "__pycache__/batching.cpython-314.pyc",
-      "__pycache__/pipeline.cpython-314.pyc"
-    ],
-    "gitignore_updates": [
-      "Added .pytest_cache/ entry"
-    ]
+    "last_cleanup": {
+      "timestamp": "2026-06-27T10:30:00Z",
+      "files_removed": 0,
+      "space_freed_bytes": 0,
+      "space_freed_human": "0 B",
+      "status": "clean — no waste found",
+      "directories_scanned": [
+        ".spec/agents/",
+        "**/__pycache__/",
+        "**/*.pyc",
+        "**/.pytest_cache/",
+        "**/.mypy_cache/",
+        "**/.ruff_cache/",
+        "**/build/",
+        "**/dist/",
+        "**/*.egg-info/",
+        "**/.DS_Store",
+        "**/*~",
+        "**/*.swp",
+        "**/*.log",
+        "**/.turbo/",
+        "**/.eslintcache",
+        "**/.next/",
+        "**/node_modules/.cache/"
+      ],
+      "files_removed_detail": [],
+      "files_preserved": []
+    },
+    "previous_cleanup": {
+      "timestamp": "2026-06-27T08:30:00Z",
+      "files_removed": 4,
+      "space_freed_bytes": 2850,
+      "space_freed_human": "2.8 KB",
+      "files_removed_detail": [
+        ".spec/agents/commit-crafter-checkbox-ui.json (254 B) — stale stub",
+        ".spec/agents/executor-checkbox-visibility.json (1,661 B) — stale stub",
+        ".spec/agents/git-wrangler-delete-feature-branch.json (370 B) — stale stub",
+        ".spec/agents/git-wrangler-merge-main.json (565 B) — stale stub"
+      ],
+      "files_preserved": []
+    },
+    "older_cleanup": {
+      "files_removed": 8,
+      "space_freed_bytes": 4541,
+      "space_freed_human": "4.5 KB",
+      "timestamp": "2026-06-27T08:19:00Z",
+      "files_removed_detail": [
+        ".spec/agents/executor-cleanup-non-code-files.json (956 B) — stale stub",
+        ".spec/agents/commit-crafter-test-suite.json (412 B)",
+        ".spec/agents/git-wrangler-type-hints-commit.json (1,180 B)",
+        ".spec/agents/test-writer-pytest-suite.json (1,834 B)",
+        "__pycache__/main.cpython-314.pyc",
+        "__pycache__/cli.cpython-314.pyc",
+        "__pycache__/batching.cpython-314.pyc",
+        "__pycache__/pipeline.cpython-314.pyc"
+      ],
+      "gitignore_updates": [
+        "Added .pytest_cache/ entry"
+      ]
+    }
   }
 }
