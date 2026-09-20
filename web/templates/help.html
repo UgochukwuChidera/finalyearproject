@@ -1,14 +1,22 @@
-{% extends "base.html" %}
-
-{% block content %}
-<div class="card-header">
-  <h2><i class="ph ph-question"></i> Help Center</h2>
+{% extends "base.html" %} {% block content %}
+<div class="card-header mb-10">
+  <div>
+    <h1 class="text-4xl mb-2">Help Center</h1>
+    <p class="muted">
+      Guide to configuring, processing, reviewing, and exporting form data
+    </p>
+  </div>
 </div>
 
 <div class="card" style="max-width: 1000px">
   <div class="help-section">
     <h3>Overview</h3>
-    <p>DAPE (Document Analysis and Processing Engine) is an AI-powered pipeline designed to automate the extraction of data from handwritten and printed forms. It combines traditional computer vision techniques with advanced Large Language Models (LLMs) to achieve high accuracy and reliability.</p>
+    <p>
+      DAPE (Document Analysis and Processing Engine) is an AI-powered pipeline
+      designed to automate the extraction of data from handwritten and printed
+      forms. It combines traditional computer vision techniques with advanced
+      Large Language Models (LLMs) to achieve high accuracy and reliability.
+    </p>
   </div>
 
   <div class="help-section">
@@ -17,46 +25,78 @@
       <div class="help-card">
         <i class="ph ph-gear"></i>
         <h4>1. Configuration</h4>
-        <p>Define your form's structure in the <strong>Configurations</strong> tab. You can use the "Discover" feature to automatically detect fields from a template image.</p>
+        <p>
+          Define your form's structure in the
+          <strong>Configurations</strong> tab. You can use the "Discover"
+          feature to automatically detect fields from a template image.
+        </p>
       </div>
       <div class="help-card">
         <i class="ph ph-upload-simple"></i>
         <h4>2. Upload</h4>
-        <p>Upload scans or photos of filled forms. DAPE supports PNG, JPG, and TIFF formats. Multiple files can be uploaded at once for batch processing.</p>
+        <p>
+          Upload scans or photos of filled forms. DAPE supports PNG, JPG, and
+          TIFF formats. Multiple files can be uploaded at once for batch
+          processing.
+        </p>
       </div>
       <div class="help-card">
         <i class="ph ph-cpu"></i>
         <h4>3. AI Processing</h4>
-        <p>The engine aligns the form, detects ink (handwriting), and uses the selected AI model to extract data. It also validates results against your defined rules and dictionaries.</p>
+        <p>
+          The engine aligns the form, detects ink (handwriting), and uses the
+          selected AI model to extract data. It also validates results against
+          your defined rules and dictionaries.
+        </p>
       </div>
       <div class="help-card">
         <i class="ph ph-check-square"></i>
         <h4>4. Review → Finalize → Export</h4>
-        <p>Fields with low confidence or validation errors are flagged for review. Confirm and finalize the review to store verified values, then download JSON, CSV, or XLSX exports from the job view.</p>
+        <p>
+          Fields with low confidence or validation errors are flagged for
+          review. Confirm and finalize the review to store verified values, then
+          download JSON, CSV, or XLSX exports from the job view.
+        </p>
       </div>
     </div>
   </div>
 
   <div class="help-section">
     <h3>Model Settings</h3>
-    <p>You can configure which AI model DAPE uses in the <strong>Model Settings</strong> page. We recommend <code>openai/gpt-4o-mini</code> for a balance of speed and cost-effectiveness.</p>
-    <p class="mt-4"><strong>API Key:</strong> You can set your OpenRouter API key directly in the settings or via the <code>OPENROUTER_API_KEY</code> environment variable in your <code>.env</code> file.</p>
+    <p>
+      You can configure which AI model DAPE uses in the
+      <strong>Model Settings</strong> page. We recommend
+      <code>openai/gpt-4o-mini</code> for a balance of speed and
+      cost-effectiveness.
+    </p>
+    <p class="mt-4">
+      <strong>API Key:</strong> You can set your OpenRouter API key directly in
+      the settings or via the <code>OPENROUTER_API_KEY</code> environment
+      variable in your <code>.env</code> file.
+    </p>
   </div>
 
   <div class="help-section">
     <h3>Advanced Concepts</h3>
     <div class="flex flex-col gap-4">
       <div>
-        <strong>Confidence Scores:</strong> DAPE calculates a "Final Confidence" (C_final) for every field based on AI logprobs and dictionary matching.
+        <strong>Confidence Scores:</strong> DAPE calculates a "Final Confidence"
+        (C_final) for every field based on AI logprobs and dictionary matching.
       </div>
       <div>
-        <strong>Status Flow:</strong> <code>pending_review</code> means unresolved fields remain; <code>finalized</code> means review was confirmed and stored; <code>completed</code> means no manual review was required.
+        <strong>Status Flow:</strong> <code>pending_review</code> means
+        unresolved fields remain; <code>finalized</code> means review was
+        confirmed and stored; <code>completed</code> means no manual review was
+        required.
       </div>
       <div>
-        <strong>Audit Stream:</strong> Every action and extraction is logged in the Audit Stream, providing a complete history of how your data was processed.
+        <strong>Audit Stream:</strong> Every action and extraction is logged in
+        the Audit Stream, providing a complete history of how your data was
+        processed.
       </div>
       <div>
-        <strong>Evaluation:</strong> Use the Evaluation tab to see performance metrics if you have provided ground truth data for your forms.
+        <strong>Evaluation:</strong> Use the Evaluation tab to see performance
+        metrics if you have provided ground truth data for your forms.
       </div>
     </div>
   </div>

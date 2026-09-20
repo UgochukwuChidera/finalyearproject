@@ -1,136 +1,194 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#0f172a" />
-  <title>DAPE | AI Form Pipeline</title>
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <!-- Prevent flash of wrong theme -->
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('dape-theme');
-        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
-      } catch (e) {}
-    })();
-  </script>
-  {% block styles %}{% endblock %}
-</head>
-<body>
-  <div class="app-container">
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="logo">D</div>
-        <h1>DAPE</h1>
-      </div>
-      <nav>
-        <ul class="nav-links">
-          <li>
-            <a href="{{ url_for('web.index') }}" class="{{ 'active' if request.endpoint == 'web.index' }}">
-              <i class="ph ph-squares-four"></i>
-              <span>Dashboard</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ url_for('web.configs_page') }}" class="{{ 'active' if 'config' in request.endpoint }}">
-              <i class="ph ph-gear"></i>
-              <span>Configurations</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ url_for('web.jobs') }}" class="{{ 'active' if request.endpoint == 'web.jobs' }}">
-              <i class="ph ph-list-bullets"></i>
-              <span>Job Queue</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ url_for('web.audits') }}" class="{{ 'active' if request.endpoint == 'web.audits' }}">
-              <i class="ph ph-scroll"></i>
-              <span>Audit Stream</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ url_for('web.evaluation') }}" class="{{ 'active' if request.endpoint == 'web.evaluation' }}">
-              <i class="ph ph-chart-bar"></i>
-              <span>Evaluation</span>
-            </a>
-          </li>
-          <li>
-            <a href="{{ url_for('web.settings') }}" class="{{ 'active' if request.endpoint == 'web.settings' }}">
-              <i class="ph ph-sliders"></i>
-              <span>Settings</span>
-            </a>
-          </li>
-        </ul>
-      </nav>
-      <button class="dm-toggle" id="dm-toggle-btn" title="Toggle dark mode" onclick="dmToggle()">
-        <i class="ph ph-moon" id="dm-icon"></i>
-        <span id="dm-label">Dark Mode</span>
-      </button>
-    </aside>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>DAPE | AI Form Pipeline</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Tailwind (utility layer only; preflight off so the custom B&W tokens stay authoritative) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+          extend: {
+            colors: {
+              surface: "var(--surface)",
+              surfacehover: "var(--surface-hover)",
+              ink: "var(--text)",
+              inkdim: "var(--text-secondary)",
+              line: "var(--border)",
+              linestrong: "var(--border-strong)",
+              primary: "var(--primary)",
+              success: "var(--success)",
+              danger: "var(--danger)",
+              warning: "var(--warning)",
+              info: "var(--info)",
+            },
+          },
+        },
+      };
+    </script>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <!-- Prevent flash of wrong theme -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("dape-theme");
+          if (
+            t === "dark" ||
+            (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)
+          ) {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    {% block styles %}{% endblock %}
+  </head>
+  <body>
+    <div class="app-container">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">D</div>
+          <h1>DAPE</h1>
+        </div>
+        <nav>
+          <ul class="nav-links">
+            <li>
+              <a
+                href="{{ url_for('web.index') }}"
+                class="{{ 'active' if request.endpoint == 'web.index' }}"
+              >
+                <i class="ph ph-squares-four"></i>
+                <span>Dashboard</span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="{{ url_for('web.configs_page') }}"
+                class="{{ 'active' if 'config' in request.endpoint }}"
+              >
+                <i class="ph ph-gear"></i>
+                <span>Configurations</span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="{{ url_for('web.jobs') }}"
+                class="{{ 'active' if request.endpoint == 'web.jobs' }}"
+              >
+                <i class="ph ph-list-bullets"></i>
+                <span>Job Queue</span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="{{ url_for('web.audits') }}"
+                class="{{ 'active' if request.endpoint == 'web.audits' }}"
+              >
+                <i class="ph ph-scroll"></i>
+                <span>Audit Stream</span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="{{ url_for('web.evaluation') }}"
+                class="{{ 'active' if request.endpoint == 'web.evaluation' }}"
+              >
+                <i class="ph ph-chart-bar"></i>
+                <span>Evaluation</span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="{{ url_for('web.settings') }}"
+                class="{{ 'active' if request.endpoint == 'web.settings' }}"
+              >
+                <i class="ph ph-sliders"></i>
+                <span>Settings</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <button
+          class="dm-toggle"
+          id="dm-toggle-btn"
+          title="Toggle dark mode"
+          onclick="dmToggle()"
+        >
+          <i class="ph ph-moon" id="dm-icon"></i>
+          <span id="dm-label">Dark Mode</span>
+        </button>
+      </aside>
 
-    <main class="main-content">
-      {% block content %}{% endblock %}
-    </main>
-  </div>
+      <main class="main-content">{% block content %}{% endblock %}</main>
+    </div>
 
-  <div id="toast-container" class="toast-container"></div>
+    <div id="toast-container" class="toast-container"></div>
 
-  <script>
-    function vfNotify(message, type = 'info') {
-      const container = document.getElementById('toast-container');
-      if (!container) return;
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      const icon = type === 'success' ? 'check-circle' : type === 'danger' ? 'warning-circle' : 'info';
-      toast.innerHTML = `
+    <script>
+      function vfNotify(message, type = "info") {
+        const container = document.getElementById("toast-container");
+        if (!container) return;
+        const toast = document.createElement("div");
+        toast.className = `toast toast-${type}`;
+        const icon =
+          type === "success"
+            ? "check-circle"
+            : type === "danger"
+              ? "warning-circle"
+              : "info";
+        toast.innerHTML = `
         <div class="toast-content">
           <i class="ph ph-${icon}"></i>
           <span>${message}</span>
         </div>
       `;
-      container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(20px)';
-        setTimeout(() => toast.remove(), 300);
-      }, 4000);
-    }
-
-    // Dark mode toggle
-    function dmToggle() {
-      const html = document.documentElement;
-      const isDark = html.getAttribute('data-theme') === 'dark';
-      const next = isDark ? 'light' : 'dark';
-      html.setAttribute('data-theme', next);
-      try { localStorage.setItem('dape-theme', next); } catch (e) {}
-      dmUpdateIcon(next);
-    }
-
-    function dmUpdateIcon(theme) {
-      const icon = document.getElementById('dm-icon');
-      const label = document.getElementById('dm-label');
-      if (!icon || !label) return;
-      if (theme === 'dark') {
-        icon.className = 'ph ph-sun';
-        label.textContent = 'Light Mode';
-      } else {
-        icon.className = 'ph ph-moon';
-        label.textContent = 'Dark Mode';
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = "0";
+          toast.style.transform = "translateX(20px)";
+          setTimeout(() => toast.remove(), 300);
+        }, 4000);
       }
-    }
 
-    // Sync icon on load
-    (function () {
-      var t = document.documentElement.getAttribute('data-theme') || 'light';
-      dmUpdateIcon(t);
-    })();
-  </script>
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
-  {% block scripts %}{% endblock %}
-</body>
+      // Dark mode toggle
+      function dmToggle() {
+        const html = document.documentElement;
+        const isDark = html.getAttribute("data-theme") === "dark";
+        const next = isDark ? "light" : "dark";
+        html.setAttribute("data-theme", next);
+        try {
+          localStorage.setItem("dape-theme", next);
+        } catch (e) {}
+        dmUpdateIcon(next);
+      }
+
+      function dmUpdateIcon(theme) {
+        const icon = document.getElementById("dm-icon");
+        const label = document.getElementById("dm-label");
+        if (!icon || !label) return;
+        if (theme === "dark") {
+          icon.className = "ph ph-sun";
+          label.textContent = "Light Mode";
+        } else {
+          icon.className = "ph ph-moon";
+          label.textContent = "Dark Mode";
+        }
+      }
+
+      // Sync icon on load
+      (function () {
+        var t = document.documentElement.getAttribute("data-theme") || "light";
+        dmUpdateIcon(t);
+      })();
+    </script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
 </html>

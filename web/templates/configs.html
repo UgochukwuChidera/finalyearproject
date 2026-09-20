@@ -1,5 +1,4 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="card-header mb-10">
   <div>
     <h1 class="text-4xl mb-2">Extraction Blueprints</h1>
@@ -11,14 +10,20 @@
 </div>
 
 <section>
-  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem">
+  <div class="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-6">
     {% for c in configs %}
     <div class="card relative">
       <div class="flex items-start justify-between mb-6">
-        <div class="flex items-center justify-center border-strong" style="width:56px;height:56px;color:var(--primary)">
-          <i class="ph ph-file-code" style="font-size: 2rem"></i>
+        <div
+          class="flex items-center justify-center border-strong w-14 h-14 text-primary"
+        >
+          <i class="ph ph-file-code text-3xl"></i>
         </div>
-        <form method="post" action="{{ url_for('web.config_delete', name=c) }}" onsubmit="return confirm('Delete blueprint {{ c }}?')">
+        <form
+          method="post"
+          action="{{ url_for('web.config_delete', name=c) }}"
+          onsubmit="return confirm('Delete blueprint {{ c }}?')"
+        >
           <button type="submit" class="ghost text-danger p-2" title="Delete">
             <i class="ph ph-trash"></i>
           </button>
@@ -26,11 +31,16 @@
       </div>
 
       <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem">{{ c }}</h3>
-      <p class="muted text-sm mb-6">Production-ready extraction schema for specialized form processing.</p>
-      
+      <p class="muted text-sm mb-6">
+        Production-ready extraction schema for specialized form processing.
+      </p>
+
       <div class="row m-0 justify-between">
         <div class="badge badge-info text-xs">v1.0.4</div>
-        <a href="{{ url_for('web.config_edit', name=c) }}" class="button-link secondary p-2 text-sm">
+        <a
+          href="{{ url_for('web.config_edit', name=c) }}"
+          class="button-link secondary p-2 text-sm"
+        >
           Edit Blueprint <i class="ph ph-arrow-right"></i>
         </a>
       </div>
@@ -40,10 +50,26 @@
 </section>
 
 <section class="card">
-  <h3><i class="ph ph-books" style="color: var(--secondary)"></i> Data Dictionaries</h3>
-  <p class="muted mb-6">Upload CSV files to enable fuzzy-matching validation for specific fields.</p>
-  <form method="post" action="{{ url_for('web.api_upload_dictionary') }}" enctype="multipart/form-data" class="row">
-    <input type="file" name="dictionary_file" accept=".csv" required class="flex-1" />
+  <h3>
+    <i class="ph ph-books" style="color: var(--secondary)"></i> Data
+    Dictionaries
+  </h3>
+  <p class="muted mb-6">
+    Upload CSV files to enable fuzzy-matching validation for specific fields.
+  </p>
+  <form
+    method="post"
+    action="{{ url_for('web.api_upload_dictionary') }}"
+    enctype="multipart/form-data"
+    class="row"
+  >
+    <input
+      type="file"
+      name="dictionary_file"
+      accept=".csv"
+      required
+      class="flex-1"
+    />
     <button type="submit" class="secondary">Upload Dictionary</button>
   </form>
 </section>

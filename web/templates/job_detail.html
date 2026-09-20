@@ -1,53 +1,72 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="card-header">
-    <h2><i class="ph ph-info"></i> Pipeline Intelligence</h2>
-    <div class="row m-0 gap-2">
-        <a href="{{ url_for('web.review', id=job.job_id) }}" class="primary">
-            <i class="ph ph-eye"></i> Launch Review
-        </a>
-        {% if job.export_paths and job.export_paths.get('csv') %}
-        <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='csv') }}" class="secondary">
-            <i class="ph ph-download-simple"></i> CSV
-        </a>
-        {% endif %}
-        {% if job.export_paths and job.export_paths.get('xlsx') %}
-        <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='xlsx') }}" class="secondary">
-            <i class="ph ph-download-simple"></i> XLSX
-        </a>
-        {% endif %}
-        {% if job.export_paths and job.export_paths.get('json') %}
-        <a href="{{ url_for('web.job_export_download', id=job.job_id, fmt='json') }}" class="secondary">
-            <i class="ph ph-download-simple"></i> JSON
-        </a>
-        {% endif %}
-    </div>
+{% extends "base.html" %} {% block content %}
+<div class="card-header mb-10">
+  <div>
+    <h1 class="text-4xl mb-2">Pipeline Intelligence</h1>
+    <p class="muted">Job context, live execution feed, and extracted fields</p>
+  </div>
+  <div class="row m-0 gap-2">
+    <a href="{{ url_for('web.review', id=job.job_id) }}" class="primary">
+      <i class="ph ph-eye"></i> Launch Review
+    </a>
+    {% if job.export_paths and job.export_paths.get('csv') %}
+    <a
+      href="{{ url_for('web.job_export_download', id=job.job_id, fmt='csv') }}"
+      class="secondary"
+    >
+      <i class="ph ph-download-simple"></i> CSV
+    </a>
+    {% endif %} {% if job.export_paths and job.export_paths.get('xlsx') %}
+    <a
+      href="{{ url_for('web.job_export_download', id=job.job_id, fmt='xlsx') }}"
+      class="secondary"
+    >
+      <i class="ph ph-download-simple"></i> XLSX
+    </a>
+    {% endif %} {% if job.export_paths and job.export_paths.get('json') %}
+    <a
+      href="{{ url_for('web.job_export_download', id=job.job_id, fmt='json') }}"
+      class="secondary"
+    >
+      <i class="ph ph-download-simple"></i> JSON
+    </a>
+    {% endif %}
+  </div>
 </div>
 
 <section class="card">
   <div class="flex justify-between items-start mb-8">
-      <div>
-          <h3 class="mb-2">Job Context: <span>{{ job.job_id }}</span></h3>
-          <p class="muted">Status: <span class="badge {{ 'badge-success' if job.status in ['completed','finalized'] else 'badge-warning' if job.status in ['pending_review','spot_check'] else 'badge-danger' if job.status == 'failed' else 'badge-muted' if job.status == 'interrupted' else 'badge-info' }}">{{ job.status }}</span></p>
-          {% if job.batch_id %}
-          <p class="muted">Batch: <span>{{ job.batch_id }}</span></p>
-          {% endif %}
-          {% if job.review_finalized %}
-          <p class="muted">Finalized by <span>{{ job.review_finalized_by or 'web_user' }}</span> at <span>{{ (job.review_finalized_at or '')[:19] }}</span></p>
-          {% endif %}
-      </div>
+    <div>
+      <h3 class="mb-2">Job Context: <span>{{ job.job_id }}</span></h3>
+      <p class="muted">
+        Status:
+        <span
+          class="badge {{ 'badge-success' if job.status in ['completed','finalized'] else 'badge-warning' if job.status in ['pending_review','spot_check'] else 'badge-danger' if job.status == 'failed' else 'badge-muted' if job.status == 'interrupted' else 'badge-info' }}"
+          >{{ job.status }}</span
+        >
+      </p>
+      {% if job.batch_id %}
+      <p class="muted">Batch: <span>{{ job.batch_id }}</span></p>
+      {% endif %} {% if job.review_finalized %}
+      <p class="muted">
+        Finalized by <span>{{ job.review_finalized_by or 'web_user' }}</span> at
+        <span>{{ (job.review_finalized_at or '')[:19] }}</span>
+      </p>
+      {% endif %}
+    </div>
   </div>
 
   {% if not job.export_paths %}
   <div class="card badge-warning p-4 mb-4">
-      <i class="ph ph-warning-circle"></i> Export files are not available for this job yet.
+    <i class="ph ph-warning-circle"></i> Export files are not available for this
+    job yet.
   </div>
-  {% endif %}
-
-  {% if job.status in ['queued', 'running'] or job.logs %}
+  {% endif %} {% if job.status in ['queued', 'running'] or job.logs %}
   <section class="card border-strong mb-8 p-6" id="pipeline-progress-card">
     <div class="flex justify-between items-center mb-6">
-      <h3 class="m-0 text-lg"><i class="ph ph-pulse" style="color: var(--info)"></i> Neural Pipeline Live Feed</h3>
+      <h3 class="m-0 text-lg">
+        <i class="ph ph-pulse" style="color: var(--info)"></i> Neural Pipeline
+        Live Feed
+      </h3>
       {% if job.status in ['queued', 'running'] %}
       <span class="badge badge-info animate-pulse">Processing</span>
       {% else %}
@@ -56,22 +75,49 @@
     </div>
 
     <div id="progress-header" class="mb-6 p-5 border">
-      <div class="muted text-xs uppercase mb-1" style="letter-spacing:0.05em">Current Stage</div>
+      <div class="muted text-xs uppercase mb-1" style="letter-spacing: 0.05em">
+        Current Stage
+      </div>
       <div class="text-xl font-bold text-primary" id="current-stage-label">
         {{ job.current_stage or 'Warming up...' }}
       </div>
-      <p class="muted mt-1 text-sm" id="current-message-label">{{ job.current_message or 'Establishing secure neural link...' }}</p>
+      <p class="muted mt-1 text-sm" id="current-message-label">
+        {{ job.current_message or 'Establishing secure neural link...' }}
+      </p>
     </div>
 
     <details style="border-top: 1px solid var(--border); padding-top: 1rem">
-      <summary class="font-semibold text-sm flex items-center gap-2" style="cursor:pointer;color:var(--text-secondary)">
+      <summary
+        class="font-semibold text-sm flex items-center gap-2"
+        style="cursor: pointer; color: var(--text-secondary)"
+      >
         <i class="ph ph-terminal-window"></i> Raw execution logs
       </summary>
-      <div id="execution-logs" class="mt-4 p-4 border-strong overflow-auto" style="background:#000000;color:#82e0aa;font-family:'JetBrains Mono',monospace;font-size:0.8rem;max-height:250px">
+      <div
+        id="execution-logs"
+        class="mt-4 p-4 border-strong overflow-auto"
+        style="
+          background: #000000;
+          color: #82e0aa;
+          font-family: &quot;JetBrains Mono&quot;, monospace;
+          font-size: 0.8rem;
+          max-height: 250px;
+        "
+      >
         {% for log in job.logs %}
-        <div style="margin-bottom: 0.35rem; border-left: 2px solid #2d2f31; padding-left: 0.75rem">
-          <span style="color: #6a6f73; font-size: 0.75rem">[{{ log.time }}]</span> 
-          <span style="color: #ffffff; font-weight: 700; font-size: 0.75rem">[{{ log.stage }}]</span> 
+        <div
+          style="
+            margin-bottom: 0.35rem;
+            border-left: 2px solid #2d2f31;
+            padding-left: 0.75rem;
+          "
+        >
+          <span style="color: #6a6f73; font-size: 0.75rem"
+            >[{{ log.time }}]</span
+          >
+          <span style="color: #ffffff; font-weight: 700; font-size: 0.75rem"
+            >[{{ log.stage }}]</span
+          >
           {{ log.message }}
         </div>
         {% endfor %}
@@ -79,34 +125,34 @@
     </details>
   </section>
 
-
-  {% endif %}
-
-  {% if job.error %}
+  {% endif %} {% if job.error %}
   <div class="card badge-danger p-6 mb-8">
-      <i class="ph ph-warning-circle"></i> {{ job.error }}
+    <i class="ph ph-warning-circle"></i> {{ job.error }}
   </div>
   {% if job.traceback %}
-  <div class="card p-4 mb-8 border-strong" style="border-color:var(--danger)">
-      <details style="width: 100%">
-          <summary class="mb-2" style="cursor:pointer;color:var(--danger)">Show traceback</summary>
-          <pre class="text-xs overflow-auto m-0" style="color:var(--danger);white-space:pre-wrap">{{ job.traceback }}</pre>
-      </details>
+  <div class="card p-4 mb-8 border-strong" style="border-color: var(--danger)">
+    <details style="width: 100%">
+      <summary class="mb-2" style="cursor: pointer; color: var(--danger)">
+        Show traceback
+      </summary>
+      <pre
+        class="text-xs overflow-auto m-0"
+        style="color: var(--danger); white-space: pre-wrap"
+      >
+{{ job.traceback }}</pre>
+    </details>
   </div>
-  {% endif %}
-  {% endif %}
-
-  {% if job.fields %}
+  {% endif %} {% endif %} {% if job.fields %}
   <table>
     <thead>
-        <tr>
-            <th>Field Identifier</th>
-            <th>Raw Extraction</th>
-            <th>Normalized Value</th>
-            <th>Confidence Score</th>
-            <th>Validation</th>
-            <th>Flag</th>
-        </tr>
+      <tr>
+        <th>Field Identifier</th>
+        <th>Raw Extraction</th>
+        <th>Normalized Value</th>
+        <th>Confidence Score</th>
+        <th>Validation</th>
+        <th>Flag</th>
+      </tr>
     </thead>
     <tbody>
       {% for f in job.fields %}
@@ -115,17 +161,29 @@
         <td>{{ f.value }}</td>
         <td>{{ f.final_value }}</td>
         <td>
-            <div class="flex items-center gap-2">
-                <div style="flex: 1; height: 6px; background: var(--surface); max-width: 60px; border: 1px solid var(--border)">
-                    <div style="height: 100%; --progress: {{ (f.confidence or 0)*100 }}%; width: var(--progress); background: var(--primary);"></div>
-                </div>
-                <span>{{ '%.2f'|format(f.confidence or 0) }}</span>
+          <div class="flex items-center gap-2">
+            <div
+              style="
+                flex: 1;
+                height: 6px;
+                background: var(--surface);
+                max-width: 60px;
+                border: 1px solid var(--border);
+              "
+            >
+              <div
+                style="height: 100%; --progress: {{ (f.confidence or 0)*100 }}%; width: var(--progress); background: var(--primary);"
+              ></div>
             </div>
+            <span>{{ '%.2f'|format(f.confidence or 0) }}</span>
+          </div>
         </td>
         <td>
-            <span class="badge {{ 'badge-success' if f.validation_status in ['accepted','accepted_spot_check'] else 'badge-warning' if f.validation_status in ['spot_check','pending_review'] else 'badge-danger' }}">
-                {{ f.validation_status }}
-            </span>
+          <span
+            class="badge {{ 'badge-success' if f.validation_status in ['accepted','accepted_spot_check'] else 'badge-warning' if f.validation_status in ['spot_check','pending_review'] else 'badge-danger' }}"
+          >
+            {{ f.validation_status }}
+          </span>
         </td>
         <td>
           {% if f.needs_review %}
@@ -144,27 +202,35 @@
 {% if job_audit %}
 <section class="card">
   <h3><i class="ph ph-scroll"></i> Audit Snapshot</h3>
-  <pre class="muted overflow-auto border-strong p-4">{{ job_audit | tojson(indent=2) }}</pre>
+  <pre class="muted overflow-auto border-strong p-4">
+{{ job_audit | tojson(indent=2) }}</pre>
 </section>
-{% endif %}
-
-{% if job.ai_debug %}
+{% endif %} {% if job.ai_debug %}
 <section class="card">
   <details>
-    <summary class="font-semibold p-1" style="cursor:pointer">
-      <i class="ph ph-robot"></i> AI Extraction Diagnostics
-      {% if not job.ai_debug.fields_extracted %}
-      <span class="badge badge-danger" style="margin-left:0.5rem">No Fields Extracted</span>
+    <summary class="font-semibold p-1" style="cursor: pointer">
+      <i class="ph ph-robot"></i> AI Extraction Diagnostics {% if not
+      job.ai_debug.fields_extracted %}
+      <span class="badge badge-danger" style="margin-left: 0.5rem"
+        >No Fields Extracted</span
+      >
       {% else %}
-      <span class="badge badge-success" style="margin-left:0.5rem">{{ job.ai_debug.fields_extracted | length }} field(s)</span>
+      <span class="badge badge-success" style="margin-left: 0.5rem"
+        >{{ job.ai_debug.fields_extracted | length }} field(s)</span
+      >
       {% endif %}
     </summary>
 
     <div class="mt-6 flex flex-col gap-4">
-
       {% if job.ai_debug.api_error %}
-      <div class="card p-4" style="background:#1a0a0a;border-color:var(--danger)">
-        <p class="m-0 text-danger"><i class="ph ph-warning-circle"></i> <strong>API Error:</strong> {{ job.ai_debug.api_error }}</p>
+      <div
+        class="card p-4"
+        style="background: #1a0a0a; border-color: var(--danger)"
+      >
+        <p class="m-0 text-danger">
+          <i class="ph ph-warning-circle"></i> <strong>API Error:</strong> {{
+          job.ai_debug.api_error }}
+        </p>
       </div>
       {% endif %}
 
@@ -179,14 +245,18 @@
             {% if job.ai_debug.has_logprobs %}
             <span class="badge badge-success">yes</span>
             {% else %}
-            <span class="badge badge-warning">no — using self-reported / fallback confidence</span>
+            <span class="badge badge-warning"
+              >no — using self-reported / fallback confidence</span
+            >
             {% endif %}
           </p>
         </div>
         {% if job.ai_debug.overall_confidence is not none %}
         <div>
           <label class="muted text-xs uppercase">Overall Confidence</label>
-          <p class="mt-1 m-0">{{ '%.3f'|format(job.ai_debug.overall_confidence) }}</p>
+          <p class="mt-1 m-0">
+            {{ '%.3f'|format(job.ai_debug.overall_confidence) }}
+          </p>
         </div>
         {% endif %}
       </div>
@@ -200,25 +270,25 @@
           {% endfor %}
         </div>
       </div>
-      {% endif %}
-
-      {% if job.ai_debug.raw_response_preview %}
+      {% endif %} {% if job.ai_debug.raw_response_preview %}
       <div>
-        <label class="muted text-xs uppercase">Raw Response Preview (first 800 chars)</label>
-        <pre class="overflow-auto mt-2 border-strong p-3 text-xs" style="white-space:pre-wrap">{{ job.ai_debug.raw_response_preview | e }}</pre>
+        <label class="muted text-xs uppercase"
+          >Raw Response Preview (first 800 chars)</label
+        >
+        <pre
+          class="overflow-auto mt-2 border-strong p-3 text-xs"
+          style="white-space: pre-wrap"
+        >
+{{ job.ai_debug.raw_response_preview | e }}</pre>
       </div>
       {% endif %}
-
     </div>
   </details>
 </section>
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
-{% if job.status in ['queued', 'running'] %}
+{% endif %} {% endblock %} {% block scripts %} {% if job.status in ['queued',
+'running'] %}
 <script>
-  (function() {
+  (function () {
     const MAX_POLLING_ATTEMPTS = 600;
     let attempts = 0;
     const interval = setInterval(async () => {
@@ -229,40 +299,48 @@
         const res = await fetch(window.location.href);
         const text = await res.text();
         const parser = new DOMParser();
-        const doc = parser.parseFromString(text, 'text/html');
-        
+        const doc = parser.parseFromString(text, "text/html");
+
         // Find the status badge in the new document
-        const newStatusBadge = doc.querySelector('.badge');
-        const newStatusText = newStatusBadge ? newStatusBadge.textContent.trim().toLowerCase() : '';
+        const newStatusBadge = doc.querySelector(".badge");
+        const newStatusText = newStatusBadge
+          ? newStatusBadge.textContent.trim().toLowerCase()
+          : "";
 
         // Update progress card while preserving state
-        const newProgress = doc.getElementById('pipeline-progress-card');
-        const oldProgress = document.getElementById('pipeline-progress-card');
+        const newProgress = doc.getElementById("pipeline-progress-card");
+        const oldProgress = document.getElementById("pipeline-progress-card");
         if (newProgress && oldProgress) {
           // Save state of details elements
-          const detailStates = [...oldProgress.querySelectorAll('details')].map(d => ({
-            id: d.id || d.querySelector('summary')?.textContent.trim(),
-            open: d.hasAttribute('open')
-          }));
+          const detailStates = [...oldProgress.querySelectorAll("details")].map(
+            (d) => ({
+              id: d.id || d.querySelector("summary")?.textContent.trim(),
+              open: d.hasAttribute("open"),
+            }),
+          );
 
           // Save scroll position of log containers
-          const logContainers = [...oldProgress.querySelectorAll('[id^="execution-logs"]')].map(c => ({
+          const logContainers = [
+            ...oldProgress.querySelectorAll('[id^="execution-logs"]'),
+          ].map((c) => ({
             id: c.id,
-            scrollTop: c.scrollTop
+            scrollTop: c.scrollTop,
           }));
 
           oldProgress.innerHTML = newProgress.innerHTML;
 
           // Restore state of details elements
-          detailStates.forEach(state => {
-            const d = [...oldProgress.querySelectorAll('details')].find(el => 
-              (el.id === state.id) || (el.querySelector('summary')?.textContent.trim() === state.id)
+          detailStates.forEach((state) => {
+            const d = [...oldProgress.querySelectorAll("details")].find(
+              (el) =>
+                el.id === state.id ||
+                el.querySelector("summary")?.textContent.trim() === state.id,
             );
-            if (d && state.open) d.setAttribute('open', '');
+            if (d && state.open) d.setAttribute("open", "");
           });
 
           // Restore scroll positions
-          logContainers.forEach(state => {
+          logContainers.forEach((state) => {
             const c = oldProgress.querySelector(`#${state.id}`);
             if (c) c.scrollTop = state.scrollTop;
           });
@@ -271,7 +349,10 @@
         }
 
         // If finished or failed, reload to show data
-        if (newStatusText && !['running', 'queued', 'processing'].includes(newStatusText)) {
+        if (
+          newStatusText &&
+          !["running", "queued", "processing"].includes(newStatusText)
+        ) {
           clearInterval(interval);
           location.reload();
         }
@@ -281,5 +362,4 @@
     }, 2000);
   })();
 </script>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

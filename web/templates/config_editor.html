@@ -1,66 +1,124 @@
-{% extends "base.html" %}
-{% block styles %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/lint.min.css" />
-{% endblock %}
-
-{% block content %}
-<div class="card-header">
-    <h2><i class="ph ph-sliders"></i> {{ 'New Config' if mode == 'new' else 'Edit Config: ' ~ config_name }}</h2>
-    <div class="row">
-        <button type="button" class="ghost" onclick="window.history.back()"><i class="ph ph-caret-left"></i> Back</button>
-    </div>
+{% extends "base.html" %} {% block styles %}
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/lint.min.css"
+/>
+{% endblock %} {% block content %}
+<div class="card-header mb-10">
+  <div>
+    <h1 class="text-4xl mb-2">
+      {{ 'New Config' if mode == 'new' else 'Edit Config: ' ~ config_name }}
+    </h1>
+    <p class="muted">
+      Define the extraction schema and layout for a blank form template
+    </p>
+  </div>
+  <div class="row">
+    <button type="button" class="ghost" onclick="window.history.back()">
+      <i class="ph ph-caret-left"></i> Back
+    </button>
+  </div>
 </div>
 
-<section style="display: grid; grid-template-columns: 460px 1fr; gap: 2.5rem; align-items: start; height: calc(100vh - 160px); width: 100%">
+<section
+  style="
+    display: grid;
+    grid-template-columns: 460px 1fr;
+    gap: 2.5rem;
+    align-items: start;
+    height: calc(100vh - 160px);
+    width: 100%;
+  "
+>
   <div class="card">
     <form method="post" id="config-form">
       {% if mode == 'new' %}
       <div class="mb-8">
         <label>Configuration Identifier</label>
-        <input name="config_name" value="{{ config_name }}" placeholder="e.g. medical_screening_v1" required />
+        <input
+          name="config_name"
+          value="{{ config_name }}"
+          placeholder="e.g. medical_screening_v1"
+          required
+        />
       </div>
       {% else %}
       <input type="hidden" name="config_name" value="{{ config_name }}" />
       {% endif %}
 
       <div class="cm-toolbar">
-          <label class="m-0">JSON Schema Definition</label>
-          <button type="button" class="ghost p-1 text-xs" onclick="vfFormatJson()" title="Auto-format / prettify JSON">
-              <i class="ph ph-magic-wand"></i> Format
-          </button>
-          <button type="button" class="ghost p-1 text-xs" onclick="vfLoadFromJson()" title="Load JSON into visual canvas">
-              <i class="ph ph-arrow-square-in"></i> Load to Canvas
-          </button>
-          <span class="badge-editor-mode"><i class="ph ph-code"></i> JSON Editor</span>
+        <label class="m-0">JSON Schema Definition</label>
+        <button
+          type="button"
+          class="ghost p-1 text-xs"
+          onclick="vfFormatJson()"
+          title="Auto-format / prettify JSON"
+        >
+          <i class="ph ph-magic-wand"></i> Format
+        </button>
+        <button
+          type="button"
+          class="ghost p-1 text-xs"
+          onclick="vfLoadFromJson()"
+          title="Load JSON into visual canvas"
+        >
+          <i class="ph ph-arrow-square-in"></i> Load to Canvas
+        </button>
+        <span class="badge-editor-mode"
+          ><i class="ph ph-code"></i> JSON Editor</span
+        >
       </div>
       <!-- hidden textarea keeps its name so the form POST still works -->
-      <textarea id="config-json" name="config_json" style="display:none">{{ config_text }}</textarea>
+      <textarea id="config-json" name="config_json" style="display: none">
+{{ config_text }}</textarea>
       <!-- CodeMirror mounts here -->
       <div id="cm-editor-mount"></div>
 
       <div class="mt-6">
         <button type="submit" class="primary w-full" style="height: 52px">
-            <i class="ph ph-floppy-disk"></i> Save Configuration
+          <i class="ph ph-floppy-disk"></i> Save Configuration
         </button>
       </div>
     </form>
 
     <div class="ai-setup mt-8">
       <h3 class="flex items-center gap-2 text-primary">
-          <i class="ph ph-sparkle"></i> Neural Field Discovery
+        <i class="ph ph-sparkle"></i> Neural Field Discovery
       </h3>
-      <p class="muted text-sm mb-5">Upload a blank form image to automatically detect fields.</p>
+      <p class="muted text-sm mb-5">
+        Upload a blank form image to automatically detect fields.
+      </p>
 
       <div class="file-input-wrapper mb-4">
-          <div class="file-input-btn" id="ai-file-btn">
-            <i class="ph ph-image"></i> <span>Select Blank Form</span>
-          </div>
-          <input type="file" id="ai-template-file" accept="image/*" onchange="document.getElementById('ai-file-btn').querySelector('span').textContent = this.files[0].name" />
+        <div class="file-input-btn" id="ai-file-btn">
+          <i class="ph ph-image"></i> <span>Select Blank Form</span>
+        </div>
+        <input
+          type="file"
+          id="ai-template-file"
+          accept="image/*"
+          onchange="
+            document
+              .getElementById('ai-file-btn')
+              .querySelector('span').textContent = this.files[0].name
+          "
+        />
       </div>
 
-      <button type="button" class="secondary w-full" onclick="vfDiscoverFromImage()" style="height: 48px">
+      <button
+        type="button"
+        class="secondary w-full"
+        onclick="vfDiscoverFromImage()"
+        style="height: 48px"
+      >
         <i class="ph ph-magic-wand"></i> Run Discovery Engine
       </button>
       <div id="ai-status" class="muted mt-4 text-xs font-mono"></div>
@@ -68,127 +126,270 @@
   </div>
 
   <div class="card p-6">
-      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h3 class="m-0"><i class="ph ph-bounding-box"></i> Layout Workspace</h3>
-        
-        <div class="row m-0 gap-2 flex-wrap">
-            <!-- Dimensions -->
-            <div class="row m-0 gap-2 p-1 border">
-              <span class="muted text-xs" style="padding-left: 0.5rem">Viewport:</span>
-              <input type="number" id="viewport-w" value="800" class="w-auto h-auto p-1" style="width: 70px; border: none; background: transparent" oninput="vfUpdateDimensions('w', this.value)" />
-              <span class="muted">×</span>
-              <input type="number" id="viewport-h" value="1100" class="w-auto h-auto p-1" style="width: 70px; border: none; background: transparent" oninput="vfUpdateDimensions('h', this.value)" />
-            </div>
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+      <h3 class="m-0"><i class="ph ph-bounding-box"></i> Layout Workspace</h3>
 
-            <!-- Aspect Ratio Selector -->
-            <div class="row m-0 gap-2 p-1 border">
-              <span class="muted text-xs" style="padding-left: 0.5rem">Ratio:</span>
-              <select id="aspect-ratio" class="w-auto h-auto p-1 text-sm" style="border: none; background: transparent" onchange="vfUpdateAspectRatio(this.value)">
-                <option value="auto">Auto</option>
-                <option value="1:1.414">A4</option>
-                <option value="1:1.294">US Letter</option>
-                <option value="1:1">Square</option>
-              </select>
-            </div>
-
-            <!-- Zoom Controls -->
-            <div class="row m-0 gap-1 p-1 border">
-              <button type="button" class="ghost p-2" onclick="vfZoom(-0.1)" title="Zoom Out"><i class="ph ph-minus"></i></button>
-              <span id="zoom-level" class="muted text-sm text-center" style="min-width: 40px">100%</span>
-              <button type="button" class="ghost p-2" onclick="vfZoom(0.1)" title="Zoom In"><i class="ph ph-plus"></i></button>
-              <button type="button" class="ghost p-2" onclick="vfToggleAutoFit()" title="Toggle Auto-Fit" style="border-left: 1px solid var(--border); margin-left: 0.25rem"><i class="ph ph-arrows-out-simple"></i></button>
-            </div>
-
-            <div class="file-input-wrapper w-auto">
-              <button type="button" class="ghost p-2" title="Overlay Preview Image">
-                <i class="ph ph-image-square"></i>
-              </button>
-              <input type="file" id="preview-upload" accept="image/*" onchange="vfHandlePreviewUpload(event)" />
-            </div>
-
-            <button type="button" class="primary text-sm" onclick="vfApplyBoxesToJson()" style="height: 38px; padding: 0 1rem"><i class="ph ph-check"></i> Apply</button>
-            <button type="button" class="ghost p-2" onclick="vfToggleFullscreen()" title="Fullscreen"><i class="ph ph-corners-out"></i></button>
+      <div class="row m-0 gap-2 flex-wrap">
+        <!-- Dimensions -->
+        <div class="row m-0 gap-2 p-1 border">
+          <span class="muted text-xs" style="padding-left: 0.5rem"
+            >Viewport:</span
+          >
+          <input
+            type="number"
+            id="viewport-w"
+            value="800"
+            class="w-auto h-auto p-1"
+            style="width: 70px; border: none; background: transparent"
+            oninput="vfUpdateDimensions('w', this.value)"
+          />
+          <span class="muted">×</span>
+          <input
+            type="number"
+            id="viewport-h"
+            value="1100"
+            class="w-auto h-auto p-1"
+            style="width: 70px; border: none; background: transparent"
+            oninput="vfUpdateDimensions('h', this.value)"
+          />
         </div>
+
+        <!-- Aspect Ratio Selector -->
+        <div class="row m-0 gap-2 p-1 border">
+          <span class="muted text-xs" style="padding-left: 0.5rem">Ratio:</span>
+          <select
+            id="aspect-ratio"
+            class="w-auto h-auto p-1 text-sm"
+            style="border: none; background: transparent"
+            onchange="vfUpdateAspectRatio(this.value)"
+          >
+            <option value="auto">Auto</option>
+            <option value="1:1.414">A4</option>
+            <option value="1:1.294">US Letter</option>
+            <option value="1:1">Square</option>
+          </select>
+        </div>
+
+        <!-- Zoom Controls -->
+        <div class="row m-0 gap-1 p-1 border">
+          <button
+            type="button"
+            class="ghost p-2"
+            onclick="vfZoom(-0.1)"
+            title="Zoom Out"
+          >
+            <i class="ph ph-minus"></i>
+          </button>
+          <span
+            id="zoom-level"
+            class="muted text-sm text-center"
+            style="min-width: 40px"
+            >100%</span
+          >
+          <button
+            type="button"
+            class="ghost p-2"
+            onclick="vfZoom(0.1)"
+            title="Zoom In"
+          >
+            <i class="ph ph-plus"></i>
+          </button>
+          <button
+            type="button"
+            class="ghost p-2"
+            onclick="vfToggleAutoFit()"
+            title="Toggle Auto-Fit"
+            style="border-left: 1px solid var(--border); margin-left: 0.25rem"
+          >
+            <i class="ph ph-arrows-out-simple"></i>
+          </button>
+        </div>
+
+        <div class="file-input-wrapper w-auto">
+          <button type="button" class="ghost p-2" title="Overlay Preview Image">
+            <i class="ph ph-image-square"></i>
+          </button>
+          <input
+            type="file"
+            id="preview-upload"
+            accept="image/*"
+            onchange="vfHandlePreviewUpload(event)"
+          />
+        </div>
+
+        <button
+          type="button"
+          class="primary text-sm"
+          onclick="vfApplyBoxesToJson()"
+          style="height: 38px; padding: 0 1rem"
+        >
+          <i class="ph ph-check"></i> Apply
+        </button>
+        <button
+          type="button"
+          class="ghost p-2"
+          onclick="vfToggleFullscreen()"
+          title="Fullscreen"
+        >
+          <i class="ph ph-corners-out"></i>
+        </button>
+      </div>
     </div>
-    
+
     <div class="workspace-container" id="workspace-root">
       <div class="canvas-area">
-          <div id="canvas-viewport" class="w-full h-full overflow-auto" style="cursor: grab">
-            <canvas id="bbox-canvas" width="800" height="1100"
-                    data-template="{{ template_path }}"
-                    data-fields='{{ (config.fields if config else []) | tojson }}'
-                    class="w-full h-auto" style="transform-origin: top left; transition: transform 0.1s ease-out"></canvas>
-          </div>
-          
-          <div class="canvas-hint">
-            <i class="ph ph-mouse"></i> Drag to pan • Scroll to zoom • Click to select
-          </div>
+        <div
+          id="canvas-viewport"
+          class="w-full h-full overflow-auto"
+          style="cursor: grab"
+        >
+          <canvas
+            id="bbox-canvas"
+            width="800"
+            height="1100"
+            data-template="{{ template_path }}"
+            data-fields="{{ (config.fields if config else []) | tojson }}"
+            class="w-full h-auto"
+            style="
+              transform-origin: top left;
+              transition: transform 0.1s ease-out;
+            "
+          ></canvas>
+        </div>
+
+        <div class="canvas-hint">
+          <i class="ph ph-mouse"></i> Drag to pan • Scroll to zoom • Click to
+          select
+        </div>
       </div>
 
       <div class="editor-sidebar">
         <div id="property-editor" class="card p-5 border-strong mb-6 hidden">
-            <div class="flex items-center justify-between mb-4">
-              <h4 class="m-0 text-primary"><i class="ph ph-note-pencil"></i> Field Properties</h4>
-              <button type="button" class="ghost text-xs text-danger" style="padding: 0.3rem 0.6rem" onclick="vfDeleteSelectedField()" title="Remove this field">
-                <i class="ph ph-trash"></i> Remove
-              </button>
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="m-0 text-primary">
+              <i class="ph ph-note-pencil"></i> Field Properties
+            </h4>
+            <button
+              type="button"
+              class="ghost text-xs text-danger"
+              style="padding: 0.3rem 0.6rem"
+              onclick="vfDeleteSelectedField()"
+              title="Remove this field"
+            >
+              <i class="ph ph-trash"></i> Remove
+            </button>
+          </div>
+          <div class="form-group mb-4">
+            <label>Field Name (ID)</label>
+            <input
+              type="text"
+              id="prop-name"
+              oninput="vfUpdateFieldProperty('name', this.value)"
+            />
+          </div>
+          <div class="form-group mb-4">
+            <label>Label Hint</label>
+            <input
+              type="text"
+              id="prop-label"
+              oninput="vfUpdateFieldProperty('label_hint', this.value)"
+            />
+          </div>
+          <div class="row m-0 gap-4 mb-4">
+            <div style="flex: 1">
+              <label>Expected Type</label>
+              <select
+                id="prop-type"
+                onchange="vfUpdateFieldProperty('expected_type', this.value)"
+              >
+                <option value="string">String</option>
+                <option value="checkbox">Checkbox</option>
+                <option value="date">Date</option>
+                <option value="number">Number</option>
+              </select>
             </div>
-            <div class="form-group mb-4">
-                <label>Field Name (ID)</label>
-                <input type="text" id="prop-name" oninput="vfUpdateFieldProperty('name', this.value)" />
+            <div class="flex items-center gap-2 mt-6">
+              <input
+                type="checkbox"
+                id="prop-critical"
+                class="w-auto"
+                onchange="vfUpdateFieldProperty('critical', this.checked)"
+              />
+              <label class="m-0">Critical</label>
             </div>
-            <div class="form-group mb-4">
-                <label>Label Hint</label>
-                <input type="text" id="prop-label" oninput="vfUpdateFieldProperty('label_hint', this.value)" />
-            </div>
-            <div class="row m-0 gap-4 mb-4">
-              <div style="flex: 1">
-                <label>Expected Type</label>
-                <select id="prop-type" onchange="vfUpdateFieldProperty('expected_type', this.value)">
-                  <option value="string">String</option>
-                  <option value="checkbox">Checkbox</option>
-                  <option value="date">Date</option>
-                  <option value="number">Number</option>
-                </select>
-              </div>
-              <div class="flex items-center gap-2 mt-6">
-                <input type="checkbox" id="prop-critical" class="w-auto" onchange="vfUpdateFieldProperty('critical', this.checked)" />
-                <label class="m-0">Critical</label>
-              </div>
-            </div>
-            
-            <label>Coordinates</label>
-            <div class="grid-2 mb-2">
-              <input type="number" id="prop-x" placeholder="X" oninput="vfUpdateFieldProperty('bounding_box.x', parseInt(this.value))" />
-              <input type="number" id="prop-y" placeholder="Y" oninput="vfUpdateFieldProperty('bounding_box.y', parseInt(this.value))" />
-            </div>
-            <div class="grid-2">
-              <input type="number" id="prop-w" placeholder="W" oninput="vfUpdateFieldProperty('bounding_box.w', parseInt(this.value))" />
-              <input type="number" id="prop-h" placeholder="H" oninput="vfUpdateFieldProperty('bounding_box.h', parseInt(this.value))" />
-            </div>
+          </div>
+
+          <label>Coordinates</label>
+          <div class="grid-2 mb-2">
+            <input
+              type="number"
+              id="prop-x"
+              placeholder="X"
+              oninput="
+                vfUpdateFieldProperty('bounding_box.x', parseInt(this.value))
+              "
+            />
+            <input
+              type="number"
+              id="prop-y"
+              placeholder="Y"
+              oninput="
+                vfUpdateFieldProperty('bounding_box.y', parseInt(this.value))
+              "
+            />
+          </div>
+          <div class="grid-2">
+            <input
+              type="number"
+              id="prop-w"
+              placeholder="W"
+              oninput="
+                vfUpdateFieldProperty('bounding_box.w', parseInt(this.value))
+              "
+            />
+            <input
+              type="number"
+              id="prop-h"
+              placeholder="H"
+              oninput="
+                vfUpdateFieldProperty('bounding_box.h', parseInt(this.value))
+              "
+            />
+          </div>
         </div>
 
         <div class="mb-4">
-            <div class="flex items-center justify-between mb-2">
-              <label class="m-0">Field List</label>
-              <button type="button" class="secondary p-1 text-xs" onclick="vfAddField()" title="Add a new field box to the canvas">
-                <i class="ph ph-plus-circle"></i> Add Field
-              </button>
-            </div>
-            <div id="field-list" class="overflow-auto border-strong p-3" style="max-height: 400px"></div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="m-0">Field List</label>
+            <button
+              type="button"
+              class="secondary p-1 text-xs"
+              onclick="vfAddField()"
+              title="Add a new field box to the canvas"
+            >
+              <i class="ph ph-plus-circle"></i> Add Field
+            </button>
+          </div>
+          <div
+            id="field-list"
+            class="overflow-auto border-strong p-3"
+            style="max-height: 400px"
+          ></div>
         </div>
 
         <div class="mt-6">
-            <label>Live Coordinates</label>
-            <pre id="bbox-output" class="muted p-4 m-0 border-strong text-xs" style="white-space: pre-wrap"></pre>
+          <label>Live Coordinates</label>
+          <pre
+            id="bbox-output"
+            class="muted p-4 m-0 border-strong text-xs"
+            style="white-space: pre-wrap"
+          ></pre>
         </div>
       </div>
     </div>
   </div>
 </section>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/edit/matchbrackets.min.js"></script>
@@ -198,55 +399,65 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/lint.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/lint/json-lint.min.js"></script>
 <script>
-(function () {
-  const ta = document.getElementById('config-json');
-  if (!ta) return;
+  (function () {
+    const ta = document.getElementById("config-json");
+    if (!ta) return;
 
-  window.vfCMEditor = CodeMirror(document.getElementById('cm-editor-mount'), {
-    value: ta.value || '{}',
-    mode: { name: 'javascript', json: true },
-    theme: 'default',
-    lineNumbers: true,
-    matchBrackets: true,
-    autoCloseBrackets: true,
-    foldGutter: true,
-    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-    indentUnit: 2,
-    tabSize: 2,
-    indentWithTabs: false,
-    lineWrapping: false,
-    extraKeys: {
-      'Ctrl-S': function (cm) { syncAndSubmit(cm); },
-      'Cmd-S': function (cm) { syncAndSubmit(cm); },
-      Tab: function (cm) {
-        if (cm.somethingSelected()) {
-          cm.indentSelection('add');
-        } else {
-          cm.replaceSelection('  ', 'end');
-        }
+    window.vfCMEditor = CodeMirror(document.getElementById("cm-editor-mount"), {
+      value: ta.value || "{}",
+      mode: { name: "javascript", json: true },
+      theme: "default",
+      lineNumbers: true,
+      matchBrackets: true,
+      autoCloseBrackets: true,
+      foldGutter: true,
+      gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+      indentUnit: 2,
+      tabSize: 2,
+      indentWithTabs: false,
+      lineWrapping: false,
+      extraKeys: {
+        "Ctrl-S": function (cm) {
+          syncAndSubmit(cm);
+        },
+        "Cmd-S": function (cm) {
+          syncAndSubmit(cm);
+        },
+        Tab: function (cm) {
+          if (cm.somethingSelected()) {
+            cm.indentSelection("add");
+          } else {
+            cm.replaceSelection("  ", "end");
+          }
+        },
       },
-    },
-  });
+    });
 
-  function syncAndSubmit(cm) {
-    ta.value = cm.getValue();
-    document.getElementById('config-form').submit();
+    function syncAndSubmit(cm) {
+      ta.value = cm.getValue();
+      document.getElementById("config-form").submit();
+    }
+
+    // Sync CM → hidden textarea before form submission
+    document
+      .getElementById("config-form")
+      .addEventListener("submit", function () {
+        ta.value = window.vfCMEditor.getValue();
+      });
+  })();
+
+  function vfFormatJson() {
+    if (!window.vfCMEditor) return;
+    try {
+      const pretty = JSON.stringify(
+        JSON.parse(window.vfCMEditor.getValue()),
+        null,
+        2,
+      );
+      window.vfCMEditor.setValue(pretty);
+    } catch (e) {
+      alert("Invalid JSON — fix syntax errors before formatting.");
+    }
   }
-
-  // Sync CM → hidden textarea before form submission
-  document.getElementById('config-form').addEventListener('submit', function () {
-    ta.value = window.vfCMEditor.getValue();
-  });
-})();
-
-function vfFormatJson() {
-  if (!window.vfCMEditor) return;
-  try {
-    const pretty = JSON.stringify(JSON.parse(window.vfCMEditor.getValue()), null, 2);
-    window.vfCMEditor.setValue(pretty);
-  } catch (e) {
-    alert('Invalid JSON — fix syntax errors before formatting.');
-  }
-}
 </script>
 {% endblock %}

@@ -1,9 +1,10 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="card-header mb-10">
   <div>
     <h1 class="text-4xl mb-2">Nexus Command Center</h1>
-    <p class="muted">Unified Intelligence Interface for Form Extraction & Processing</p>
+    <p class="muted">
+      Unified Intelligence Interface for Form Extraction & Processing
+    </p>
   </div>
   <div class="row m-0">
     <div class="badge badge-info text-sm p-2">
@@ -17,48 +18,81 @@
     <div class="card-header">
       <h3><i class="ph ph-upload-simple"></i> Process New Form</h3>
     </div>
-    <form method="post" action="{{ url_for('web.upload') }}" enctype="multipart/form-data">
+    <form
+      method="post"
+      action="{{ url_for('web.upload') }}"
+      enctype="multipart/form-data"
+    >
       <div class="mb-6">
         <label for="config-select">Extraction Blueprint</label>
         <select name="config_name" id="config-select" required>
           {% for c in configs %}
-            <option value="{{ c }}">{{ c }}</option>
+          <option value="{{ c }}">{{ c }}</option>
           {% else %}
-            <option value="">No blueprints available...</option>
+          <option value="">No blueprints available...</option>
           {% endfor %}
         </select>
       </div>
-      
+
       <div class="mb-10">
         <label for="form-upload">Source Documents (TIFF, PNG, JPG)</label>
         <div class="drop-zone">
           <div class="icon-stack relative mb-6">
-            <i class="ph ph-file-plus" style="font-size: 3.5rem; color: var(--primary)"></i>
-            <div style="position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background: var(--success)"></div>
+            <i
+              class="ph ph-file-plus"
+              style="font-size: 3.5rem; color: var(--primary)"
+            ></i>
+            <div
+              style="
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                width: 12px;
+                height: 12px;
+                background: var(--success);
+              "
+            ></div>
           </div>
           <h4 class="mb-2">Select Document Stream</h4>
-          <p class="muted text-sm">Drag and drop or click to ingest multiple files</p>
-          <input type="file" name="form_files" id="form-upload" multiple accept=".tif,.tiff,.png,.jpg,.jpeg" required class="absolute" style="inset:0;opacity:0;cursor:pointer" />
+          <p class="muted text-sm">
+            Drag and drop or click to ingest multiple files
+          </p>
+          <input
+            type="file"
+            name="form_files"
+            id="form-upload"
+            multiple
+            accept=".tif,.tiff,.png,.jpg,.jpeg"
+            required
+            class="absolute"
+            style="inset: 0; opacity: 0; cursor: pointer"
+          />
         </div>
         <div id="file-list-preview" class="mt-4 flex flex-wrap gap-2"></div>
       </div>
-      
-      <button type="submit" class="primary w-full" style="height: 56px; font-size: 1.1rem">
+
+      <button
+        type="submit"
+        class="primary w-full"
+        style="height: 56px; font-size: 1.1rem"
+      >
         <i class="ph ph-sparkle"></i> Initialize Neural Extraction
       </button>
     </form>
 
     <script>
-      document.getElementById('form-upload').addEventListener('change', function(e) {
-        const preview = document.getElementById('file-list-preview');
-        preview.innerHTML = '';
-        [...e.target.files].forEach(f => {
-          const b = document.createElement('div');
-          b.className = 'badge badge-info text-xs';
-          b.textContent = f.name;
-          preview.appendChild(b);
+      document
+        .getElementById("form-upload")
+        .addEventListener("change", function (e) {
+          const preview = document.getElementById("file-list-preview");
+          preview.innerHTML = "";
+          [...e.target.files].forEach((f) => {
+            const b = document.createElement("div");
+            b.className = "badge badge-info text-xs";
+            b.textContent = f.name;
+            preview.appendChild(b);
+          });
         });
-      });
     </script>
   </section>
 
@@ -67,34 +101,41 @@
       <h3><i class="ph ph-activity"></i> Recent Pipelines</h3>
       <a href="{{ url_for('web.jobs') }}" class="ghost text-sm">View all</a>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Job Engine</th>
-          <th>Status</th>
-          <th>Config</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for j in jobs[:8] %}
-        <tr>
-          <td><code>#{{ j.job_id[:8] }}</code></td>
-          <td>
-            <span class="badge {{ 'badge-success' if j.status in ['completed','finalized'] else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-muted' if j.status == 'interrupted' else 'badge-info' }}">
-              {{ j.status }}
-            </span>
-          </td>
-          <td>{{ j.config_name }}</td>
-          <td>
-            <a href="{{ url_for('web.job_detail', id=j.job_id) }}" class="ghost p-2">
-              <i class="ph ph-arrow-square-out"></i>
-            </a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Job Engine</th>
+            <th>Status</th>
+            <th>Config</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for j in jobs[:8] %}
+          <tr>
+            <td><code>#{{ j.job_id[:8] }}</code></td>
+            <td>
+              <span
+                class="badge {{ 'badge-success' if j.status in ['completed','finalized'] else 'badge-warning' if j.status in ['pending_review','spot_check'] else 'badge-danger' if j.status == 'failed' else 'badge-muted' if j.status == 'interrupted' else 'badge-info' }}"
+              >
+                {{ j.status }}
+              </span>
+            </td>
+            <td>{{ j.config_name }}</td>
+            <td>
+              <a
+                href="{{ url_for('web.job_detail', id=j.job_id) }}"
+                class="ghost p-2"
+              >
+                <i class="ph ph-arrow-square-out"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 </div>
 {% endblock %}

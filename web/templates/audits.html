@@ -1,45 +1,98 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="card-header">
-  <h2><i class="ph ph-scroll"></i> Audit Stream</h2>
-  <div class="row">
-    <span class="badge badge-info">{{ audits|length }} records</span>
+{% extends "base.html" %} {% block content %}
+<div class="card-header mb-10">
+  <div>
+    <h1 class="text-4xl mb-2">Audit Stream</h1>
+    <p class="muted">
+      Full traceability of every extraction, review, and validation action
+    </p>
+  </div>
+  <div class="row m-0">
+    <span class="badge badge-info p-2">{{ audits|length }} records</span>
   </div>
 </div>
 
 <section class="card">
-  <form method="get" action="{{ url_for('web.audits') }}" class="row gap-3 mb-4">
-    <input type="text" name="q" value="{{ q or '' }}" placeholder="Search audits by job id, form type, timestamp, pending count..." />
+  <form
+    method="get"
+    action="{{ url_for('web.audits') }}"
+    class="row gap-3 mb-4"
+  >
+    <input
+      type="text"
+      name="q"
+      value="{{ q or '' }}"
+      placeholder="Search audits by job id, form type, timestamp, pending count..."
+    />
     <input type="hidden" name="sort" value="{{ sort or 'timestamp' }}" />
     <input type="hidden" name="dir" value="{{ direction or 'desc' }}" />
-    <button type="submit" class="primary"><i class="ph ph-magnifying-glass"></i> Search</button>
-    <a href="{{ url_for('web.audits', sort=sort, dir=direction) }}" class="ghost"><i class="ph ph-x"></i> Clear</a>
+    <button type="submit" class="primary">
+      <i class="ph ph-magnifying-glass"></i> Search
+    </button>
+    <a
+      href="{{ url_for('web.audits', sort=sort, dir=direction) }}"
+      class="ghost"
+      ><i class="ph ph-x"></i> Clear</a
+    >
   </form>
-  {% set next_dir = 'asc' if direction == 'desc' else 'desc' %}
-  {% if audits %}
+  {% set next_dir = 'asc' if direction == 'desc' else 'desc' %} {% if audits %}
   <table>
     <thead>
       <tr>
-        <th><a href="{{ url_for('web.audits', q=q, sort='job_id', dir=next_dir if sort == 'job_id' else 'asc') }}" class="sort-header{% if sort == 'job_id' %} {{ direction or 'asc' }}{% endif %}">Job</a></th>
-        <th><a href="{{ url_for('web.audits', q=q, sort='form_type', dir=next_dir if sort == 'form_type' else 'asc') }}" class="sort-header{% if sort == 'form_type' %} {{ direction or 'asc' }}{% endif %}">Form Type</a></th>
-        <th><a href="{{ url_for('web.audits', q=q, sort='timestamp', dir=next_dir if sort == 'timestamp' else 'desc') }}" class="sort-header{% if sort == 'timestamp' %} {{ direction or 'desc' }}{% endif %}">Timestamp</a></th>
-        <th><a href="{{ url_for('web.audits', q=q, sort='pending', dir=next_dir if sort == 'pending' else 'desc') }}" class="sort-header{% if sort == 'pending' %} {{ direction or 'desc' }}{% endif %}">Review</a></th>
+        <th>
+          <a
+            href="{{ url_for('web.audits', q=q, sort='job_id', dir=next_dir if sort == 'job_id' else 'asc') }}"
+            class="sort-header{% if sort == 'job_id' %} {{ direction or 'asc' }}{% endif %}"
+            >Job</a
+          >
+        </th>
+        <th>
+          <a
+            href="{{ url_for('web.audits', q=q, sort='form_type', dir=next_dir if sort == 'form_type' else 'asc') }}"
+            class="sort-header{% if sort == 'form_type' %} {{ direction or 'asc' }}{% endif %}"
+            >Form Type</a
+          >
+        </th>
+        <th>
+          <a
+            href="{{ url_for('web.audits', q=q, sort='timestamp', dir=next_dir if sort == 'timestamp' else 'desc') }}"
+            class="sort-header{% if sort == 'timestamp' %} {{ direction or 'desc' }}{% endif %}"
+            >Timestamp</a
+          >
+        </th>
+        <th>
+          <a
+            href="{{ url_for('web.audits', q=q, sort='pending', dir=next_dir if sort == 'pending' else 'desc') }}"
+            class="sort-header{% if sort == 'pending' %} {{ direction or 'desc' }}{% endif %}"
+            >Review</a
+          >
+        </th>
         <th>Open</th>
       </tr>
     </thead>
     <tbody>
       {% for a in audits %}
       <tr>
-        <td><code style="color: var(--secondary)">#{{ (a.job_id or '-')[:12] }}</code></td>
+        <td>
+          <code style="color: var(--secondary)"
+            >#{{ (a.job_id or '-')[:12] }}</code
+          >
+        </td>
         <td>{{ a.form_type or '-' }}</td>
         <td><span class="muted">{{ a.timestamp or '-' }}</span></td>
-        <td><span class="muted">{{ ((a.review_summary or {}).get('pending_review_count', 0)) }} pending</span></td>
+        <td>
+          <span class="muted"
+            >{{ ((a.review_summary or {}).get('pending_review_count', 0)) }}
+            pending</span
+          >
+        </td>
         <td>
           {% if a.job_id %}
-          <a href="{{ url_for('web.job_detail', id=a.job_id) }}" class="button-link secondary p-2 text-sm">Inspect</a>
-          {% else %}
-          -
-          {% endif %}
+          <a
+            href="{{ url_for('web.job_detail', id=a.job_id) }}"
+            class="button-link secondary p-2 text-sm"
+            >Inspect</a
+          >
+          {% else %} - {% endif %}
         </td>
       </tr>
       {% endfor %}

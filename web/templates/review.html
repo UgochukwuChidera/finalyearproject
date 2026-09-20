@@ -1,186 +1,346 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <style>
-/* Custom styled boxy checkbox — global styles in style.css */
-/* Review-specific checkbox sizing */
-.custom-checkbox-box {
+  /* Custom styled boxy checkbox — global styles in style.css */
+  /* Review-specific checkbox sizing */
+  .custom-checkbox-box {
     height: 28px;
     width: 28px;
     margin-right: 0.75rem;
-}
-.custom-checkbox-box i {
+  }
+  .custom-checkbox-box i {
     font-size: 1.25rem;
-}
+  }
 </style>
 
-<div class="card-header">
-  <h2><i class="ph ph-eye"></i> Quality Assurance Review</h2>
-  <div class="row">
-    <span class="badge badge-warning">Job: {{ job.job_id[:12] }}</span>
-    <span class="badge {{ 'badge-success' if job.status in ['completed','finalized'] else 'badge-info' }}">Status: {{ job.status }}</span>
+<div class="card-header mb-10">
+  <div>
+    <h1 class="text-4xl mb-2">Quality Assurance Review</h1>
+    <p class="muted">
+      Verify AI-extracted values against document crops before export
+    </p>
+  </div>
+  <div class="row m-0">
+    <span class="badge badge-warning p-2">Job: {{ job.job_id[:12] }}</span>
+    <span
+      class="badge {{ 'badge-success' if job.status in ['completed','finalized'] else 'badge-info' }} p-2"
+      >Status: {{ job.status }}</span
+    >
   </div>
 </div>
 
 {% if job.fields %}
 <section>
-  <p class="muted mb-8">Review the AI-extracted values against the document crops. Correct any errors or mark illegible fields.</p>
-  
-  <form id="review-form">
-    {# --- Group 1: Fields requiring attention --- #}
-    {% set pending_count = job.fields | selectattr('needs_review') | list | length %}
-    {% if pending_count > 0 %}
-      <div class="card badge-warning p-4 mb-6" style="border: 1px solid var(--warning); display: flex; align-items: center; gap: 0.5rem;">
-        <i class="ph ph-warning-circle" style="font-size: 1.25rem;"></i>
-        <span style="font-weight: 600;">Attention Required:</span> {{ pending_count }} field(s) have low confidence or validation warnings.
-      </div>
-      
-      {% for f in job.fields if f.needs_review %}
-      <div class="card field-box" style="display: flex; flex-direction: column; gap: 1.5rem; border: 1px solid var(--warning); background: var(--bg); max-width: 100%;">
-        <div>
-          <div class="flex items-center gap-3 mb-4">
-              <h3 style="margin: 0; font-size: 1.125rem">{{ f.field_id|e }}</h3>
-              <span class="badge badge-warning text-xs">Requires Review</span>
-              <span class="badge text-xs" style="background: var(--surface); color: var(--text);">
-                  AI Confidence: {{ '%.1f'|format((f.confidence or 0)*100) }}%
-              </span>
-          </div>
-          
-          <p class="muted text-sm mb-4">
-              <i class="ph ph-magic-wand"></i> AI Extraction: <strong>{{ f.value|e }}</strong>
-              {% if f.closest_dictionary_match %}
-              <br/><i class="ph ph-book-open"></i> Dictionary Suggestion: <span>{{ f.closest_dictionary_match|e }}</span>
-              {% endif %}
-          </p>
+  <p class="muted mb-8">
+    Review the AI-extracted values against the document crops. Correct any
+    errors or mark illegible fields.
+  </p>
 
-          {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in f.crop_path else '' %}
-          {% if rel %}
-          <div class="p-4 border-strong">
-              <label class="text-xs uppercase">Source Crop</label>
-              <img src="{{ url_for('web.outputs_static', filename=rel) }}" alt="crop" class="crop" />
+  <form id="review-form">
+    {# --- Group 1: Fields requiring attention --- #} {% set pending_count =
+    job.fields | selectattr('needs_review') | list | length %} {% if
+    pending_count > 0 %}
+    <div
+      class="card badge-warning p-4 mb-6"
+      style="
+        border: 1px solid var(--warning);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      "
+    >
+      <i class="ph ph-warning-circle" style="font-size: 1.25rem"></i>
+      <span style="font-weight: 600">Attention Required:</span> {{ pending_count
+      }} field(s) have low confidence or validation warnings.
+    </div>
+
+    {% for f in job.fields if f.needs_review %}
+    <div
+      class="card field-box"
+      style="
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        border: 1px solid var(--warning);
+        background: var(--bg);
+        max-width: 100%;
+      "
+    >
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <h3 style="margin: 0; font-size: 1.125rem">{{ f.field_id|e }}</h3>
+          <span class="badge badge-warning text-xs">Requires Review</span>
+          <span
+            class="badge text-xs"
+            style="background: var(--surface); color: var(--text)"
+          >
+            AI Confidence: {{ '%.1f'|format((f.confidence or 0)*100) }}%
+          </span>
+        </div>
+
+        <p class="muted text-sm mb-4">
+          <i class="ph ph-magic-wand"></i> AI Extraction:
+          <strong>{{ f.value|e }}</strong>
+          {% if f.closest_dictionary_match %}
+          <br /><i class="ph ph-book-open"></i> Dictionary Suggestion:
+          <span>{{ f.closest_dictionary_match|e }}</span>
+          {% endif %}
+        </p>
+
+        {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in
+        f.crop_path else '' %} {% if rel %}
+        <div class="p-4 border-strong">
+          <label class="text-xs uppercase">Source Crop</label>
+          <img
+            src="{{ url_for('web.outputs_static', filename=rel) }}"
+            alt="crop"
+            class="crop"
+          />
+        </div>
+        {% endif %}
+      </div>
+
+      <div
+        style="
+          display: flex;
+          align-items: flex-end;
+          gap: 1rem;
+          width: 100%;
+          flex-wrap: wrap;
+        "
+      >
+        <div style="flex: 1; min-width: 250px">
+          <label>Final Verified Value</label>
+          {% if f.field_type == 'checkbox' %}
+          <div class="checkbox-wrap" style="margin-top: 0.5rem">
+            <label class="custom-checkbox-container">
+              <input
+                type="checkbox"
+                id="corr_{{ f.field_id|e }}"
+                name="{{ f.field_id|e }}"
+                {% if f.final_value == True or f.final_value == 'True' or f.final_value == 'true' or f.final_value == '1' or f.final_value == 1 or f.final_value == 'checked' or (f.final_value is not none and f.final_value and f.final_value != 'False' and f.final_value != 'false') %}checked{% endif %}
+              />
+              <span class="custom-checkbox-box">
+                <i class="ph ph-check"></i>
+              </span>
+              <span
+                style="
+                  font-size: 1rem;
+                  color: var(--text-primary);
+                  font-weight: 500;
+                "
+                >Marked / Checked</span
+              >
+            </label>
           </div>
+          {% else %}
+          <input
+            type="text"
+            name="{{ f.field_id|e }}"
+            value="{{ '[ILLEGIBLE]' if f.validation_status == 'illegible' else f.final_value|e }}"
+            class="text-xl font-semibold text-primary"
+            style="width: 100%; {% if f.validation_status == 'illegible' %}color: var(--danger);{% endif %}"
+          />
           {% endif %}
         </div>
-        
-        <div style="display: flex; align-items: flex-end; gap: 1rem; width: 100%; flex-wrap: wrap;">
-          <div style="flex: 1; min-width: 250px;">
+
+        <div style="min-width: 180px">
+          <button
+            type="button"
+            class="ghost w-full"
+            onclick="markIllegible('{{ f.field_id|e }}')"
+            style="
+              height: 48px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 0.5rem;
+            "
+          >
+            <i class="ph ph-prohibit"></i> Mark Illegible
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endfor %} {% else %}
+    <div
+      class="card badge-success p-6 mb-6 text-center"
+      style="border: 1px solid var(--success)"
+    >
+      <i
+        class="ph ph-check-circle block mb-2"
+        style="font-size: 2.5rem; color: var(--success)"
+      ></i>
+      <h3 style="margin-bottom: 0.25rem">All Fields Verified</h3>
+      <p class="muted m-0">
+        No fields currently require attention. You can still modify any field
+        below.
+      </p>
+    </div>
+    {% endif %} {# --- Group 2: All other fields --- #} {% set verified_count =
+    job.fields | rejectattr('needs_review') | list | length %} {% if
+    verified_count > 0 %}
+    <details
+      style="
+        margin-top: 2rem;
+        border-top: 1px solid var(--border);
+        padding-top: 2rem;
+      "
+      open
+    >
+      <summary
+        class="font-semibold text-lg flex items-center gap-2"
+        style="cursor: pointer; user-select: none; color: var(--text-secondary)"
+      >
+        <i class="ph ph-list-plus"></i> View / Correct All Other Fields ({{
+        verified_count }})
+      </summary>
+      <div class="mt-6">
+        {% for f in job.fields if not f.needs_review %}
+        <div
+          class="card field-box"
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-width: 100%;
+          "
+        >
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <h3 style="margin: 0; font-size: 1.125rem">{{ f.field_id|e }}</h3>
+              <span class="badge badge-success text-xs">Verified</span>
+              <span
+                class="badge text-xs"
+                style="background: var(--surface); color: var(--text)"
+              >
+                AI Confidence: {{ '%.1f'|format((f.confidence or 0)*100) }}%
+              </span>
+            </div>
+
+            <p class="muted text-sm mb-4">
+              <i class="ph ph-magic-wand"></i> AI Extraction:
+              <strong>{{ f.value|e }}</strong>
+              {% if f.closest_dictionary_match %}
+              <br /><i class="ph ph-book-open"></i> Dictionary Suggestion:
+              <span>{{ f.closest_dictionary_match|e }}</span>
+              {% endif %}
+            </p>
+
+            {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in
+            f.crop_path else '' %} {% if rel %}
+            <div class="p-4 border-strong">
+              <label class="text-xs uppercase">Source Crop</label>
+              <img
+                src="{{ url_for('web.outputs_static', filename=rel) }}"
+                alt="crop"
+                class="crop"
+              />
+            </div>
+            {% endif %}
+          </div>
+
+          <div
+            style="
+              display: flex;
+              align-items: flex-end;
+              gap: 1rem;
+              width: 100%;
+              flex-wrap: wrap;
+            "
+          >
+            <div style="flex: 1; min-width: 250px">
               <label>Final Verified Value</label>
               {% if f.field_type == 'checkbox' %}
-              <div class="checkbox-wrap" style="margin-top: 0.5rem;">
+              <div class="checkbox-wrap" style="margin-top: 0.5rem">
                 <label class="custom-checkbox-container">
-                  <input type="checkbox" id="corr_{{ f.field_id|e }}" name="{{ f.field_id|e }}"
-                    {% if f.final_value == True or f.final_value == 'True' or f.final_value == 'true' or f.final_value == '1' or f.final_value == 1 or f.final_value == 'checked' or (f.final_value is not none and f.final_value and f.final_value != 'False' and f.final_value != 'false') %}checked{% endif %}>
+                  <input
+                    type="checkbox"
+                    id="corr_{{ f.field_id|e }}"
+                    name="{{ f.field_id|e }}"
+                    {% if f.final_value == True or f.final_value == 'True' or f.final_value == 'true' or f.final_value == '1' or f.final_value == 1 or f.final_value == 'checked' or (f.final_value is not none and f.final_value and f.final_value != 'False' and f.final_value != 'false') %}checked{% endif %}
+                  />
                   <span class="custom-checkbox-box">
                     <i class="ph ph-check"></i>
                   </span>
-                  <span style="font-size: 1rem; color: var(--text-primary); font-weight: 500;">Marked / Checked</span>
+                  <span
+                    style="
+                      font-size: 1rem;
+                      color: var(--text-primary);
+                      font-weight: 500;
+                    "
+                    >Marked / Checked</span
+                  >
                 </label>
               </div>
               {% else %}
-              <input type="text" name="{{ f.field_id|e }}" value="{{ '[ILLEGIBLE]' if f.validation_status == 'illegible' else f.final_value|e }}" class="text-xl font-semibold text-primary" style="width: 100%; {% if f.validation_status == 'illegible' %}color: var(--danger);{% endif %}" />
+              <input
+                type="text"
+                name="{{ f.field_id|e }}"
+                value="{{ '[ILLEGIBLE]' if f.validation_status == 'illegible' else f.final_value|e }}"
+                class="text-xl font-semibold text-primary"
+                style="width: 100%; {% if f.validation_status == 'illegible' %}color: var(--danger);{% endif %}"
+              />
               {% endif %}
-          </div>
-          
-          <div style="min-width: 180px;">
-            <button type="button" class="ghost w-full" onclick="markIllegible('{{ f.field_id|e }}')" style="height: 48px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            </div>
+
+            <div style="min-width: 180px">
+              <button
+                type="button"
+                class="ghost w-full"
+                onclick="markIllegible('{{ f.field_id|e }}')"
+                style="
+                  height: 48px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 0.5rem;
+                "
+              >
                 <i class="ph ph-prohibit"></i> Mark Illegible
-            </button>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    {% else %}
-      <div class="card badge-success p-6 mb-6 text-center" style="border: 1px solid var(--success);">
-        <i class="ph ph-check-circle block mb-2" style="font-size: 2.5rem; color: var(--success);"></i>
-        <h3 style="margin-bottom: 0.25rem;">All Fields Verified</h3>
-        <p class="muted m-0">No fields currently require attention. You can still modify any field below.</p>
-      </div>
-    {% endif %}
-
-    {# --- Group 2: All other fields --- #}
-    {% set verified_count = job.fields | rejectattr('needs_review') | list | length %}
-    {% if verified_count > 0 %}
-      <details style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 2rem;" open>
-        <summary class="font-semibold text-lg flex items-center gap-2" style="cursor: pointer; user-select: none; color: var(--text-secondary);">
-          <i class="ph ph-list-plus"></i> View / Correct All Other Fields ({{ verified_count }})
-        </summary>
-        <div class="mt-6">
-          {% for f in job.fields if not f.needs_review %}
-          <div class="card field-box" style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 100%;">
-            <div>
-              <div class="flex items-center gap-3 mb-4">
-                  <h3 style="margin: 0; font-size: 1.125rem">{{ f.field_id|e }}</h3>
-                  <span class="badge badge-success text-xs">Verified</span>
-                  <span class="badge text-xs" style="background: var(--surface); color: var(--text);">
-                      AI Confidence: {{ '%.1f'|format((f.confidence or 0)*100) }}%
-                  </span>
-              </div>
-              
-              <p class="muted text-sm mb-4">
-                  <i class="ph ph-magic-wand"></i> AI Extraction: <strong>{{ f.value|e }}</strong>
-                  {% if f.closest_dictionary_match %}
-                  <br/><i class="ph ph-book-open"></i> Dictionary Suggestion: <span>{{ f.closest_dictionary_match|e }}</span>
-                  {% endif %}
-              </p>
-
-              {% set rel = f.crop_path.split('/outputs/')[-1] if '/outputs/' in f.crop_path else '' %}
-              {% if rel %}
-              <div class="p-4 border-strong">
-                  <label class="text-xs uppercase">Source Crop</label>
-                  <img src="{{ url_for('web.outputs_static', filename=rel) }}" alt="crop" class="crop" />
-              </div>
-              {% endif %}
-            </div>
-            
-            <div style="display: flex; align-items: flex-end; gap: 1rem; width: 100%; flex-wrap: wrap;">
-              <div style="flex: 1; min-width: 250px;">
-                  <label>Final Verified Value</label>
-                  {% if f.field_type == 'checkbox' %}
-                  <div class="checkbox-wrap" style="margin-top: 0.5rem;">
-                    <label class="custom-checkbox-container">
-                      <input type="checkbox" id="corr_{{ f.field_id|e }}" name="{{ f.field_id|e }}"
-                        {% if f.final_value == True or f.final_value == 'True' or f.final_value == 'true' or f.final_value == '1' or f.final_value == 1 or f.final_value == 'checked' or (f.final_value is not none and f.final_value and f.final_value != 'False' and f.final_value != 'false') %}checked{% endif %}>
-                      <span class="custom-checkbox-box">
-                        <i class="ph ph-check"></i>
-                      </span>
-                      <span style="font-size: 1rem; color: var(--text-primary); font-weight: 500;">Marked / Checked</span>
-                    </label>
-                  </div>
-                  {% else %}
-                  <input type="text" name="{{ f.field_id|e }}" value="{{ '[ILLEGIBLE]' if f.validation_status == 'illegible' else f.final_value|e }}" class="text-xl font-semibold text-primary" style="width: 100%; {% if f.validation_status == 'illegible' %}color: var(--danger);{% endif %}" />
-                  {% endif %}
-              </div>
-              
-              <div style="min-width: 180px;">
-                <button type="button" class="ghost w-full" onclick="markIllegible('{{ f.field_id|e }}')" style="height: 48px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <i class="ph ph-prohibit"></i> Mark Illegible
-                </button>
-              </div>
+              </button>
             </div>
           </div>
-          {% endfor %}
         </div>
-      </details>
+        {% endfor %}
+      </div>
+    </details>
     {% endif %}
-    
+
     <div class="row justify-between mt-10 items-center">
-        <div class="w-full" style="max-width: 320px">
-          <label for="reviewer-name">Reviewer</label>
-          <input id="reviewer-name" data-role="reviewer" data-default-reviewer="{{ default_reviewer }}" type="text" placeholder="e.g. qa_officer_1" value="{{ job.review_finalized_by or default_reviewer }}" />
-        </div>
-        <button type="button" class="primary" onclick="submitReview('{{ job.job_id }}')" style="padding: 1rem 3rem">
-          <i class="ph ph-check-circle"></i> Finalize Batch Review
-        </button>
+      <div class="w-full" style="max-width: 320px">
+        <label for="reviewer-name">Reviewer</label>
+        <input
+          id="reviewer-name"
+          data-role="reviewer"
+          data-default-reviewer="{{ default_reviewer }}"
+          type="text"
+          placeholder="e.g. qa_officer_1"
+          value="{{ job.review_finalized_by or default_reviewer }}"
+        />
+      </div>
+      <button
+        type="button"
+        class="primary"
+        onclick="submitReview('{{ job.job_id }}')"
+        style="padding: 1rem 3rem"
+      >
+        <i class="ph ph-check-circle"></i> Finalize Batch Review
+      </button>
     </div>
   </form>
 </section>
 {% else %}
 <section class="card">
-    <div class="text-center p-12">
-        <i class="ph ph-checks block mb-4" style="font-size: 4rem; color: var(--success)"></i>
-        <h3>Audit Complete</h3>
-        <p class="muted">No fields found for this job.</p>
-        <a href="{{ url_for('web.index') }}" class="button-link secondary mt-6">Return to Dashboard</a>
-    </div>
+  <div class="text-center p-12">
+    <i
+      class="ph ph-checks block mb-4"
+      style="font-size: 4rem; color: var(--success)"
+    ></i>
+    <h3>Audit Complete</h3>
+    <p class="muted">No fields found for this job.</p>
+    <a href="{{ url_for('web.index') }}" class="button-link secondary mt-6"
+      >Return to Dashboard</a
+    >
+  </div>
 </section>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}
