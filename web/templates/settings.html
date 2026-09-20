@@ -1,6 +1,4 @@
-{% extends "base.html" %}
-{% block styles %}{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block styles %}{% endblock %} {% block content %}
 <div class="card-header mb-10">
   <div>
     <h1 class="text-4xl mb-2">Settings</h1>
@@ -9,24 +7,38 @@
 </div>
 
 <!-- ── Model Settings ──────────────────────────────────────────────── -->
-<section class="card" style="max-width: 760px">
+<section class="card">
   <div id="settings-feedback" class="hidden p-4 mb-6 text-center"></div>
 
-  <h3 class="settings-section-title"><i class="ph ph-sliders"></i> Model Settings</h3>
-  <p class="muted mb-8 text-sm">Configure the AI model used for form extraction.</p>
+  <h3 class="settings-section-title">
+    <i class="ph ph-sliders"></i> Model Settings
+  </h3>
+  <p class="muted mb-8 text-sm">
+    Configure the AI model used for form extraction.
+  </p>
 
   <div class="mb-8">
     <label class="muted text-xs block mb-1">OpenRouter API Key</label>
     <div class="flex gap-3">
-      <input id="api-key-input" type="password" placeholder="sk-or-v1-..." value="{{ models_config.api_key or '' }}" class="flex-1" />
-      <button id="btn-save-api-key" class="primary" style="white-space:nowrap">Save Key</button>
+      <input
+        id="api-key-input"
+        type="password"
+        placeholder="sk-or-v1-..."
+        value="{{ models_config.api_key or '' }}"
+        class="flex-1"
+      />
+      <button id="btn-save-api-key" class="primary" style="white-space: nowrap">
+        Save Key
+      </button>
     </div>
     <p class="muted text-xs mt-1">
-      <i class="ph ph-info"></i> Your key is saved locally in <code>models.json</code>. If left empty, it falls back to the <code>OPENROUTER_API_KEY</code> environment variable.
+      <i class="ph ph-info"></i> Your key is saved locally in
+      <code>models.json</code>. If left empty, it falls back to the
+      <code>OPENROUTER_API_KEY</code> environment variable.
     </p>
   </div>
 
-  <hr style="border:0; border-top:1px solid var(--border); margin:2rem 0" />
+  <hr style="border: 0; border-top: 1px solid var(--border); margin: 2rem 0" />
 
   <h3 class="mb-6">Active AI Model</h3>
 
@@ -40,8 +52,10 @@
   <h4 class="mb-4">Available Models</h4>
   <div id="models-list" class="flex flex-col gap-3 mb-8">
     {% for m in models_config.models %}
-    <div class="model-card {{ 'model-active' if m.id == active_model else '' }}"
-         data-id="{{ m.id }}">
+    <div
+      class="model-card {{ 'model-active' if m.id == active_model else '' }}"
+      data-id="{{ m.id }}"
+    >
       <div>
         <p class="m-0 font-semibold">{{ m.label }}</p>
         <p class="muted mt-1 text-sm">{{ m.id }}</p>
@@ -53,9 +67,20 @@
         {% if m.id == active_model %}
         <span class="badge badge-success">active</span>
         {% else %}
-        <button class="btn-set-active secondary text-sm" data-id="{{ m.id }}" style="padding:0.3rem 0.75rem">Set Active</button>
+        <button
+          class="btn-set-active secondary text-sm"
+          data-id="{{ m.id }}"
+          style="padding: 0.3rem 0.75rem"
+        >
+          Set Active
+        </button>
         {% endif %}
-        <button class="btn-remove-model ghost text-sm text-danger" data-id="{{ m.id }}" style="padding:0.3rem 0.6rem" title="Remove model">
+        <button
+          class="btn-remove-model ghost text-sm text-danger"
+          data-id="{{ m.id }}"
+          style="padding: 0.3rem 0.6rem"
+          title="Remove model"
+        >
           <i class="ph ph-trash"></i>
         </button>
       </div>
@@ -65,19 +90,37 @@
 
   <h4 class="mb-4">Add a Custom Model</h4>
   <form id="add-model-form" class="flex flex-col gap-3 mb-6">
-    <div class="gap-3" style="display:grid;grid-template-columns:1fr 1fr">
+    <div class="gap-3" style="display: grid; grid-template-columns: 1fr 1fr">
       <div>
-        <label class="muted text-xs block mb-1">OpenRouter Model ID <span class="text-danger">*</span></label>
-        <input id="new-model-id" type="text" placeholder="e.g. anthropic/claude-3-haiku" class="w-full" required />
+        <label class="muted text-xs block mb-1"
+          >OpenRouter Model ID <span class="text-danger">*</span></label
+        >
+        <input
+          id="new-model-id"
+          type="text"
+          placeholder="e.g. anthropic/claude-3-haiku"
+          class="w-full"
+          required
+        />
       </div>
       <div>
         <label class="muted text-xs block mb-1">Display Label</label>
-        <input id="new-model-label" type="text" placeholder="e.g. Claude 3 Haiku" class="w-full" />
+        <input
+          id="new-model-label"
+          type="text"
+          placeholder="e.g. Claude 3 Haiku"
+          class="w-full"
+        />
       </div>
     </div>
     <div>
       <label class="muted text-xs block mb-1">Description (optional)</label>
-      <input id="new-model-desc" type="text" placeholder="Short description" class="w-full" />
+      <input
+        id="new-model-desc"
+        type="text"
+        placeholder="Short description"
+        class="w-full"
+      />
     </div>
     <div>
       <button type="submit" class="primary w-auto">
@@ -88,24 +131,34 @@
 </section>
 
 <!-- ── Batch / Rate-limit Settings ────────────────────────────────── -->
-<section class="card mt-8" style="max-width:760px" id="batch-section">
+<section class="card mt-8" id="batch-section">
   <div id="batch-feedback" class="hidden p-4 mb-6"></div>
 
-  <h3 class="settings-section-title"><i class="ph ph-stack"></i> Batch Processing &amp; Rate Limits</h3>
+  <h3 class="settings-section-title">
+    <i class="ph ph-stack"></i> Batch Processing &amp; Rate Limits
+  </h3>
   <p class="muted mb-8 text-sm">
-    Control how many files are processed in parallel and how quickly requests are sent.
-    This is especially important for free-tier models which have low requests-per-minute (RPM) caps.
+    Control how many files are processed in parallel and how quickly requests
+    are sent. This is especially important for free-tier models which have low
+    requests-per-minute (RPM) caps.
   </p>
 
   <div class="flex flex-col gap-6">
-
     <div>
       <label class="mb-1">Max Concurrent Requests</label>
       <p class="muted text-sm mb-3">
-        How many extraction jobs run at the same time. Set to <strong>1</strong> to process files strictly one-by-one.
+        How many extraction jobs run at the same time. Set to
+        <strong>1</strong> to process files strictly one-by-one.
       </p>
       <div class="range-row">
-        <input type="range" id="batch-concurrent" min="1" max="20" step="1" value="3" />
+        <input
+          type="range"
+          id="batch-concurrent"
+          min="1"
+          max="20"
+          step="1"
+          value="3"
+        />
         <span class="range-val"><span id="batch-concurrent-val">3</span></span>
       </div>
     </div>
@@ -113,26 +166,45 @@
     <div>
       <label class="mb-1">Requests Per Minute (RPM) Limit</label>
       <p class="muted text-sm mb-3">
-        Match this to your provider's RPM cap. Free-tier OpenRouter models are often limited to <strong>10 RPM</strong>.
-        Setting this automatically adjusts the delay between consecutive job starts.
+        Match this to your provider's RPM cap. Free-tier OpenRouter models are
+        often limited to <strong>10 RPM</strong>. Setting this automatically
+        adjusts the delay between consecutive job starts.
       </p>
       <div class="range-row">
-        <input type="range" id="batch-rpm" min="1" max="120" step="1" value="10" />
-        <span class="range-val"><span id="batch-rpm-val">10</span> <small class="muted">/min</small></span>
+        <input
+          type="range"
+          id="batch-rpm"
+          min="1"
+          max="120"
+          step="1"
+          value="10"
+        />
+        <span class="range-val"
+          ><span id="batch-rpm-val">10</span>
+          <small class="muted">/min</small></span
+        >
       </div>
     </div>
 
     <div>
       <label class="mb-1">Inter-request Delay (seconds)</label>
       <p class="muted text-sm mb-3">
-        Minimum pause between consecutive job starts. Auto-calculated as <code>60 ÷ RPM</code> when you change RPM above, but you can also set it manually here.
+        Minimum pause between consecutive job starts. Auto-calculated as
+        <code>60 ÷ RPM</code> when you change RPM above, but you can also set it
+        manually here.
       </p>
       <div class="range-row">
-        <input type="range" id="batch-delay" min="0" max="60" step="0.5" value="6" />
+        <input
+          type="range"
+          id="batch-delay"
+          min="0"
+          max="60"
+          step="0.5"
+          value="6"
+        />
         <span class="range-val"><span id="batch-delay-val">6.0</span> s</span>
       </div>
     </div>
-
   </div>
 
   <div class="mt-8 flex items-center gap-4">
@@ -148,225 +220,283 @@
 </script>
 
 <script>
-(function () {
-  let cfg = JSON.parse(document.getElementById('models-config-json').textContent);
+  (function () {
+    let cfg = JSON.parse(
+      document.getElementById("models-config-json").textContent,
+    );
 
-  function showFeedback(msg, type) {
-    const el = document.getElementById('settings-feedback');
-    el.textContent = msg;
-    el.style.display = 'block';
-    el.style.borderRadius = '0';
-    el.style.fontWeight = '500';
-    el.style.background = type === 'success' ? '#dcfce7' : '#fee2e2';
-    el.style.color = type === 'success' ? '#166534' : '#991b1b';
-    el.style.borderColor = type === 'success' ? '#bbf7d0' : '#fecaca';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => { el.style.display = 'none'; }, 4000);
-  }
+    function showFeedback(msg, type) {
+      const el = document.getElementById("settings-feedback");
+      el.textContent = msg;
+      el.style.display = "block";
+      el.style.borderRadius = "0";
+      el.style.fontWeight = "500";
+      el.style.background = type === "success" ? "#dcfce7" : "#fee2e2";
+      el.style.color = type === "success" ? "#166534" : "#991b1b";
+      el.style.borderColor = type === "success" ? "#bbf7d0" : "#fecaca";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => {
+        el.style.display = "none";
+      }, 4000);
+    }
 
-  document.getElementById('btn-save-api-key').onclick = function() {
-    const key = document.getElementById('api-key-input').value.trim();
-    cfg.api_key = key;
-    this.disabled = true;
-    this.textContent = 'Saving...';
-    saveConfig().then(() => {
-      showFeedback('API Key updated successfully.', 'success');
-      const input = document.getElementById('api-key-input');
-      input.style.borderColor = 'var(--success)';
-      setTimeout(() => { input.style.borderColor = 'var(--border)'; }, 2000);
-    }).catch(() => {
-      showFeedback('Failed to update API Key.', 'error');
-    }).finally(() => {
-      this.disabled = false;
-      this.textContent = 'Save Key';
-    });
-  };
+    document.getElementById("btn-save-api-key").onclick = function () {
+      const key = document.getElementById("api-key-input").value.trim();
+      cfg.api_key = key;
+      this.disabled = true;
+      this.textContent = "Saving...";
+      saveConfig()
+        .then(() => {
+          showFeedback("API Key updated successfully.", "success");
+          const input = document.getElementById("api-key-input");
+          input.style.borderColor = "var(--success)";
+          setTimeout(() => {
+            input.style.borderColor = "var(--border)";
+          }, 2000);
+        })
+        .catch(() => {
+          showFeedback("Failed to update API Key.", "error");
+        })
+        .finally(() => {
+          this.disabled = false;
+          this.textContent = "Save Key";
+        });
+    };
 
-  function saveConfig() {
-    return fetch('/api/models', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cfg)
-    }).then(r => r.json());
-  }
+    function saveConfig() {
+      return fetch("/api/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cfg),
+      }).then((r) => r.json());
+    }
 
-  function rebuildList() {
-    const list = document.getElementById('models-list');
-    list.innerHTML = '';
-    cfg.models.forEach(function (m) {
-      const isActive = m.id === cfg.active_model;
-      const card = document.createElement('div');
-      card.className = 'model-card' + (isActive ? ' model-active' : '');
-      card.dataset.id = m.id;
-      card.innerHTML =
-        '<div>' +
-          '<p class="m-0 font-semibold">' + escHtml(m.label || m.id) + '</p>' +
-          '<p class="muted mt-1 text-sm">' + escHtml(m.id) + '</p>' +
-          (m.description ? '<p class="muted mt-1 text-xs">' + escHtml(m.description) + '</p>' : '') +
-        '</div>' +
-        '<div class="flex gap-2 items-center">' +
+    function rebuildList() {
+      const list = document.getElementById("models-list");
+      list.innerHTML = "";
+      cfg.models.forEach(function (m) {
+        const isActive = m.id === cfg.active_model;
+        const card = document.createElement("div");
+        card.className = "model-card" + (isActive ? " model-active" : "");
+        card.dataset.id = m.id;
+        card.innerHTML =
+          "<div>" +
+          '<p class="m-0 font-semibold">' +
+          escHtml(m.label || m.id) +
+          "</p>" +
+          '<p class="muted mt-1 text-sm">' +
+          escHtml(m.id) +
+          "</p>" +
+          (m.description
+            ? '<p class="muted mt-1 text-xs">' + escHtml(m.description) + "</p>"
+            : "") +
+          "</div>" +
+          '<div class="flex gap-2 items-center">' +
           (isActive
             ? '<span class="badge badge-success">active</span>'
-            : '<button class="btn-set-active secondary text-sm" data-id="' + escHtml(m.id) + '" style="padding:0.3rem 0.75rem">Set Active</button>') +
-          '<button class="btn-remove-model ghost text-sm text-danger" data-id="' + escHtml(m.id) + '" style="padding:0.3rem 0.6rem" title="Remove model"><i class="ph ph-trash"></i></button>' +
-        '</div>';
-      list.appendChild(card);
-    });
-    document.getElementById('active-model-label').textContent = cfg.active_model;
-    attachHandlers();
-  }
+            : '<button class="btn-set-active secondary text-sm" data-id="' +
+              escHtml(m.id) +
+              '" style="padding:0.3rem 0.75rem">Set Active</button>') +
+          '<button class="btn-remove-model ghost text-sm text-danger" data-id="' +
+          escHtml(m.id) +
+          '" style="padding:0.3rem 0.6rem" title="Remove model"><i class="ph ph-trash"></i></button>' +
+          "</div>";
+        list.appendChild(card);
+      });
+      document.getElementById("active-model-label").textContent =
+        cfg.active_model;
+      attachHandlers();
+    }
 
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
 
-  function attachHandlers() {
-    document.querySelectorAll('.btn-set-active').forEach(function (btn) {
-      btn.onclick = function () {
-        cfg.active_model = this.dataset.id;
-        saveConfig().then(function (res) {
-          rebuildList();
-          showFeedback('Active model switched to ' + cfg.active_model, 'success');
-        }).catch(function () { showFeedback('Failed to save settings.', 'error'); });
-      };
-    });
+    function attachHandlers() {
+      document.querySelectorAll(".btn-set-active").forEach(function (btn) {
+        btn.onclick = function () {
+          cfg.active_model = this.dataset.id;
+          saveConfig()
+            .then(function (res) {
+              rebuildList();
+              showFeedback(
+                "Active model switched to " + cfg.active_model,
+                "success",
+              );
+            })
+            .catch(function () {
+              showFeedback("Failed to save settings.", "error");
+            });
+        };
+      });
 
-    document.querySelectorAll('.btn-remove-model').forEach(function (btn) {
-      btn.onclick = function () {
-        const id = this.dataset.id;
-        if (id === cfg.active_model) {
-          showFeedback('Cannot remove the currently active model. Switch to another model first.', 'error');
+      document.querySelectorAll(".btn-remove-model").forEach(function (btn) {
+        btn.onclick = function () {
+          const id = this.dataset.id;
+          if (id === cfg.active_model) {
+            showFeedback(
+              "Cannot remove the currently active model. Switch to another model first.",
+              "error",
+            );
+            return;
+          }
+          cfg.models = cfg.models.filter(function (m) {
+            return m.id !== id;
+          });
+          saveConfig()
+            .then(function () {
+              rebuildList();
+              showFeedback("Model removed.", "success");
+            })
+            .catch(function () {
+              showFeedback("Failed to save settings.", "error");
+            });
+        };
+      });
+    }
+
+    document
+      .getElementById("add-model-form")
+      .addEventListener("submit", function (e) {
+        e.preventDefault();
+        const id = document.getElementById("new-model-id").value.trim();
+        const label =
+          document.getElementById("new-model-label").value.trim() || id;
+        const desc = document.getElementById("new-model-desc").value.trim();
+        if (!id) return;
+        if (
+          cfg.models.some(function (m) {
+            return m.id === id;
+          })
+        ) {
+          showFeedback("A model with this ID already exists.", "error");
           return;
         }
-        cfg.models = cfg.models.filter(function (m) { return m.id !== id; });
-        saveConfig().then(function () {
-          rebuildList();
-          showFeedback('Model removed.', 'success');
-        }).catch(function () { showFeedback('Failed to save settings.', 'error'); });
-      };
-    });
-  }
-
-  document.getElementById('add-model-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    const id = document.getElementById('new-model-id').value.trim();
-    const label = document.getElementById('new-model-label').value.trim() || id;
-    const desc = document.getElementById('new-model-desc').value.trim();
-    if (!id) return;
-    if (cfg.models.some(function (m) { return m.id === id; })) {
-      showFeedback('A model with this ID already exists.', 'error');
-      return;
-    }
-    cfg.models.push({ id: id, label: label, description: desc });
-    saveConfig().then(function () {
-      document.getElementById('new-model-id').value = '';
-      document.getElementById('new-model-label').value = '';
-      document.getElementById('new-model-desc').value = '';
-      rebuildList();
-      showFeedback('Model "' + label + '" added.', 'success');
-    }).catch(function () { showFeedback('Failed to save settings.', 'error'); });
-  });
-
-  attachHandlers();
-})();
-
-// ── Batch Settings ──────────────────────────────────────────────────────────
-(function () {
-  const concurrentSlider = document.getElementById('batch-concurrent');
-  const concurrentVal    = document.getElementById('batch-concurrent-val');
-  const rpmSlider        = document.getElementById('batch-rpm');
-  const rpmVal           = document.getElementById('batch-rpm-val');
-  const delaySlider      = document.getElementById('batch-delay');
-  const delayVal         = document.getElementById('batch-delay-val');
-  const hint             = document.getElementById('batch-hint');
-  let _rpmManual = false; // track if user changed RPM (to auto-set delay)
-
-  function updateHint() {
-    const c = parseInt(concurrentSlider.value, 10);
-    const r = parseInt(rpmSlider.value, 10);
-    const d = parseFloat(delaySlider.value);
-    hint.textContent = `≈ ${r} req/min · ${c} parallel · ${d}s between starts`;
-  }
-
-  concurrentSlider.addEventListener('input', function () {
-    concurrentVal.textContent = this.value;
-    updateHint();
-  });
-
-  rpmSlider.addEventListener('input', function () {
-    rpmVal.textContent = this.value;
-    // Auto-derive delay
-    const delay = Math.round((60 / parseInt(this.value, 10)) * 10) / 10;
-    delaySlider.value = Math.min(delay, 60);
-    delayVal.textContent = delaySlider.value;
-    _rpmManual = true;
-    updateHint();
-  });
-
-  delaySlider.addEventListener('input', function () {
-    delayVal.textContent = this.value;
-    updateHint();
-  });
-
-  function showBatchFeedback(msg, type) {
-    const el = document.getElementById('batch-feedback');
-    el.textContent = msg;
-    el.style.display = 'block';
-    el.style.padding = '0.75rem 1rem';
-    el.style.fontWeight = '500';
-    el.style.background = type === 'success' ? '#dcfce7' : '#fee2e2';
-    el.style.color = type === 'success' ? '#166534' : '#991b1b';
-    el.style.borderColor = type === 'success' ? '#bbf7d0' : '#fecaca';
-    setTimeout(() => { el.style.display = 'none'; }, 4000);
-  }
-
-  document.getElementById('btn-save-batch').addEventListener('click', function () {
-    const payload = {
-      max_concurrent: parseInt(concurrentSlider.value, 10),
-      requests_per_minute: parseInt(rpmSlider.value, 10),
-      inter_request_delay: parseFloat(delaySlider.value),
-    };
-    this.disabled = true;
-    this.textContent = 'Saving...';
-    fetch('/api/settings/batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (data.status === 'ok') {
-          showBatchFeedback('Batch settings saved.', 'success');
-        } else {
-          showBatchFeedback('Error: ' + (data.error || 'unknown'), 'error');
-        }
-      })
-      .catch(() => showBatchFeedback('Failed to save batch settings.', 'error'))
-      .finally(() => {
-        this.disabled = false;
-        this.innerHTML = '<i class="ph ph-floppy-disk"></i> Save Batch Settings';
+        cfg.models.push({ id: id, label: label, description: desc });
+        saveConfig()
+          .then(function () {
+            document.getElementById("new-model-id").value = "";
+            document.getElementById("new-model-label").value = "";
+            document.getElementById("new-model-desc").value = "";
+            rebuildList();
+            showFeedback('Model "' + label + '" added.', "success");
+          })
+          .catch(function () {
+            showFeedback("Failed to save settings.", "error");
+          });
       });
-  });
 
-  // Load current settings from server
-  fetch('/api/settings/batch')
-    .then(r => r.json())
-    .then(data => {
-      if (data.max_concurrent) {
-        concurrentSlider.value = data.max_concurrent;
-        concurrentVal.textContent = data.max_concurrent;
-      }
-      if (data.requests_per_minute) {
-        rpmSlider.value = data.requests_per_minute;
-        rpmVal.textContent = data.requests_per_minute;
-      }
-      if (data.inter_request_delay != null) {
-        delaySlider.value = Math.min(data.inter_request_delay, 60);
-        delayVal.textContent = delaySlider.value;
-      }
+    attachHandlers();
+  })();
+
+  // ── Batch Settings ──────────────────────────────────────────────────────────
+  (function () {
+    const concurrentSlider = document.getElementById("batch-concurrent");
+    const concurrentVal = document.getElementById("batch-concurrent-val");
+    const rpmSlider = document.getElementById("batch-rpm");
+    const rpmVal = document.getElementById("batch-rpm-val");
+    const delaySlider = document.getElementById("batch-delay");
+    const delayVal = document.getElementById("batch-delay-val");
+    const hint = document.getElementById("batch-hint");
+    let _rpmManual = false; // track if user changed RPM (to auto-set delay)
+
+    function updateHint() {
+      const c = parseInt(concurrentSlider.value, 10);
+      const r = parseInt(rpmSlider.value, 10);
+      const d = parseFloat(delaySlider.value);
+      hint.textContent = `≈ ${r} req/min · ${c} parallel · ${d}s between starts`;
+    }
+
+    concurrentSlider.addEventListener("input", function () {
+      concurrentVal.textContent = this.value;
       updateHint();
-    })
-    .catch(() => updateHint());
-})();
+    });
+
+    rpmSlider.addEventListener("input", function () {
+      rpmVal.textContent = this.value;
+      // Auto-derive delay
+      const delay = Math.round((60 / parseInt(this.value, 10)) * 10) / 10;
+      delaySlider.value = Math.min(delay, 60);
+      delayVal.textContent = delaySlider.value;
+      _rpmManual = true;
+      updateHint();
+    });
+
+    delaySlider.addEventListener("input", function () {
+      delayVal.textContent = this.value;
+      updateHint();
+    });
+
+    function showBatchFeedback(msg, type) {
+      const el = document.getElementById("batch-feedback");
+      el.textContent = msg;
+      el.style.display = "block";
+      el.style.padding = "0.75rem 1rem";
+      el.style.fontWeight = "500";
+      el.style.background = type === "success" ? "#dcfce7" : "#fee2e2";
+      el.style.color = type === "success" ? "#166534" : "#991b1b";
+      el.style.borderColor = type === "success" ? "#bbf7d0" : "#fecaca";
+      setTimeout(() => {
+        el.style.display = "none";
+      }, 4000);
+    }
+
+    document
+      .getElementById("btn-save-batch")
+      .addEventListener("click", function () {
+        const payload = {
+          max_concurrent: parseInt(concurrentSlider.value, 10),
+          requests_per_minute: parseInt(rpmSlider.value, 10),
+          inter_request_delay: parseFloat(delaySlider.value),
+        };
+        this.disabled = true;
+        this.textContent = "Saving...";
+        fetch("/api/settings/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.status === "ok") {
+              showBatchFeedback("Batch settings saved.", "success");
+            } else {
+              showBatchFeedback("Error: " + (data.error || "unknown"), "error");
+            }
+          })
+          .catch(() =>
+            showBatchFeedback("Failed to save batch settings.", "error"),
+          )
+          .finally(() => {
+            this.disabled = false;
+            this.innerHTML =
+              '<i class="ph ph-floppy-disk"></i> Save Batch Settings';
+          });
+      });
+
+    // Load current settings from server
+    fetch("/api/settings/batch")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.max_concurrent) {
+          concurrentSlider.value = data.max_concurrent;
+          concurrentVal.textContent = data.max_concurrent;
+        }
+        if (data.requests_per_minute) {
+          rpmSlider.value = data.requests_per_minute;
+          rpmVal.textContent = data.requests_per_minute;
+        }
+        if (data.inter_request_delay != null) {
+          delaySlider.value = Math.min(data.inter_request_delay, 60);
+          delayVal.textContent = delaySlider.value;
+        }
+        updateHint();
+      })
+      .catch(() => updateHint());
+  })();
 </script>
 {% endblock %}
