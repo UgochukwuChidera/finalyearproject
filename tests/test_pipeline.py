@@ -4,6 +4,7 @@ Tests cover: config loading, template extraction, deskewing, cropping,
 validation helpers, checkbox detection, and the top-level process_form
 orchestrator with mocked AI extraction calls.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,10 +28,10 @@ from pipeline import (
     process_form,
 )
 
-
 # ---------------------------------------------------------------------------
 # Config loading
 # ---------------------------------------------------------------------------
+
 
 class TestLoadConfig:
     def test_load_config_by_name(self, mock_config_path: str):
@@ -57,6 +58,7 @@ class TestLoadConfig:
 # Template extraction
 # ---------------------------------------------------------------------------
 
+
 class TestLoadTemplateExtraction:
     def test_load_template_extraction_missing_path(self):
         """If config has no template_extraction path, return empty dict."""
@@ -68,7 +70,7 @@ class TestLoadTemplateExtraction:
         config = {"template_extraction": str(tmp_path / "nonexistent.json")}
         result = _load_template_extraction(config)
         assert result == {}
-    
+
     def test_load_template_extraction_valid(self, tmp_path: Path):
         """Valid template_extraction JSON should return the fields dict."""
         p = tmp_path / "template.json"
@@ -82,6 +84,7 @@ class TestLoadTemplateExtraction:
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
+
 
 class TestToPngBytes:
     def test_to_png_bytes_valid(self):
@@ -113,9 +116,9 @@ class TestSafeCrop:
         assert crop.size > 0
 
     def test_safe_crop_empty_input(self):
-        """None input → placeholder 1x1 array."""
-        crop = _safe_crop(None, 0, 0, 10, 10)
-        assert crop.shape == (1, 1)
+        """None input → raises ValueError (fail-fast)."""
+        with pytest.raises(ValueError):
+            _safe_crop(None, 0, 0, 10, 10)
 
 
 class TestDeskewImage:
@@ -128,8 +131,9 @@ class TestDeskewImage:
         assert deskewed.dtype == img.dtype
 
     def test_deskew_image_none(self):
-        """None input → returns None (no crash)."""
-        assert _deskew_image(None, 3.0) is None
+        """None input → raises ValueError (fail-fast)."""
+        with pytest.raises(ValueError):
+            _deskew_image(None, 3.0)
 
 
 class TestValidationOk:
@@ -147,12 +151,16 @@ class TestValidationOk:
 
     def test_validation_regex_ok(self):
         """Value matching regex → (True, 'passed')."""
-        ok, reason = _validation_ok("abc@example.com", {"validation": {"regex": r".+@.+\..+"}})
+        ok, reason = _validation_ok(
+            "abc@example.com", {"validation": {"regex": r".+@.+\..+"}}
+        )
         assert ok is True
 
     def test_validation_regex_fail(self):
         """Value not matching regex → (False, reason)."""
-        ok, reason = _validation_ok("notanemail", {"validation": {"regex": r".+@.+\..+"}})
+        ok, reason = _validation_ok(
+            "notanemail", {"validation": {"regex": r".+@.+\..+"}}
+        )
         assert ok is False
 
     def test_validation_numeric_range_ok(self):
@@ -202,6 +210,7 @@ class TestDiffersFromTemplate:
 # ---------------------------------------------------------------------------
 # process_form (mocked AI extraction)
 # ---------------------------------------------------------------------------
+
 
 class TestProcessForm:
     @patch("pipeline.GeminiClient")

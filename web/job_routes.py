@@ -1,4 +1,5 @@
 """Job-related routes: queue, run, list, delete, export."""
+
 from __future__ import annotations
 
 import threading
@@ -14,11 +15,29 @@ from werkzeug.datastructures import FileStorage
 from main import process_form
 from .bp import bp
 from .common import (
-    JOBS, JOBS_LOCK, DEFAULT_REVIEWER,
-    _root_dir, _cfg_dir, _dict_dir, _uploads_dir, _outputs_dir, _logs_dir,
-    _norm_text, _safe_config_name, _allowed_ext, _load_jobs_db, _save_jobs_db,
-    _init_jobs_internal, _get_batch_settings, _get_job_semaphore, _get_api_key,
-    _LAST_JOB_START, _RATE_LOCK, _read_audit_entries, _list_configs,
+    JOBS,
+    JOBS_LOCK,
+    DEFAULT_REVIEWER,
+    _root_dir,
+    _cfg_dir,
+    _dict_dir,
+    _uploads_dir,
+    _outputs_dir,
+    _logs_dir,
+    _norm_text,
+    _safe_config_name,
+    _allowed_ext,
+    _load_jobs_db,
+    _save_jobs_db,
+    _init_jobs_internal,
+    _get_batch_settings,
+    _get_job_semaphore,
+    _get_job_executor,
+    _get_api_key,
+    _LAST_JOB_START,
+    _RATE_LOCK,
+    _read_audit_entries,
+    _list_configs,
 )
 
 
@@ -42,28 +61,49 @@ def _queue_job(cfg: str, file: FileStorage, batch_id: str | None = None) -> str:
         }
 
     batch_cfg = _get_batch_settings()
-    sem = _get_job_semaphore(batch_cfg["max_concurrent"])
+    max_conc = int(batch_cfg.get("max_concurrent", 5))
+    sem = _get_job_semaphore(max_conc)
+    executor = _get_job_executor(max_conc)
     inter_delay = float(batch_cfg.get("inter_request_delay", 0.5))
 
-    app = current_app._get_current_object()
-    threading.Thread(
-        target=_job_runner_gated,
-        args=(app, job_id, str(path), cfg, file.filename, sem, inter_delay),
-        daemon=True,
-    ).start()
+    app = current_app._get_current_object()  # type: ignore[attr-defined]
+    executor.submit(
+        _job_runner_gated,
+        app,
+        job_id,
+        str(path),
+        cfg,
+        file.filename or "upload",
+        sem,
+        inter_delay,
+    )
     return job_id
 
 
 def _job_runner_gated(
-    app: Any, job_id: str, image_path: str, config_name: str, original_filename: str,
-    sem: threading.Semaphore, inter_request_delay: float
+    app: Any,
+    job_id: str,
+    image_path: str,
+    config_name: str,
+    original_filename: str,
+    sem: threading.Semaphore,
+    inter_request_delay: float,
 ) -> None:
     """Wrapper that rate-limits job execution via a semaphore + inter-request delay."""
     global _LAST_JOB_START
-    # Wait for a concurrency slot
-    sem.acquire()
+    acquired = sem.acquire(timeout=300)
+    if not acquired:
+        with app.app_context():
+            with JOBS_LOCK:
+                if job_id in JOBS:
+                    JOBS[job_id]["status"] = "failed"
+                    JOBS[job_id][
+                        "error"
+                    ] = "Timed out waiting for concurrency slot (stuck jobs?)."
+                    JOBS[job_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    _save_jobs_db(JOBS)
+        return
     try:
-        # Enforce minimum gap between consecutive job starts
         if inter_request_delay > 0:
             with _RATE_LOCK:
                 now = time.monotonic()
@@ -86,11 +126,13 @@ def _job_runner(
                 JOBS[job_id]["current_message"] = message
                 if "logs" not in JOBS[job_id]:
                     JOBS[job_id]["logs"] = []
-                JOBS[job_id]["logs"].append({
-                    "time": datetime.now(timezone.utc).strftime("%H:%M:%S"),
-                    "stage": stage,
-                    "message": message
-                })
+                JOBS[job_id]["logs"].append(
+                    {
+                        "time": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                        "stage": stage,
+                        "message": message,
+                    }
+                )
 
     with app.app_context():
         try:
@@ -107,7 +149,7 @@ def _job_runner(
                 original_filename=original_filename,
                 job_id=job_id,
                 progress_callback=progress_cb,
-                api_key=_get_api_key()
+                api_key=_get_api_key(),
             )
             with JOBS_LOCK:
                 JOBS[job_id].update(result)
@@ -116,6 +158,7 @@ def _job_runner(
                 _save_jobs_db(JOBS)
         except Exception as exc:
             import traceback
+
             with JOBS_LOCK:
                 JOBS[job_id]["status"] = "failed"
                 JOBS[job_id]["error"] = str(exc)
@@ -128,7 +171,9 @@ def _job_runner(
 def index() -> str:
     _init_jobs_internal()
     with JOBS_LOCK:
-        jobs = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
+        jobs = sorted(
+            JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True
+        )
     return render_template("index.html", configs=_list_configs(), jobs=jobs[:10])
 
 
@@ -136,7 +181,9 @@ def index() -> str:
 def jobs() -> str:
     _init_jobs_internal()
     with JOBS_LOCK:
-        items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
+        items = sorted(
+            JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True
+        )
     q = (request.args.get("q") or "").strip()
     sort_key = (request.args.get("sort") or "created_at").strip()
     sort_dir = (request.args.get("dir") or "desc").strip().lower()
@@ -145,6 +192,7 @@ def jobs() -> str:
         items = [j for j in items if j.get("batch_id") == batch_id]
     if q:
         qn = _norm_text(q)
+
         def _matches(job: dict) -> bool:
             pending_count = len(job.get("pending_fields", []) or [])
             haystack = [
@@ -159,6 +207,7 @@ def jobs() -> str:
                 str(pending_count),
             ]
             return any(qn in _norm_text(v) for v in haystack)
+
         items = [j for j in items if _matches(j)]
 
     key_funcs = {
@@ -187,7 +236,7 @@ def jobs() -> str:
 
 
 @bp.route("/jobs/<id>", methods=["GET"])
-def job_detail(id: str) -> str:
+def job_detail(id: str) -> Any:
     _init_jobs_internal()
     with JOBS_LOCK:
         job = JOBS.get(id)
@@ -202,7 +251,9 @@ def job_detail(id: str) -> str:
 def api_jobs() -> Any:
     _init_jobs_internal()
     with JOBS_LOCK:
-        items = sorted(JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True)
+        items = sorted(
+            JOBS.values(), key=lambda x: x.get("created_at", ""), reverse=True
+        )
     return jsonify({"jobs": items})
 
 
@@ -248,7 +299,10 @@ def job_export_download(id: str, fmt: str) -> Any:
 
     export_path = (job.get("export_paths") or {}).get(fmt)
     if not export_path:
-        return jsonify({"error": f"{fmt.upper()} export not available for this job"}), 404
+        return (
+            jsonify({"error": f"{fmt.upper()} export not available for this job"}),
+            404,
+        )
 
     target = Path(str(export_path))
     if not target.is_absolute():
@@ -259,7 +313,9 @@ def job_export_download(id: str, fmt: str) -> Any:
     try:
         target.relative_to(_outputs_dir().resolve())
     except ValueError:
-        current_app.logger.warning("Rejected export path outside outputs for job %s: %s", id, str(target))
+        current_app.logger.warning(
+            "Rejected export path outside outputs for job %s: %s", id, str(target)
+        )
         return jsonify({"error": "invalid export path"}), 400
 
     if not target.exists():

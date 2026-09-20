@@ -1,4 +1,5 @@
 """Shared helper functions, state, and configuration for web routes."""
+
 from __future__ import annotations
 
 import json
@@ -14,7 +15,8 @@ from typing import Any
 
 import cv2
 from flask import current_app
-from werkzeug.utils import safe_join, secure_filename
+from werkzeug.security import safe_join
+from werkzeug.utils import secure_filename
 
 # ---------------------------------------------------------------------------
 # Job Persistence & Management
@@ -53,22 +55,68 @@ def _jobs_db_path() -> Path:
     return _logs_dir() / "jobs_db.json"
 
 
+MAX_JOBS: int = int(os.getenv("MAX_JOBS", "500"))
+
+
 def _load_jobs_db() -> dict[str, Any]:
     path = _jobs_db_path()
-    if path.exists():
-        try:
-            with path.open("r", encoding="utf-8") as fh:
-                return json.load(fh)
-        except (json.JSONDecodeError, OSError):
-            pass
+    if not path.exists():
+        return {}
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            try:
+                import fcntl as _fcntl
+
+                _fcntl.flock(fh.fileno(), _fcntl.LOCK_SH)
+            except Exception:
+                pass
+            data = json.load(fh)
+            try:
+                import fcntl as _fcntl2
+
+                _fcntl2.flock(fh.fileno(), _fcntl2.LOCK_UN)
+            except Exception:
+                pass
+            return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
     return {}
 
 
 def _save_jobs_db(jobs_data: dict[str, Any]) -> None:
     path = _jobs_db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(jobs_data, fh, indent=2, ensure_ascii=False)
+    data_to_write = jobs_data
+    if len(jobs_data) > MAX_JOBS:
+        sorted_items = sorted(
+            jobs_data.items(), key=lambda kv: kv[1].get("created_at", "")
+        )
+        data_to_write = dict(sorted_items[-MAX_JOBS:])
+    tmp = path.with_suffix(".tmp")
+    with tmp.open("w", encoding="utf-8") as fh:
+        try:
+            import fcntl as _fcntl
+
+            _fcntl.flock(fh.fileno(), _fcntl.LOCK_EX)
+        except Exception:
+            pass
+        json.dump(data_to_write, fh, indent=2, ensure_ascii=False)
+        fh.flush()
+        try:
+            os.fsync(fh.fileno())
+        except Exception:
+            pass
+        try:
+            import fcntl as _fcntl2
+
+            _fcntl2.flock(fh.fileno(), _fcntl2.LOCK_UN)
+        except Exception:
+            pass
+    try:
+        tmp.replace(path)
+    except OSError:
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(data_to_write, fh, indent=2, ensure_ascii=False)
 
 
 def _init_jobs_internal() -> None:
@@ -114,6 +162,12 @@ def _list_configs() -> list[str]:
 
 
 def _save_config(name: str, payload: dict[str, Any]) -> Path:
+    from utils.config_validator import validate_config
+
+    try:
+        payload = validate_config(payload)
+    except ValueError as e:
+        raise ValueError(str(e)) from e
     path = _config_path(name)
     with path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2, ensure_ascii=False)
@@ -142,7 +196,9 @@ def _read_audit_entries(limit: int = 200) -> list[dict[str, Any]]:
     return list(reversed(items[-limit:]))
 
 
-def _append_review_event(job: dict[str, Any], reviewer: str, corrections: dict[str, Any]) -> None:
+def _append_review_event(
+    job: dict[str, Any], reviewer: str, corrections: dict[str, Any]
+) -> None:
     audit_path = _outputs_dir() / "audit.jsonl"
     audit_path.parent.mkdir(parents=True, exist_ok=True)
     event = {
@@ -171,7 +227,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Best default: fast, cheap, image-capable, reliable logprobs. Recommended for OCR pipeline use.",
         "vision": True,
         "logprobs": True,
-        "free_tier": False
+        "free_tier": False,
     },
     {
         "id": "google/gemini-2.0-flash-001",
@@ -179,7 +235,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Fast multimodal model from Google. Supports image input. Logprobs available via OpenRouter.",
         "vision": True,
         "logprobs": True,
-        "free_tier": False
+        "free_tier": False,
     },
     {
         "id": "google/gemini-2.5-flash-preview:free",
@@ -187,7 +243,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Free-tier Gemini 2.5 Flash with vision support. Good for bulk OCR within free trial limits. Logprobs may be limited.",
         "vision": True,
         "logprobs": False,
-        "free_tier": True
+        "free_tier": True,
     },
     {
         "id": "google/gemini-2.5-flash-preview",
@@ -195,7 +251,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Paid tier Gemini 2.5 Flash. Faster rate limits, image support, logprobs available.",
         "vision": True,
         "logprobs": True,
-        "free_tier": False
+        "free_tier": False,
     },
     {
         "id": "meta-llama/llama-4-maverick:free",
@@ -203,7 +259,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Meta's Llama 4 Maverick, free tier. Multimodal with image support. Good OCR alternative within free quota.",
         "vision": True,
         "logprobs": False,
-        "free_tier": True
+        "free_tier": True,
     },
     {
         "id": "meta-llama/llama-4-maverick",
@@ -211,7 +267,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Paid tier Llama 4 Maverick. Image support, logprobs returned by OpenRouter.",
         "vision": True,
         "logprobs": True,
-        "free_tier": False
+        "free_tier": False,
     },
     {
         "id": "qwen/qwen2.5-vl-72b-instruct:free",
@@ -219,7 +275,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Alibaba's top vision-language model, free tier. Excellent at reading documents, forms, handwriting. High OCR accuracy.",
         "vision": True,
         "logprobs": False,
-        "free_tier": True
+        "free_tier": True,
     },
     {
         "id": "qwen/qwen2.5-vl-72b-instruct",
@@ -227,7 +283,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Paid tier. Best VLM for document OCR tasks. Supports logprobs via OpenRouter.",
         "vision": True,
         "logprobs": True,
-        "free_tier": False
+        "free_tier": False,
     },
     {
         "id": "qwen/qwen2.5-vl-7b-instruct:free",
@@ -235,7 +291,7 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Smaller, faster Qwen vision model on free tier. Good for high-volume TIFF processing within token quota.",
         "vision": True,
         "logprobs": False,
-        "free_tier": True
+        "free_tier": True,
     },
     {
         "id": "mistralai/mistral-small-3.1-24b-instruct:free",
@@ -243,8 +299,8 @@ _BUILTIN_MODELS: list[dict[str, Any]] = [
         "description": "Mistral's multimodal model, free tier. Supports image input. Useful as a free fallback for OCR.",
         "vision": True,
         "logprobs": False,
-        "free_tier": True
-    }
+        "free_tier": True,
+    },
 ]
 
 _DEFAULT_MODELS_CONFIG: dict[str, Any] = {
@@ -303,11 +359,18 @@ def _save_batch_settings(data: dict[str, Any]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Semaphore-based concurrency + rate-limiter
+# Concurrency — ThreadPoolExecutor (web, IO-bound LLM calls) + Semaphore + rate-limiter
+# batching.py:49 ProcessPoolExecutor is for offline CPU-bound batch (evaluation/CLI), not web.
+# For production use gunicorn: gunicorn -w 2 -k gthread --threads 5 web:create_app()
+# File lock in _save/_load handles multi-process jobs_db.json safety.
 # ---------------------------------------------------------------------------
+
+import concurrent.futures as _cf
 
 _JOB_SEM: threading.Semaphore | None = None
 _JOB_SEM_LOCK = threading.Lock()
+_JOB_EXECUTOR: _cf.ThreadPoolExecutor | None = None
+_JOB_EXECUTOR_LOCK = threading.Lock()
 
 # Tracks the last time any job thread actually started work (wall clock).
 _LAST_JOB_START: float = 0.0
@@ -334,6 +397,31 @@ def _reset_job_semaphore(max_concurrent: int) -> None:
         _JOB_SEM = _make_semaphore(max_concurrent)
 
 
+def _get_job_executor(max_concurrent: int) -> _cf.ThreadPoolExecutor:
+    """Global ThreadPoolExecutor for web jobs (singleton, IO-bound)."""
+    global _JOB_EXECUTOR
+    with _JOB_EXECUTOR_LOCK:
+        if _JOB_EXECUTOR is None:
+            _JOB_EXECUTOR = _cf.ThreadPoolExecutor(
+                max_workers=max(1, max_concurrent), thread_name_prefix="dape-job"
+            )
+        elif _JOB_EXECUTOR._max_workers != max(1, max_concurrent):
+            _JOB_EXECUTOR.shutdown(wait=False, cancel_futures=False)
+            _JOB_EXECUTOR = _cf.ThreadPoolExecutor(
+                max_workers=max(1, max_concurrent), thread_name_prefix="dape-job"
+            )
+    return _JOB_EXECUTOR
+
+
+def _reset_job_executor(max_concurrent: int) -> None:
+    global _JOB_EXECUTOR
+    with _JOB_EXECUTOR_LOCK:
+        if _JOB_EXECUTOR is not None:
+            _JOB_EXECUTOR.shutdown(wait=False, cancel_futures=False)
+            _JOB_EXECUTOR = None
+    _reset_job_semaphore(max_concurrent)
+
+
 def _get_api_key() -> str:
     """Resolve API key: models.json -> OPENROUTER_API_KEY env -> empty string."""
     cfg = _load_models_config()
@@ -341,3 +429,8 @@ def _get_api_key() -> str:
     if key:
         return key
     return os.getenv("OPENROUTER_API_KEY", "").strip()
+
+
+_DISCOVER_LIMIT = 5
+_DISCOVER_WINDOW = 60.0
+_discover_hits: dict[str, list[float]] = {}

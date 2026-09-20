@@ -1,4 +1,5 @@
 """API utility and static routes: dictionaries, audits, templates, settings, previews."""
+
 from __future__ import annotations
 
 import io
@@ -9,16 +10,29 @@ from typing import Any
 
 import cv2
 from flask import jsonify, render_template, request, send_file, send_from_directory
-from werkzeug.utils import safe_join, secure_filename
+from werkzeug.security import safe_join
+from werkzeug.utils import secure_filename
 
 from ai_extraction.gemini_client import get_active_model
 from .bp import bp
 from .common import (
-    _root_dir, _uploads_dir, _outputs_dir, _dict_dir, _load_models_config, _save_models_config,
-    _get_batch_settings, _save_batch_settings, _reset_job_semaphore,
-    _safe_config_name, _config_path, _list_configs,
-    _init_jobs_internal, _read_audit_entries, _norm_text,
-    JOBS, JOBS_LOCK,
+    _root_dir,
+    _uploads_dir,
+    _outputs_dir,
+    _dict_dir,
+    _load_models_config,
+    _save_models_config,
+    _get_batch_settings,
+    _save_batch_settings,
+    _reset_job_semaphore,
+    _safe_config_name,
+    _config_path,
+    _list_configs,
+    _init_jobs_internal,
+    _read_audit_entries,
+    _norm_text,
+    JOBS,
+    JOBS_LOCK,
 )
 
 
@@ -49,8 +63,9 @@ def audits() -> str:
 
     if q:
         qn = _norm_text(q)
+
         def _match(a: dict) -> bool:
-            pending = ((a.get("review_summary") or {}).get("pending_review_count", 0))
+            pending = (a.get("review_summary") or {}).get("pending_review_count", 0)
             haystack = [
                 a.get("job_id"),
                 a.get("form_type"),
@@ -58,13 +73,16 @@ def audits() -> str:
                 str(pending),
             ]
             return any(qn in _norm_text(v) for v in haystack)
+
         entries = [a for a in entries if _match(a)]
 
     key_funcs = {
         "job_id": lambda a: _norm_text(a.get("job_id")),
         "form_type": lambda a: _norm_text(a.get("form_type")),
         "timestamp": lambda a: _norm_text(a.get("timestamp")),
-        "pending": lambda a: int(((a.get("review_summary") or {}).get("pending_review_count", 0)) or 0),
+        "pending": lambda a: int(
+            ((a.get("review_summary") or {}).get("pending_review_count", 0)) or 0
+        ),
     }
     if sort_key not in key_funcs:
         sort_key = "timestamp"
@@ -72,7 +90,9 @@ def audits() -> str:
         sort_dir = "desc"
     entries = sorted(entries, key=key_funcs[sort_key], reverse=(sort_dir == "desc"))
 
-    return render_template("audits.html", audits=entries, q=q, sort=sort_key, direction=sort_dir)
+    return render_template(
+        "audits.html", audits=entries, q=q, sort=sort_key, direction=sort_dir
+    )
 
 
 @bp.route("/api/template-preview", methods=["GET"])
@@ -89,9 +109,14 @@ def api_template_preview() -> Any:
     target = Path(joined)
     if not target.exists():
         return jsonify({"error": "Template not found"}), 404
+    if target.stat().st_size > 20 * 1024 * 1024:
+        return jsonify({"error": "Template file too large"}), 413
     image = cv2.imread(str(target), cv2.IMREAD_GRAYSCALE)
     if image is None:
         return jsonify({"error": "Unable to load template image"}), 422
+    h, w = image.shape[:2]
+    if w * h > 50_000_000:
+        return jsonify({"error": "Image dimensions too large"}), 413
     ok, encoded = cv2.imencode(".png", image)
     if not ok:
         return jsonify({"error": "Unable to render template preview"}), 500
@@ -118,13 +143,23 @@ def api_utils_convert_to_png() -> Any:
     file = request.files.get("file")
     if not file:
         return jsonify({"error": "No file uploaded"}), 400
+    file.seek(0, os.SEEK_END)
+    if file.tell() > 20 * 1024 * 1024:
+        return jsonify({"error": "File too large (max 20MB)"}), 413
+    file.seek(0)
 
     import numpy as np
+
     try:
         file_bytes = np.frombuffer(file.read(), np.uint8)
         img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
         if img is None:
             return jsonify({"error": "Failed to decode image"}), 422
+        h, w = img.shape[:2]
+        if w * h > 50_000_000:
+            return jsonify({"error": "Image dimensions too large"}), 413
+        if w < 10 or h < 10:
+            return jsonify({"error": "Image too small"}), 422
 
         ok, encoded = cv2.imencode(".png", img)
         if not ok:
@@ -151,14 +186,21 @@ def evaluation() -> str:
 @bp.route("/settings", methods=["GET"])
 def settings() -> str:
     cfg = _load_models_config()
-    return render_template("settings.html", models_config=cfg, active_model=get_active_model())
+    return render_template(
+        "settings.html", models_config=cfg, active_model=get_active_model()
+    )
 
 
 @bp.route("/api/models", methods=["GET"])
 def api_models_get() -> Any:
     cfg = _load_models_config()
     cfg["resolved_active"] = get_active_model()
-    return jsonify(cfg)
+    masked = dict(cfg)
+    key = masked.get("api_key", "")
+    if key:
+        masked["api_key"] = key[:4] + "***" if len(key) > 4 else "***"
+        masked["api_key_masked"] = True
+    return jsonify(masked)
 
 
 @bp.route("/api/models", methods=["POST"])
@@ -185,11 +227,13 @@ def api_models_update() -> Any:
             mid = (m.get("id") or "").strip()
             if not mid:
                 continue
-            cleaned.append({
-                "id": mid,
-                "label": (m.get("label") or mid).strip(),
-                "description": (m.get("description") or "").strip(),
-            })
+            cleaned.append(
+                {
+                    "id": mid,
+                    "label": (m.get("label") or mid).strip(),
+                    "description": (m.get("description") or "").strip(),
+                }
+            )
         if cleaned:
             cfg["models"] = cleaned
 
@@ -223,9 +267,11 @@ def api_batch_settings_update() -> Any:
 
     _save_batch_settings(updates)
 
-    # Reset the semaphore to the new concurrency level
+    # Reset the pool/semaphore to the new concurrency level
     new_concurrent = _get_batch_settings()["max_concurrent"]
-    _reset_job_semaphore(new_concurrent)
+    from .common import _reset_job_executor
+
+    _reset_job_executor(new_concurrent)
 
     return jsonify({"status": "ok", "batch_settings": _get_batch_settings()})
 

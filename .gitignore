@@ -21,3 +21,4 @@ thesis/
 .venv/
 .spec/
 openrouter_models.json
+.secret_key

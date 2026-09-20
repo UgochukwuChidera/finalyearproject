@@ -1,36 +1,41 @@
 from typing import Dict
 
 
-def build_multi_image_prompt(config: dict, full_image_bytes: bytes, critical_crops: Dict[str, bytes]) -> list[dict]:
+def build_multi_image_prompt(
+    config: dict, full_image_bytes: bytes, critical_crops: Dict[str, bytes]
+) -> list[dict]:
     fields = config.get("fields", [])
     critical_names = [f.get("name") for f in fields if f.get("critical")]
     non_critical_names = [f.get("name") for f in fields if not f.get("critical")]
 
     instructions = []
+    full_prompt = (
+        "You are extracting data from a filled form. "
+        "Return ONLY JSON with shape "
+        '{"fields": {"field_name": value}, "confidence": {"field_name": 0.0}}. '
+        "For checkboxes return true/false. "
+        "confidence values must be between 0.0 and 1.0 and reflect how certain you are "
+        "about each extracted value (1.0 = completely certain, 0.0 = complete guess)."
+    )
+    if non_critical_names:
+        full_prompt += (
+            " Non-critical fields to extract from this full image: "
+            + ", ".join(non_critical_names)
+            + "."
+        )
+    if critical_names:
+        full_prompt += (
+            " Critical fields ("
+            + ", ".join(critical_names)
+            + ") are provided as ink-only crops — transcribe those crops exactly."
+        )
     instructions.append(
         {
-            "prompt": (
-                "You are extracting data from a filled form. "
-                "Return ONLY JSON with shape "
-                "{\"fields\": {\"field_name\": value}, \"confidence\": {\"field_name\": 0.0}}. "
-                "For checkboxes return true/false. "
-                "For non-critical static fields extract what appears in the full form. "
-                "confidence values must be between 0.0 and 1.0 and reflect how certain you are "
-                "about each extracted value (1.0 = completely certain, 0.0 = complete guess)."
-            ),
+            "prompt": full_prompt,
             "image": full_image_bytes,
             "field_name": "__full_form__",
         }
     )
-
-    if non_critical_names:
-        instructions.append(
-            {
-                "prompt": "Non-critical fields to extract from full image: " + ", ".join(non_critical_names),
-                "image": full_image_bytes,
-                "field_name": "__non_critical__",
-            }
-        )
 
     for field in fields:
         if not field.get("critical"):

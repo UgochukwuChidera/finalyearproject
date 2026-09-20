@@ -44,20 +44,18 @@
 
 ## Architecture
 
-The pipeline is orchestrated by `DAPEOrchestrator` in `project/orchestrator.py` and runs 8 stages:
+The pipeline is orchestrated by `pipeline.process_form()` in `pipeline.py` (used by CLI and web uploads) and runs 8 stages:
 
-| Stage | Module | Description |
-|-------|--------|-------------|
-| 1. Preprocessing | `project/preprocessing/` | DPI-aware kernel scaling, load → grayscale → baseline metrics → skew analysis → illumination normalization → binarization → border removal → structure prep → fusion scoring |
-| 2. Template Alignment | `project/alignment/aligner.py` | ORB feature detection + RANSAC homography to align filled form to blank template |
-| 3. Differential Analysis | `project/differential/analyzer.py` | Pixel-difference mask between aligned filled form and blank template to isolate handwritten ink |
-| 4. Field Extraction | `project/extraction/` | Crop fields by bounding box from either differential mask (critical fields) or full aligned image; checkbox contour detection |
-| 5. Confidence Validation | `project/validation/` | Three-tier confidence: logprobs-based `C_lp`, dictionary match `C_dict`, composite `C_final`; field-level pass/flag/review |
-| 6. HITL Escalation | `project/hitl/` | Flag low-confidence fields for human review via web interface |
-| 7. Output Structuring | `project/output/` | Structure extracted fields into the defined output schema |
-| 8. Export + Audit | `project/output/` | Export to JSON/CSV/XLSX, append to audit JSONL |
-
-A parallel fast-path exists via `pipeline.process_form()` (used by CLI and web uploads) which skips the full orchestrator and runs a streamlined version with AI-based extraction.
+| Stage                    | Module                                            | Description                                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Preprocessing         | `project/preprocessing/`                          | DPI-aware kernel scaling, load → grayscale → baseline metrics → skew analysis → illumination normalization → binarization → border removal → structure prep → fusion scoring |
+| 2. Template Alignment    | `project/alignment/aligner.py`                    | ORB feature detection + RANSAC homography to align filled form to blank template                                                                                             |
+| 3. Differential Analysis | `project/differential/analyzer.py`                | Pixel-difference mask between aligned filled form and blank template to isolate handwritten ink                                                                              |
+| 4. Field Extraction      | `pipeline.py` + `ai_extraction/prompt_builder.py` | Crop fields by bounding box from differential mask (critical fields) or full aligned image; single multi-image LLM call                                                      |
+| 5. Confidence Validation | `ai_extraction/confidence.py`                     | Three-tier confidence: logprobs-based `C_lp`, dictionary match `C_dict`, composite `C_final`; field-level pass/flag/review                                                   |
+| 6. HITL Escalation       | `web/review_routes.py`                            | Flag low-confidence fields for human review via web interface                                                                                                                |
+| 7. Output Structuring    | `project/output/`                                 | Structure extracted fields into the defined output schema                                                                                                                    |
+| 8. Export + Audit        | `project/output/`                                 | Export to JSON/CSV/XLSX, append to audit JSONL                                                                                                                               |
 
 ### Hybrid CV + AI Strategy
 
@@ -92,20 +90,10 @@ Both paths use a **single multi-image AI request** per form, constructed by `ai_
 ├── models.json                  # AI model registry and active model selection
 ├── pipeline.py                  # process_form() orchestrator (431 lines)
 ├── project/
-│   ├── orchestrator.py          # DAPEOrchestrator (8-stage pipeline)
-│   ├── template_registry.py     # Template/image registry
 │   ├── alignment/
 │   │   └── aligner.py           # ORB + RANSAC template alignment
 │   ├── differential/
 │   │   └── analyzer.py          # Pixel-difference / ink-only mask
-│   ├── extraction/
-│   │   ├── field_extractor.py   # Field cropping and checkbox detection
-│   │   └── checkbox_detector.py
-│   ├── validation/
-│   │   └── confidence_validator.py
-│   ├── hitl/
-│   │   ├── escalation.py        # Low-confidence flagging logic
-│   │   └── interface.py         # Review interface helper
 │   ├── output/
 │   │   ├── structurer.py        # Output schema structuring
 │   │   ├── exporter.py          # JSON/CSV export
@@ -224,6 +212,7 @@ python run.py
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 The dashboard provides:
+
 - **Upload** — Select a config and upload form images (TIFF/PNG/JPG)
 - **Job queue** — Monitor processing progress with stage-level logging
 - **Review** — Correct low-confidence fields via HITL interface
@@ -248,15 +237,15 @@ python main.py --image form/student_academic_record_01.tif --config-name screen3
 
 Additional CLI options:
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--image` | (required) | Path to filled form image |
-| `--config-name` | `None` | Config name (looks in `configs/<name>.json`) |
-| `--config-path` | `None` | Absolute/relative path to config (alternative to `--config-name`) |
-| `--output-dir` | `outputs` | Directory for extraction results |
-| `--log-dir` | `logs` | Directory for log files |
-| `--dictionaries-dir` | `dictionaries` | Directory for CSV dictionaries |
-| `--dpi` | `300` | Scan DPI for kernel scaling |
+| Flag                 | Default        | Description                                                       |
+| -------------------- | -------------- | ----------------------------------------------------------------- |
+| `--image`            | (required)     | Path to filled form image                                         |
+| `--config-name`      | `None`         | Config name (looks in `configs/<name>.json`)                      |
+| `--config-path`      | `None`         | Absolute/relative path to config (alternative to `--config-name`) |
+| `--output-dir`       | `outputs`      | Directory for extraction results                                  |
+| `--log-dir`          | `logs`         | Directory for log files                                           |
+| `--dictionaries-dir` | `dictionaries` | Directory for CSV dictionaries                                    |
+| `--dpi`              | `300`          | Scan DPI for kernel scaling                                       |
 
 ### Batch Processing
 
@@ -337,16 +326,16 @@ Form configurations live in `configs/` as JSON files. Example (`configs/screen3.
 
 **Field properties:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | string | Unique field identifier |
-| `type` | `"text"`, `"checkbox"`, or `"section"` | Field input type |
-| `critical` | boolean | If `true`, uses differential ink-only crop for extraction |
-| `bounding_box` | `{x, y, w, h}` | Pixel coordinates on the aligned image |
-| `label` / `label_hint` | string | Display label in the UI |
-| `expected_type` | `"string"` or `"checkbox"` | Expected value type |
-| `regex_validation` | string (optional) | Regex pattern for output validation |
-| `required` | boolean (optional) | Whether the field must have a value |
+| Property               | Type                                   | Description                                               |
+| ---------------------- | -------------------------------------- | --------------------------------------------------------- |
+| `name`                 | string                                 | Unique field identifier                                   |
+| `type`                 | `"text"`, `"checkbox"`, or `"section"` | Field input type                                          |
+| `critical`             | boolean                                | If `true`, uses differential ink-only crop for extraction |
+| `bounding_box`         | `{x, y, w, h}`                         | Pixel coordinates on the aligned image                    |
+| `label` / `label_hint` | string                                 | Display label in the UI                                   |
+| `expected_type`        | `"string"` or `"checkbox"`             | Expected value type                                       |
+| `regex_validation`     | string (optional)                      | Regex pattern for output validation                       |
+| `required`             | boolean (optional)                     | Whether the field must have a value                       |
 
 ### Adding a New Form Type
 
@@ -357,7 +346,15 @@ Form configurations live in `configs/` as JSON files. Example (`configs/screen3.
      "my_form": {
        "image_path": "templates/my_form_blank.tif",
        "fields": [
-         { "id": "field_1", "type": "handwritten", "x": 100, "y": 200, "w": 500, "h": 100, "required": true }
+         {
+           "id": "field_1",
+           "type": "handwritten",
+           "x": 100,
+           "y": 200,
+           "w": 500,
+           "h": 100,
+           "required": true
+         }
        ],
        "output_schema": { "field_1": "field_1" }
      }
@@ -378,8 +375,18 @@ Models are configured in `models.json` (managed via `/settings` in the web UI):
   "active_model": "openai/gpt-4o-mini",
   "api_key": "",
   "models": [
-    { "id": "openai/gpt-4o-mini", "label": "GPT-4o Mini", "vision": true, "logprobs": true },
-    { "id": "google/gemini-2.0-flash-001", "label": "Gemini 2.0 Flash", "vision": true, "logprobs": true }
+    {
+      "id": "openai/gpt-4o-mini",
+      "label": "GPT-4o Mini",
+      "vision": true,
+      "logprobs": true
+    },
+    {
+      "id": "google/gemini-2.0-flash-001",
+      "label": "Gemini 2.0 Flash",
+      "vision": true,
+      "logprobs": true
+    }
   ]
 }
 ```
@@ -428,12 +435,12 @@ python -m pytest tests/ -v
 
 Test layout:
 
-| File | Scope |
-|------|-------|
-| `tests/test_pipeline.py` | Config loading, deskewing, cropping, validation, checkbox detection, `process_form` integration |
-| `tests/test_preprocessing.py` | Grayscale, binarization, skew, illumination, border removal |
-| `tests/test_batching.py` | Parallel worker dispatch, error wrapping |
-| `tests/test_confidence.py` | `C_lp`, `C_dict`, `C_final` computation |
+| File                          | Scope                                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `tests/test_pipeline.py`      | Config loading, deskewing, cropping, validation, checkbox detection, `process_form` integration |
+| `tests/test_preprocessing.py` | Grayscale, binarization, skew, illumination, border removal                                     |
+| `tests/test_batching.py`      | Parallel worker dispatch, error wrapping                                                        |
+| `tests/test_confidence.py`    | `C_lp`, `C_dict`, `C_final` computation                                                         |
 
 ---
 
@@ -441,37 +448,37 @@ Test layout:
 
 The Flask web app exposes the following routes (all mounted under the `web` Blueprint):
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/` | Dashboard + upload form |
-| `GET` | `/configs` | List all configs |
-| `GET` | `/configs/new` | New config form |
-| `POST` | `/configs/new` | Create new config |
-| `GET` | `/configs/<name>/edit` | Edit config form |
-| `POST` | `/configs/<name>/edit` | Update config |
-| `POST` | `/configs/<name>/delete` | Delete config |
-| `POST` | `/upload` | Upload form images (single or batch) |
-| `GET` | `/jobs` | Job queue with search and sort |
-| `GET` | `/jobs/<id>` | Job detail with logs and audit data |
-| `GET` | `/jobs/<id>/review` | HITL review page |
-| `POST` | `/jobs/<id>/review` | Submit field corrections |
-| `GET` | `/jobs/<id>/exports/<fmt>` | Download export (json/csv/xlsx) |
-| `DELETE` | `/api/jobs/<id>` | Delete a single job |
-| `POST` | `/api/jobs/batch-delete` | Batch delete jobs |
-| `POST` | `/api/config/discover` | Auto-discover form fields from template image |
-| `GET` | `/api/template-preview` | Render template as PNG |
-| `GET` | `/templates/<path>` | Serve template static files |
-| `GET` | `/uploads/<path>` | Serve uploaded files |
-| `GET` | `/outputs/<path>` | Serve output files |
-| `POST` | `/api/utils/convert-to-png` | Convert uploaded image to PNG |
-| `GET` | `/settings` | AI model and batch settings page |
-| `GET` | `/api/models` | List available AI models |
-| `POST` | `/api/models` | Update AI model configuration |
-| `GET` | `/api/settings/batch` | Get batch processing settings |
-| `POST` | `/api/settings/batch` | Update batch processing settings |
-| `GET` | `/audits` | Audit log viewer |
-| `GET` | `/evaluation` | Evaluation results page |
-| `GET` | `/help` | Help / documentation page |
+| Method   | Path                        | Description                                   |
+| -------- | --------------------------- | --------------------------------------------- |
+| `GET`    | `/`                         | Dashboard + upload form                       |
+| `GET`    | `/configs`                  | List all configs                              |
+| `GET`    | `/configs/new`              | New config form                               |
+| `POST`   | `/configs/new`              | Create new config                             |
+| `GET`    | `/configs/<name>/edit`      | Edit config form                              |
+| `POST`   | `/configs/<name>/edit`      | Update config                                 |
+| `POST`   | `/configs/<name>/delete`    | Delete config                                 |
+| `POST`   | `/upload`                   | Upload form images (single or batch)          |
+| `GET`    | `/jobs`                     | Job queue with search and sort                |
+| `GET`    | `/jobs/<id>`                | Job detail with logs and audit data           |
+| `GET`    | `/jobs/<id>/review`         | HITL review page                              |
+| `POST`   | `/jobs/<id>/review`         | Submit field corrections                      |
+| `GET`    | `/jobs/<id>/exports/<fmt>`  | Download export (json/csv/xlsx)               |
+| `DELETE` | `/api/jobs/<id>`            | Delete a single job                           |
+| `POST`   | `/api/jobs/batch-delete`    | Batch delete jobs                             |
+| `POST`   | `/api/config/discover`      | Auto-discover form fields from template image |
+| `GET`    | `/api/template-preview`     | Render template as PNG                        |
+| `GET`    | `/templates/<path>`         | Serve template static files                   |
+| `GET`    | `/uploads/<path>`           | Serve uploaded files                          |
+| `GET`    | `/outputs/<path>`           | Serve output files                            |
+| `POST`   | `/api/utils/convert-to-png` | Convert uploaded image to PNG                 |
+| `GET`    | `/settings`                 | AI model and batch settings page              |
+| `GET`    | `/api/models`               | List available AI models                      |
+| `POST`   | `/api/models`               | Update AI model configuration                 |
+| `GET`    | `/api/settings/batch`       | Get batch processing settings                 |
+| `POST`   | `/api/settings/batch`       | Update batch processing settings              |
+| `GET`    | `/audits`                   | Audit log viewer                              |
+| `GET`    | `/evaluation`               | Evaluation results page                       |
+| `GET`    | `/help`                     | Help / documentation page                     |
 
 ---
 

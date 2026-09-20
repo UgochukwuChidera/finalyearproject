@@ -1,4 +1,5 @@
 """Shared fixtures for the DAPE test suite."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -43,7 +44,9 @@ def synthetic_skewed_image() -> np.ndarray:
     center = (w / 2.0, h / 2.0)
     rot = cv2.getRotationMatrix2D(center, 5.0, 1.0)
     skewed = cv2.warpAffine(
-        img, rot, (w, h),
+        img,
+        rot,
+        (w, h),
         flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_CONSTANT,
         borderValue=240,
@@ -79,7 +82,7 @@ def mock_config() -> dict[str, Any]:
                 "validation": {},
             },
         ],
-        "template_path": "",
+        "template_path": "templates/template_565bd191-1690-40a7-88ee-319ecd1b389a.png",
         "confidence_weights": {"w_lp": 0.6, "w_dict": 0.4},
         "thresholds": {"auto_accept": 0.85, "review": 0.70},
         "preprocessing": {"deskew": False},
@@ -110,7 +113,7 @@ def mock_config_path(tmp_path: Path) -> str:
                 "validation": {"min_length": 2},
             },
         ],
-        "template_path": "",
+        "template_path": "templates/template_565bd191-1690-40a7-88ee-319ecd1b389a.png",
         "confidence_weights": {"w_lp": 0.6, "w_dict": 0.4},
         "thresholds": {"auto_accept": 0.85, "review": 0.70},
         "preprocessing": {"deskew": False},
@@ -118,6 +121,7 @@ def mock_config_path(tmp_path: Path) -> str:
     }
     p = tmp_path / "test_config.json"
     import json
+
     with open(str(p), "w") as f:
         json.dump(config, f)
     return str(p)

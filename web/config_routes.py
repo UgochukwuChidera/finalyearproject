@@ -1,7 +1,9 @@
 """Config-related routes: list, create, edit, discover, delete, and upload."""
+
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from pathlib import Path
 from typing import Any
@@ -12,8 +14,15 @@ from ai_extraction.gemini_client import GeminiClient
 from ai_extraction.prompt_builder import build_discovery_prompt
 from .bp import bp
 from .common import (
-    _root_dir, _cfg_dir, _safe_config_name, _config_path, _load_config,
-    _list_configs, _save_config, _get_api_key, _allowed_ext,
+    _root_dir,
+    _cfg_dir,
+    _safe_config_name,
+    _config_path,
+    _load_config,
+    _list_configs,
+    _save_config,
+    _get_api_key,
+    _allowed_ext,
 )
 from .job_routes import _queue_job
 
@@ -26,22 +35,43 @@ def configs_page() -> str:
 @bp.route("/configs/new", methods=["GET", "POST"])
 def config_new() -> Any:
     if request.method == "GET":
-        return render_template("config_editor.html", mode="new", config_name="", config_text="{}", config={})
+        return render_template(
+            "config_editor.html",
+            mode="new",
+            config_name="",
+            config_text="{}",
+            config={},
+        )
 
     name = _safe_config_name(request.form.get("config_name", ""))
-    payload = json.loads(request.form.get("config_json", "{}") or "{}")
-    _save_config(name, payload)
+    try:
+        payload = json.loads(request.form.get("config_json", "{}") or "{}")
+    except json.JSONDecodeError as e:
+        return jsonify({"error": f"Invalid JSON: {e}"}), 422
+    try:
+        _save_config(name, payload)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
     return redirect(url_for("web.config_edit", name=name))
 
 
 @bp.route("/configs/<name>/edit", methods=["GET", "POST"])
 def config_edit(name: str) -> Any:
     safe_name = _safe_config_name(name)
-    cfg = _load_config(safe_name)
+    try:
+        cfg = _load_config(safe_name)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
 
     if request.method == "POST":
-        payload = json.loads(request.form.get("config_json", "{}") or "{}")
-        _save_config(safe_name, payload)
+        try:
+            payload = json.loads(request.form.get("config_json", "{}") or "{}")
+        except json.JSONDecodeError as e:
+            return jsonify({"error": f"Invalid JSON: {e}"}), 422
+        try:
+            _save_config(safe_name, payload)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 422
         cfg = payload
 
     return render_template(
@@ -55,7 +85,19 @@ def config_edit(name: str) -> Any:
 
 
 @bp.route("/api/config/discover", methods=["POST"])
-def config_discover() -> dict[str, Any] | tuple[dict[str, str], int]:
+def config_discover() -> Any:
+    from web.common import _discover_hits, _DISCOVER_LIMIT, _DISCOVER_WINDOW
+    import time as _t
+
+    ip = request.remote_addr or "unknown"
+    now = _t.time()
+    hits = _discover_hits.get(ip, [])
+    hits = [h for h in hits if now - h < _DISCOVER_WINDOW]
+    if len(hits) >= _DISCOVER_LIMIT:
+        return jsonify({"error": "Rate limit: max 5 discoveries per minute"}), 429
+    hits.append(now)
+    _discover_hits[ip] = hits
+
     file = request.files.get("template_file")
     if not file:
         return jsonify({"error": "template_file is required"}), 400
@@ -84,7 +126,7 @@ def config_discover() -> dict[str, Any] | tuple[dict[str, str], int]:
 
 
 @bp.route("/configs/<name>/delete", methods=["POST"])
-def config_delete(name: str) -> str:
+def config_delete(name: str) -> Any:
     safe_name = _safe_config_name(name)
     path = _config_path(safe_name)
     if path.exists():
@@ -93,7 +135,7 @@ def config_delete(name: str) -> str:
 
 
 @bp.route("/upload", methods=["POST"])
-def upload() -> str | tuple[dict[str, Any], int]:
+def upload() -> Any:
     cfg = request.form.get("config_name", "").strip()
     files = request.files.getlist("form_files")
     if not files:
@@ -102,7 +144,10 @@ def upload() -> str | tuple[dict[str, Any], int]:
 
     files = [f for f in files if f and f.filename]
     if not cfg or not files:
-        return jsonify({"error": "config_name and at least one form file are required"}), 400
+        return (
+            jsonify({"error": "config_name and at least one form file are required"}),
+            400,
+        )
     try:
         cfg = _safe_config_name(cfg)
     except ValueError:
@@ -110,7 +155,20 @@ def upload() -> str | tuple[dict[str, Any], int]:
 
     invalid = [f.filename for f in files if not _allowed_ext(f.filename or "")]
     if invalid:
-        return jsonify({"error": "Only TIFF/PNG/JPG files are supported", "invalid_files": invalid}), 400
+        return (
+            jsonify(
+                {
+                    "error": "Only TIFF/PNG/JPG files are supported",
+                    "invalid_files": invalid,
+                }
+            ),
+            400,
+        )
+    for f in files:
+        f.seek(0, os.SEEK_END)
+        if f.tell() > 20 * 1024 * 1024:
+            return jsonify({"error": f"File too large (max 20MB): {f.filename}"}), 413
+        f.seek(0)
 
     batch_id = str(uuid.uuid4()) if len(files) > 1 else None
     job_ids = [_queue_job(cfg, f, batch_id=batch_id) for f in files]

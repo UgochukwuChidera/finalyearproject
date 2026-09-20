@@ -1,4 +1,9 @@
-"""Batch processing utilities for parallel form processing."""
+"""Batch processing utilities for parallel form processing.
+
+Offline batch (evaluation/CLI) uses ProcessPoolExecutor here — CPU-bound CV stages.
+Web jobs use ThreadPoolExecutor in web/common.py (IO-bound LLM calls) via /upload.
+"""
+
 from __future__ import annotations
 import concurrent.futures
 import logging
@@ -7,14 +12,23 @@ from typing import Any, Callable
 logger = logging.getLogger(__name__)
 
 
-def _wrap_job_call(func: Callable[..., dict[str, Any]], *args: Any, **kwargs: Any) -> dict[str, Any]:
+def _wrap_job_call(
+    func: Callable[..., dict[str, Any]], *args: Any, **kwargs: Any
+) -> dict[str, Any]:
     """Execute a callable, logging and returning errors instead of raising."""
     try:
         result = func(*args, **kwargs)
         return result
     except Exception as e:
+        import traceback
+
         logger.exception("Job call failed: %s", e)
-        return {"error": str(e), "fields": [], "confidence": 0.0}
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "fields": [],
+            "confidence": 0.0,
+        }
 
 
 def _worker(
@@ -31,6 +45,7 @@ def _worker(
 ) -> dict[str, Any]:
     """Worker function for multiprocessing. Lazily imports process_form."""
     from pipeline import process_form
+
     return _wrap_job_call(
         process_form,
         image_path=image_path,
@@ -46,16 +61,18 @@ def _worker(
     )
 
 
-def _process_batch_parallel_inner(jobs: dict[str, dict[str, Any]], max_workers: int = 3) -> dict[str, dict[str, Any]]:
+def _process_batch_parallel_inner(
+    jobs: dict[str, dict[str, Any]], max_workers: int = 3
+) -> dict[str, dict[str, Any]]:
     """Process a batch of forms in parallel using ProcessPoolExecutor.
-    
+
     Uses concurrent.futures.ProcessPoolExecutor with submit() + as_completed()
     so results are properly collected and exceptions propagate back to the caller.
-    
+
     Args:
         jobs: dict mapping job_id -> kwargs dict for _worker
         max_workers: number of parallel workers (default 3, controlled by batch settings)
-    
+
     Returns:
         dict mapping job_id -> result dict
     """
@@ -72,13 +89,22 @@ def _process_batch_parallel_inner(jobs: dict[str, dict[str, Any]], max_workers: 
             try:
                 results[job_id] = future.result()
             except Exception as e:
+                import traceback
+
                 logger.exception("Unhandled exception in batch job %s", job_id)
-                results[job_id] = {"error": str(e), "fields": [], "confidence": 0.0}
+                results[job_id] = {
+                    "error": str(e),
+                    "traceback": traceback.format_exc(),
+                    "fields": [],
+                    "confidence": 0.0,
+                }
 
     return results
 
 
-def _process_batch_sequential(jobs: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def _process_batch_sequential(
+    jobs: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
     """Process a batch of forms sequentially (fallback for non-parallel contexts)."""
     results: dict[str, dict[str, Any]] = {}
     for job_id, kwargs in jobs.items():

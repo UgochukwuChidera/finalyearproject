@@ -1,4 +1,5 @@
 """DAPE pipeline orchestration — form processing, field extraction, export."""
+
 from __future__ import annotations
 
 import json
@@ -9,12 +10,104 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+import threading as _threading
+
 import cv2
 import numpy as np
 
 MIN_DESKEW_ANGLE_DEG = 0.2
 
 logger = logging.getLogger(__name__)
+
+_TEMPLATE_CACHE: dict[str, tuple[float, np.ndarray]] = {}
+_TEMPLATE_LOCK = _threading.Lock()
+_DICT_CACHE: dict[str, tuple[float, dict[str, list[str]]]] = {}
+_DICT_LOCK = _threading.Lock()
+
+
+def _load_template_cached(template_path: str) -> np.ndarray:
+    p = Path(template_path)
+    try:
+        mtime = p.stat().st_mtime if p.exists() else 0.0
+    except OSError:
+        mtime = 0.0
+    with _TEMPLATE_LOCK:
+        entry = _TEMPLATE_CACHE.get(str(p))
+        if entry is not None and entry[0] == mtime:
+            return entry[1].copy()
+    img = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise FileNotFoundError(f"Template image not found: {template_path}")
+    with _TEMPLATE_LOCK:
+        _TEMPLATE_CACHE[str(p)] = (mtime, img.copy())
+    return img
+
+
+def _load_dictionaries_cached(dictionaries_dir: str) -> dict[str, list[str]]:
+    d = Path(dictionaries_dir)
+    max_mtime = 0.0
+    try:
+        if d.exists():
+            for csv_path in d.glob("*.csv"):
+                try:
+                    max_mtime = max(max_mtime, csv_path.stat().st_mtime)
+                except OSError:
+                    pass
+            try:
+                max_mtime = max(max_mtime, d.stat().st_mtime)
+            except OSError:
+                pass
+    except OSError:
+        pass
+    with _DICT_LOCK:
+        entry = _DICT_CACHE.get(str(d))
+        if entry is not None and entry[0] == max_mtime:
+            return entry[1]
+    store = DictionaryStore(dictionaries_dir)
+    data = store.load()
+    with _DICT_LOCK:
+        _DICT_CACHE[str(d)] = (max_mtime, data)
+    return data
+
+
+def _scale_bbox(
+    bb: dict[str, Any],
+    actual_w: int,
+    actual_h: int,
+    ref_w: float,
+    ref_h: float,
+    normalized: bool = False,
+) -> tuple[int, int, int, int]:
+    x = float(bb.get("x", 0))
+    y = float(bb.get("y", 0))
+    w = float(bb.get("w", 1))
+    h = float(bb.get("h", 1))
+    if normalized or (abs(ref_w - 1000) < 1e-6 and abs(ref_h - 1000) < 1e-6):
+        x = x / 1000.0 * actual_w
+        y = y / 1000.0 * actual_h
+        w = w / 1000.0 * actual_w
+        h = h / 1000.0 * actual_h
+    else:
+        if max(x, y, w, h) <= 1000 and (x + w > ref_w or y + h > ref_h):
+            logger.debug(
+                "bbox %s overflows canvas %.0fx%.0f, treating as normalized 0-1000",
+                bb,
+                ref_w,
+                ref_h,
+            )
+            x = x / 1000.0 * actual_w
+            y = y / 1000.0 * actual_h
+            w = w / 1000.0 * actual_w
+            h = h / 1000.0 * actual_h
+        else:
+            sx = actual_w / ref_w if ref_w else 1.0
+            sy = actual_h / ref_h if ref_h else 1.0
+            x *= sx
+            y *= sy
+            w *= sx
+            h *= sy
+    return int(x), int(y), int(w), int(h)
+
 
 from ai_extraction import (
     DictionaryStore,
@@ -43,7 +136,9 @@ from project.preprocessing.skew_analysis import skew_analysis
 from project.preprocessing.structure_prep import structure_prep
 
 
-def _load_config(config_name: str | None = None, config_path: str | None = None) -> tuple[dict, str]:
+def _load_config(
+    config_name: str | None = None, config_path: str | None = None
+) -> tuple[dict, str]:
     if config_path:
         p = Path(config_path)
     else:
@@ -53,7 +148,14 @@ def _load_config(config_name: str | None = None, config_path: str | None = None)
     if not p.exists():
         raise FileNotFoundError(f"Config not found: {p}")
     with p.open("r", encoding="utf-8") as fh:
-        return json.load(fh), str(p)
+        data = json.load(fh)
+    from utils.config_validator import validate_config
+
+    try:
+        data = validate_config(data)
+    except ValueError as e:
+        raise ValueError(f"Invalid config {p}: {e}") from e
+    return data, str(p)
 
 
 def _load_template_extraction(config: dict) -> dict:
@@ -65,7 +167,11 @@ def _load_template_extraction(config: dict) -> dict:
         return {}
     with p.open("r", encoding="utf-8") as fh:
         payload = json.load(fh)
-    if isinstance(payload, dict) and "fields" in payload and isinstance(payload["fields"], dict):
+    if (
+        isinstance(payload, dict)
+        and "fields" in payload
+        and isinstance(payload["fields"], dict)
+    ):
         return payload["fields"]
     return payload if isinstance(payload, dict) else {}
 
@@ -78,25 +184,38 @@ def _to_png_bytes(image: np.ndarray) -> bytes:
 
 
 def _safe_crop(img: np.ndarray, x: int, y: int, w: int, h: int) -> np.ndarray:
-    if img is None or img.size == 0:
-        return np.zeros((1, 1), dtype=np.uint8)
+    if img is None:
+        raise ValueError("safe_crop: image is None")
+    if img.size == 0:
+        raise ValueError("safe_crop: image is empty")
     ih, iw = img.shape[:2]
     x1 = max(0, int(x))
     y1 = max(0, int(y))
     x2 = min(iw, x1 + max(1, int(w)))
     y2 = min(ih, y1 + max(1, int(h)))
     if x2 <= x1 or y2 <= y1:
-        return np.zeros((1, 1), dtype=np.uint8)
+        raise ValueError(
+            f"safe_crop: invalid crop region x={x} y={y} w={w} h={h} for image {iw}x{ih}"
+        )
     return img[y1:y2, x1:x2]
 
 
 def _deskew_image(gray: np.ndarray, angle_deg: float) -> np.ndarray:
-    if gray is None or gray.size == 0:
-        return gray
+    if gray is None:
+        raise ValueError("deskew_image: image is None")
+    if gray.size == 0:
+        raise ValueError("deskew_image: image is empty")
     h, w = gray.shape[:2]
     center = (w / 2.0, h / 2.0)
     rotation_matrix = cv2.getRotationMatrix2D(center, angle_deg, 1.0)
-    return cv2.warpAffine(gray, rotation_matrix, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=255)
+    return cv2.warpAffine(
+        gray,
+        rotation_matrix,
+        (w, h),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=255,
+    )
 
 
 def _validation_ok(value: object, field: dict) -> tuple[bool, str]:
@@ -172,24 +291,26 @@ def process_form(
     crops_dir = output_path / "crops" / jid
     crops_dir.mkdir(parents=True, exist_ok=True)
 
-    store = DictionaryStore(dictionaries_dir)
-    dictionaries = store.load()
+    dictionaries = _load_dictionaries_cached(dictionaries_dir)
 
     stats: dict[str, Any] = {"dpi": dpi}
 
     update_status("PREPROCESSING", "Analyzing image metrics and deskewing...")
     image, h, w, aspect = load_image(image_path)
     gray = to_grayscale(image)
+    assert (
+        gray is not None
+    )  # load_image guarantees image, to_grayscale never returns None for valid input
     stats.update({"original_width": w, "original_height": h, "aspect_ratio": aspect})
-    stats.update(baseline_metrics(gray))
+    stats.update(baseline_metrics(gray))  # type: ignore[arg-type]
 
     ks = kernel_sizes(dpi)
-    skew_meta = skew_analysis(gray, hough_threshold=ks["skew_hough_threshold"])
+    skew_meta = skew_analysis(gray, hough_threshold=int(ks["skew_hough_threshold"]))  # type: ignore[arg-type]
     stats.update(skew_meta)
     if (config.get("preprocessing") or {}).get("deskew", False):
         angle = float(skew_meta.get("skew_angle", 0.0))
         if abs(angle) > MIN_DESKEW_ANGLE_DEG:
-            gray = _deskew_image(gray, -angle)
+            gray = _deskew_image(gray, -angle)  # type: ignore[arg-type]
             stats["deskew_applied"] = True
             stats["deskew_angle_used"] = -angle
         else:
@@ -197,36 +318,40 @@ def process_form(
     else:
         stats["deskew_applied"] = False
     normalized, illum = illumination_normalization(
-        gray,
+        gray,  # type: ignore[arg-type]
         stats.get("grayscale_std", 0.0),
-        blur_size=ks["illumination_blur"],
-        clahe_tile=ks["clahe_tile"],
+        blur_size=int(ks["illumination_blur"]),  # type: ignore[arg-type]
+        clahe_tile=int(ks["clahe_tile"]),  # type: ignore[arg-type]
     )
     stats.update(illum)
-    binary, bin_stats = binarization(normalized, block_size=ks["binarization_block"])
+    binary, bin_stats = binarization(normalized, block_size=int(ks["binarization_block"]))  # type: ignore[arg-type]
     stats.update(bin_stats)
-    cropped, crop_stats = border_removal(binary, stats.get("threshold_stability", 0.0))
+    cropped, crop_stats = border_removal(binary, stats.get("threshold_stability", 0.0))  # type: ignore[arg-type]
     stats.update(crop_stats)
 
     update_status("ALIGNMENT", "Aligning form with template blueprint...")
     template_path = config.get("template_path")
     if not template_path:
         raise ValueError("template_path is required")
-    template_img = cv2.imread(str(template_path), cv2.IMREAD_GRAYSCALE)
-    if template_img is None:
-        raise FileNotFoundError(f"Template image not found: {template_path}")
+    template_img = _load_template_cached(str(template_path))
 
-    stats.update(structure_prep(cropped, (template_img.shape[1], template_img.shape[0])))
+    stats.update(
+        structure_prep(cropped, (template_img.shape[1], template_img.shape[0]))  # type: ignore[arg-type]
+    )
     stats["fusion_score"] = fuse(stats)
 
-    aligner = TemplateAligner(max_features=ks["max_features"])
-    aligned, _, align_meta = aligner.align(gray, template_img)
+    aligner = TemplateAligner(max_features=int(ks["max_features"]))  # type: ignore[arg-type]
+    aligned, _, align_meta = aligner.align(gray, template_img)  # type: ignore[arg-type]
     stats.update({f"align_{k}": v for k, v in align_meta.items()})
 
     update_status("ANALYSIS", "Detecting ink signatures and form differences...")
-    differ = DifferentialAnalyzer(diff_threshold=ks["diff_threshold"], min_region_area=ks["min_region_area"])
+    differ = DifferentialAnalyzer(
+        diff_threshold=int(ks["diff_threshold"]), min_region_area=int(ks["min_region_area"])  # type: ignore[arg-type]
+    )
     mask, diff_meta = differ.analyze(aligned, template_img)
-    stats.update({f"diff_{k}": v for k, v in diff_meta.items() if not hasattr(v, "shape")})
+    stats.update(
+        {f"diff_{k}": v for k, v in diff_meta.items() if not hasattr(v, "shape")}
+    )
 
     editor_canvas = config.get("editor_canvas", {}) or {}
     ref_w = float(editor_canvas.get("width", 800.0))
@@ -234,19 +359,19 @@ def process_form(
     ref_w = ref_w if ref_w > 0 else 800.0
     ref_h = ref_h if ref_h > 0 else 1100.0
     actual_h, actual_w = aligned.shape[:2]
-    scale_x, scale_y = actual_w / ref_w, actual_h / ref_h
+    is_normalized = bool(
+        config.get("bbox_normalized") or config.get("coordinate_space") == "normalized"
+    )
 
     critical_crops: dict[str, bytes] = {}
     for field in fields:
         if not field.get("critical"):
             continue
         bb = field.get("bounding_box", {})
-        # Scale coordinates from editor canvas space -> aligned image space
-        x = int(bb.get("x", 0) * scale_x)
-        y = int(bb.get("y", 0) * scale_y)
-        w0 = int(bb.get("w", 1) * scale_x)
-        h0 = int(bb.get("h", 1) * scale_y)
-        
+        x, y, w0, h0 = _scale_bbox(
+            bb, actual_w, actual_h, ref_w, ref_h, normalized=is_normalized
+        )
+
         roi = _safe_crop(aligned, x, y, w0, h0)
         roi_mask = _safe_crop(mask, x, y, w0, h0)
         ink = np.full_like(roi, 255)
@@ -254,7 +379,9 @@ def process_form(
         critical_crops[field["name"]] = _to_png_bytes(ink)
         cv2.imwrite(str(crops_dir / f"{field['name']}.png"), ink)
 
-    update_status("EXTRACTION", f"Running Neural Extraction with {get_active_model()}...")
+    update_status(
+        "EXTRACTION", f"Running Neural Extraction with {get_active_model()}..."
+    )
     full_image_bytes = _to_png_bytes(aligned)
     prompt_items = build_multi_image_prompt(config, full_image_bytes, critical_crops)
     images = [p["image"] for p in prompt_items]
@@ -262,14 +389,16 @@ def process_form(
 
     client = GeminiClient(api_key=api_key)
     ai_payload = client.extract_from_images(images=images, prompts=prompts)
+    api_error = ai_payload.get("error") if isinstance(ai_payload, dict) else None
+    if api_error:
+        raise RuntimeError(f"AI extraction failed: {api_error}")
     ai_meta = (ai_payload.get("meta") or {}) if isinstance(ai_payload, dict) else {}
     ai_fields = ai_payload.get("fields", {}) if isinstance(ai_payload, dict) else {}
     if not isinstance(ai_fields, dict):
         ai_fields = {}
-    ai_conf_map = (ai_meta.get("C_lp") or {})
+    ai_conf_map = ai_meta.get("C_lp") or {}
     has_logprobs = ai_meta.get("has_logprobs", False)
 
-    # Diagnostic bundle stored on the job so the UI can surface it.
     ai_debug = {
         "model": client.model,
         "has_logprobs": has_logprobs,
@@ -277,7 +406,7 @@ def process_form(
         "raw_response_preview": ai_meta.get("raw_response_preview", ""),
         "logprobs_debug": ai_meta.get("logprobs_debug", ""),
         "overall_confidence": ai_meta.get("overall_confidence"),
-        "api_error": ai_payload.get("error") if isinstance(ai_payload, dict) else str(ai_payload),
+        "api_error": None,
     }
     if not ai_fields:
         logger.warning(
@@ -295,20 +424,24 @@ def process_form(
     for field in fields:
         name = field["name"]
         bb = field.get("bounding_box", {})
-        x = int(bb.get("x", 0) * scale_x)
-        y = int(bb.get("y", 0) * scale_y)
-        w0 = int(bb.get("w", 1) * scale_x)
-        h0 = int(bb.get("h", 1) * scale_y)
+        x, y, w0, h0 = _scale_bbox(
+            bb, actual_w, actual_h, ref_w, ref_h, normalized=is_normalized
+        )
 
         raw = ai_fields.get(name)
         if name in ai_conf_map:
             c_lp = float(ai_conf_map[name])
         elif has_logprobs:
             c_lp = 0.7
-            logger.warning("Field '%s' had no C_lp computed despite logprobs being available (possible mapping issue)", name)
+            logger.warning(
+                "Field '%s' had no C_lp computed despite logprobs being available (possible mapping issue)",
+                name,
+            )
         else:
             c_lp = 0.65
-            logger.debug("Field '%s' using default confidence since logprobs not available", name)
+            logger.debug(
+                "Field '%s' using default confidence since logprobs not available", name
+            )
 
         if not field.get("critical"):
             baseline = template_extraction.get(name)
@@ -324,7 +457,12 @@ def process_form(
         dict_entries = dictionaries.get(dict_file, []) if dict_file else []
         matched, distance = best_match(str(raw or ""), dict_entries)
         c_dict = compute_C_dict(str(raw or ""), matched, distance)
-        c_final = compute_C_final(c_lp, c_dict if field.get("critical") else 0.0, w_lp, w_dict if field.get("critical") else 0.0)
+        c_final = compute_C_final(
+            c_lp,
+            c_dict if field.get("critical") else 0.0,
+            w_lp,
+            w_dict if field.get("critical") else 0.0,
+        )
 
         if c_final >= t_auto:
             status = "accepted"
@@ -389,7 +527,9 @@ def process_form(
     schema = {f["name"]: f["name"] for f in fields}
     structurer = OutputStructurer(schema)
     stats["text_diff_changed_count"] = text_diff_changed_count
-    stats["text_diff_unchanged_count"] = max(0, len(final_fields) - text_diff_changed_count)
+    stats["text_diff_unchanged_count"] = max(
+        0, len(final_fields) - text_diff_changed_count
+    )
     structured = structurer.structure(final_fields, jid, form_type, stats)
 
     update_status("EXPORTING", "Generating structured reports and audit logs...")
@@ -399,7 +539,9 @@ def process_form(
     export_paths = exporter.export_all(structured, base)
     export_paths["xlsx"] = xlsx.export(structured, base + ".xlsx")
 
-    audit_logger = AuditLogger(log_dir=log_dir, audit_jsonl_path=str(Path(output_dir) / "audit.jsonl"))
+    audit_logger = AuditLogger(
+        log_dir=log_dir, audit_jsonl_path=str(Path(output_dir) / "audit.jsonl")
+    )
     audit_path = audit_logger.log(
         form_id=jid,
         template_id=form_type,
@@ -415,8 +557,12 @@ def process_form(
             "extractions": extraction_entries,
             "review_summary": {
                 "pending_review_count": len(pending),
-                "accepted_count": sum(1 for f in final_fields if f["validation_status"] == "accepted"),
-                "spot_check_count": sum(1 for f in final_fields if f["validation_status"] == "spot_check"),
+                "accepted_count": sum(
+                    1 for f in final_fields if f["validation_status"] == "accepted"
+                ),
+                "spot_check_count": sum(
+                    1 for f in final_fields if f["validation_status"] == "spot_check"
+                ),
             },
         },
     )

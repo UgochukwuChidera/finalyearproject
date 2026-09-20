@@ -4,8 +4,7 @@ Base Pipeline
 Abstract base class all three evaluation pipelines must implement.
 
 Every pipeline returns fields in a unified format so that the same
-ConfidenceValidator, HITLInterface, and Evaluator can operate on all
-three without modification.
+Evaluator can operate on all without modification.
 
 Standard field dict
 -------------------
