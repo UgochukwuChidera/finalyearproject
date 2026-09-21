@@ -34,8 +34,7 @@
       ><i class="ph ph-x"></i> Clear</a
     >
   </form>
-  {% set next_dir = 'asc' if direction == 'desc' else 'desc' %} {% if audits %}
-  <table>
+  {% set next_dir = 'asc' if direction == 'desc' else 'desc' %}   <table>
     <thead>
       <tr>
         <th>
@@ -70,7 +69,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for a in audits %}
+      {% if audits %} {% for a in audits %}
       <tr>
         <td>
           <code style="color: var(--secondary)"
@@ -95,11 +94,17 @@
           {% else %} - {% endif %}
         </td>
       </tr>
-      {% endfor %}
+      {% endfor %} {% else %}
+      <tr>
+        <td colspan="5" class="text-center p-8 muted">
+          <div style="padding:1.5rem">
+            <i class="ph ph-clipboard-text" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>
+            No audit records — run a job or adjust search.
+          </div>
+        </td>
+      </tr>
+      {% endif %}
     </tbody>
   </table>
-  {% else %}
-  <p class="muted">No audit records match your search/filter.</p>
-  {% endif %}
 </section>
 {% endblock %}

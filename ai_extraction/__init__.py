@@ -1,9 +1,15 @@
-from .gemini_client import GeminiClient, OpenRouterGeminiClient
+from .gemini_client import OpenRouterClient, GeminiClient, OpenRouterGeminiClient
 from .confidence import levenshtein_distance, compute_C_lp, compute_C_final
-from .dictionary_matcher import DictionaryStore, best_match, closest_dictionary_match, compute_C_dict
+from .dictionary_matcher import (
+    DictionaryStore,
+    best_match,
+    closest_dictionary_match,
+    compute_C_dict,
+)
 from .prompt_builder import build_multi_image_prompt
 
 __all__ = [
+    "OpenRouterClient",
     "GeminiClient",
     "OpenRouterGeminiClient",
     "levenshtein_distance",

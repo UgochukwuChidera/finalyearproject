@@ -319,7 +319,11 @@ def _load_models_config() -> dict[str, Any]:
     if path.exists():
         try:
             with path.open("r", encoding="utf-8") as fh:
-                return json.load(fh)
+                data = json.load(fh)
+                # _BUILTIN_MODELS is single source; merge if file missing keys
+                if "models" not in data or not data["models"]:
+                    data["models"] = _BUILTIN_MODELS
+                return data
         except (json.JSONDecodeError, OSError):
             pass
     return dict(_DEFAULT_MODELS_CONFIG)

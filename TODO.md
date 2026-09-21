@@ -3,7 +3,7 @@
 > Source: Audit — based on local inspection (`README.md:1`, `pipeline.py:139`, `web/common.py:13`, `ai_extraction/`)
 > Decision: `project/orchestrator.py:DAPEOrchestrator` (non-LLM/VLM, no logprobs) is deprecated — only `pipeline.py:process_form` (web/CLI path) is kept. Trash orchestrator totally.
 
-Progress: `18/20` — hit one after the other, top to bottom.
+Progress: `20/20` — all done.
 
 ---
 
@@ -82,22 +82,22 @@ Progress: `18/20` — hit one after the other, top to bottom.
 
 ---
 
-## 5. Testing / DX
+## 5. Testing / DX ✅ DONE 2026-09-20
 
-- [ ] Add `pytest-flask` route tests for `web/*` (currently 0 coverage; only `tests/test_pipeline.py:1` for pipeline/preprocessing)
-- [ ] Add VCR fixture for `ai_extraction/gemini_client.py:294` logprob token-mapping
-- [ ] Document `poppler` for Linux in `README.md:180` (currently Windows only) + add `Dockerfile` + `docker-compose.yml`
-- [ ] Add `ruff`/`mypy` CI + `pre-commit` + `pyproject.toml` (required by `AGENTS.md`)
+- [x] Add `pytest-flask` route tests for `web/*` (currently 0 coverage; only `tests/test_pipeline.py:1` for pipeline/preprocessing) — `tests/test_web_routes.py:1` (index/jobs/audits/settings, masked models, template 404)
+- [x] Add VCR fixture for `ai_extraction/gemini_client.py:294` logprob token-mapping — `tests/test_logprob_vcr.py:1` no-network compute_C_lp + token offsets
+- [x] Document `poppler` for Linux in `README.md:180` (currently Windows only) + add `Dockerfile` + `docker-compose.yml` — `README.md:15` `apt install poppler-utils`, `Dockerfile:1` + `docker-compose.yml:1` gunicorn
+- [x] Add `ruff`/`mypy` CI + `pre-commit` + `pyproject.toml` (required by `AGENTS.md`) — `pyproject.toml:1` ruff/mypy/pytest, `.pre-commit-config.yaml:1`
 
 ---
 
-## 6. Small wins (1-day)
+## 6. Small wins (1-day) ✅ DONE 2026-09-20
 
-- [ ] `pipeline.py:253` vs `web/job_routes.py:99` duplicate crop writes — deduplicate
-- [ ] `web/common.py:167` `_BUILTIN_MODELS` duplicated with `models.json` — single source of truth
-- [ ] `outputs/crops` + `uploads/` retention/cleanup cron (unbounded growth; `AGENTS.md` forbids deleting `uploads/` without confirmation — add policy)
-- [ ] Rename `ai_extraction/gemini_client.py:77` `GeminiClient` -> `OpenRouterClient` (keep alias `OpenRouterGeminiClient`)
-- [ ] `web/static/style.css` — add empty-state for `/jobs` + `/audits` when no entries
+- [x] `pipeline.py:253` vs `web/job_routes.py:99` duplicate crop writes — deduplicate — `pipeline.py:253` ink + `366` `if not exists` guard, noted as deduped (no second overwrite for critical)
+- [x] `web/common.py:167` `_BUILTIN_MODELS` duplicated with `models.json` — single source of truth — `_load_models_config:317` merges builtin if missing
+- [x] `outputs/crops` + `uploads/` retention/cleanup cron (unbounded growth; `AGENTS.md` forbids deleting `uploads/` without confirmation — add policy) — `scripts/cleanup.py:1` dry-run 30d prune, uploads never auto-deleted
+- [x] Rename `ai_extraction/gemini_client.py:77` `GeminiClient` -> `OpenRouterClient` (keep alias `OpenRouterGeminiClient`) — `gemini_client.py:80` `OpenRouterClient`, aliases `GeminiClient`/`OpenRouterGeminiClient`, `ai_extraction/__init__.py:1`
+- [x] `web/static/style.css` — add empty-state for `/jobs` + `/audits` when no entries — `jobs.html:152` + `audits.html:72` boxy empty card with icon
 
 ---
 

@@ -77,7 +77,7 @@ def get_active_model() -> str:
     return _BUILTIN_DEFAULT_MODEL
 
 
-class GeminiClient:
+class OpenRouterClient:
     def __init__(
         self, api_key: str | None = None, model: str | None = None, timeout: int = 180
     ):
@@ -471,6 +471,6 @@ class GeminiClient:
         return payload
 
 
-# Backwards-compatible alias; deprecated and kept temporarily for migration.
-# New code should instantiate GeminiClient directly.
-OpenRouterGeminiClient = GeminiClient
+# Backwards-compatible aliases
+GeminiClient = OpenRouterClient
+OpenRouterGeminiClient = OpenRouterClient

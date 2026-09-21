@@ -167,8 +167,15 @@ Both paths use a **single multi-image AI request** per form, constructed by `ai_
 ### Prerequisites
 
 - Python 3.10+
-- [Poppler](https://github.com/oschwartz10612/poppler-windows/releases) (Windows only — required by `pdf2image`)
+- Poppler (`apt install poppler-utils` on Linux, [Windows release](https://github.com/oschwartz10612/poppler-windows/releases) — required by `pdf2image`)
 - An [OpenRouter](https://openrouter.ai/) API key
+
+### Docker
+
+```bash
+docker compose up --build
+# or: docker build -t dape . && docker run -p 8000:8000 --env-file .env dape
+```
 
 ### Install
 

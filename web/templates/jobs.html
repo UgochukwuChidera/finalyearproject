@@ -151,7 +151,11 @@
         {% endfor %} {% else %}
         <tr>
           <td colspan="{{ jobs_column_count }}" class="text-center p-8 muted">
-            No jobs match your search/filter.
+            <div style="padding:1.5rem">
+              <i class="ph ph-stack" style="font-size:2rem;display:block;margin-bottom:.5rem"></i>
+              No jobs — upload a form to start.<br />
+              <span style="font-size:.85rem">Queue is empty. Use the dashboard upload card.</span>
+            </div>
           </td>
         </tr>
         {% endif %}
