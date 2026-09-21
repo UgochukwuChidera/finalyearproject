@@ -44,6 +44,7 @@ def _error_detail(exc: Exception) -> str:
         return f"Connection failed: {exc}"
     return str(exc)
 
+
 # Hardcoded fallback used only when models.json is absent and no env var is set.
 _BUILTIN_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
@@ -70,12 +71,16 @@ def get_active_model() -> str:
             if active:
                 return active
         except Exception as exc:  # pragma: no cover
-            logger.warning("Could not read models.json (%s); using built-in default.", exc)
+            logger.warning(
+                "Could not read models.json (%s); using built-in default.", exc
+            )
     return _BUILTIN_DEFAULT_MODEL
 
 
 class GeminiClient:
-    def __init__(self, api_key: str | None = None, model: str | None = None, timeout: int = 180):
+    def __init__(
+        self, api_key: str | None = None, model: str | None = None, timeout: int = 180
+    ):
         self.model = model or get_active_model()
         try:
             self.max_tokens = int(os.getenv("OPENROUTER_MAX_TOKENS", "4096"))
@@ -131,7 +136,9 @@ class GeminiClient:
 
     def extract_from_images(self, images: List[bytes], prompts: List[str]) -> dict:
         if not self.client:
-            return {"error": "GeminiClient not initialized. Check your OPENROUTER_API_KEY environment variable."}
+            return {
+                "error": "GeminiClient not initialized. Check your OPENROUTER_API_KEY environment variable."
+            }
         if not images:
             return {"error": "No images provided to GeminiClient."}
 
@@ -140,9 +147,15 @@ class GeminiClient:
 
         content = []
         for idx, image_bytes in enumerate(images):
-            text = prompts[idx] if idx < len(prompts) else "Extract requested fields from this image."
+            text = (
+                prompts[idx]
+                if idx < len(prompts)
+                else "Extract requested fields from this image."
+            )
             content.append({"type": "text", "text": text})
-            content.append({"type": "image_url", "image_url": {"url": self._data_url(image_bytes)}})
+            content.append(
+                {"type": "image_url", "image_url": {"url": self._data_url(image_bytes)}}
+            )
 
         response = None
         last_err = None
@@ -165,11 +178,24 @@ class GeminiClient:
                 detail = _error_detail(exc)
                 last_err = detail
                 if attempt < 2:
-                    wait = 2 ** attempt
-                    logger.warning("API call attempt %d failed: %s. Retrying in %ds…", attempt + 1, detail, wait)
+                    import random
+
+                    base = 2**attempt
+                    jitter = random.uniform(0, 0.5)
+                    wait = base + jitter
+                    logger.warning(
+                        "API call attempt %d failed: %s. Retrying in %.1fs…",
+                        attempt + 1,
+                        detail,
+                        wait,
+                    )
                     time.sleep(wait)
                 else:
-                    logger.warning("API call attempt %d failed: %s. No more retries.", attempt + 1, detail)
+                    logger.warning(
+                        "API call attempt %d failed: %s. No more retries.",
+                        attempt + 1,
+                        detail,
+                    )
             except Exception as exc:
                 return {"error": f"API error: {_error_detail(exc)}"}
 
@@ -209,7 +235,8 @@ class GeminiClient:
                 candidate = payload.get(alt_key)
                 if isinstance(candidate, (dict, list)) and candidate:
                     logger.warning(
-                        "'fields' key absent from AI response; using top-level key '%s' instead.", alt_key
+                        "'fields' key absent from AI response; using top-level key '%s' instead.",
+                        alt_key,
                     )
                     payload["fields"] = candidate
                     break
@@ -225,7 +252,11 @@ class GeminiClient:
                     )
                     tmp_meta = payload.pop("meta", {})
                     tmp_conf = payload.pop("confidence", {})
-                    payload = {"fields": dict(payload), "meta": tmp_meta, "confidence": tmp_conf}
+                    payload = {
+                        "fields": dict(payload),
+                        "meta": tmp_meta,
+                        "confidence": tmp_conf,
+                    }
                 else:
                     payload.setdefault("fields", {})
 
@@ -246,7 +277,11 @@ class GeminiClient:
                 )
                 if not fname:
                     continue
-                fval = item.get("value") if "value" in item else item.get("extracted_value")
+                fval = (
+                    item.get("value")
+                    if "value" in item
+                    else item.get("extracted_value")
+                )
                 fields_dict[str(fname)] = fval
             logger.info(
                 "Normalised fields list (%d items) → dict with %d named entries.",
@@ -272,7 +307,11 @@ class GeminiClient:
 
         has_logprobs = False
         logprobs_debug = None
-        if response.choices and hasattr(response.choices[0], "logprobs") and response.choices[0].logprobs:
+        if (
+            response.choices
+            and hasattr(response.choices[0], "logprobs")
+            and response.choices[0].logprobs
+        ):
             lp = response.choices[0].logprobs
             logprobs_debug = f"logprobs type: {type(lp)}, keys/attrs: {dir(lp)[:10]}"
             has_logprobs = bool(
@@ -284,14 +323,23 @@ class GeminiClient:
         payload["meta"]["has_logprobs"] = has_logprobs
         payload["meta"]["logprobs_debug"] = logprobs_debug
         if not has_logprobs:
-            logger.warning("API response did not contain logprobs. Confidence scores will use fallback values.")
+            logger.warning(
+                "API response did not contain logprobs. Confidence scores will use fallback values."
+            )
             if response.choices:
-                logger.debug("Response choice attributes: %s", [a for a in dir(response.choices[0]) if not a.startswith("_")])
+                logger.debug(
+                    "Response choice attributes: %s",
+                    [a for a in dir(response.choices[0]) if not a.startswith("_")],
+                )
 
         if "C_lp" not in payload["meta"]:
             payload["meta"]["C_lp"] = {}
 
-        if response.choices and hasattr(response.choices[0], "logprobs") and response.choices[0].logprobs:
+        if (
+            response.choices
+            and hasattr(response.choices[0], "logprobs")
+            and response.choices[0].logprobs
+        ):
             lp = response.choices[0].logprobs
             logger.debug("Logprobs full debug: %s", str(lp)[:500])
             tokens = getattr(lp, "content", None) or getattr(lp, "tokens", None) or []
@@ -306,12 +354,20 @@ class GeminiClient:
                     start = char_offset
                     tok_str = getattr(t, "token", "")
                     char_offset += len(tok_str)
-                    token_offsets.append((start, char_offset, getattr(t, "logprob", 0.0)))
+                    token_offsets.append(
+                        (start, char_offset, getattr(t, "logprob", 0.0))
+                    )
 
                 all_logprobs = [tok_lp for _, _, tok_lp in token_offsets]
-                avg_logprob = sum(all_logprobs) / len(all_logprobs) if all_logprobs else 0.0
+                avg_logprob = (
+                    sum(all_logprobs) / len(all_logprobs) if all_logprobs else 0.0
+                )
                 payload["meta"]["overall_confidence"] = compute_C_lp([avg_logprob])
-                logger.debug("Overall average logprob: %.4f -> confidence: %.4f", avg_logprob, payload["meta"]["overall_confidence"])
+                logger.debug(
+                    "Overall average logprob: %.4f -> confidence: %.4f",
+                    avg_logprob,
+                    payload["meta"]["overall_confidence"],
+                )
 
                 fields = payload.get("fields", {})
                 logger.debug("Fields to map: %s", list(fields.keys()))
@@ -342,11 +398,19 @@ class GeminiClient:
                             payload["meta"]["C_lp"][k] = compute_C_lp(field_logprobs)
 
                 if not payload["meta"]["C_lp"]:
-                    logger.warning("Logprobs were received but no fields matched. Using overall confidence as fallback for all fields.")
+                    logger.warning(
+                        "Logprobs were received but no fields matched. Using overall confidence as fallback for all fields."
+                    )
                     for k in fields:
-                        payload["meta"]["C_lp"][k] = payload["meta"]["overall_confidence"]
+                        payload["meta"]["C_lp"][k] = payload["meta"][
+                            "overall_confidence"
+                        ]
                 else:
-                    logger.debug("Computed C_lp for %d fields: %s", len(payload["meta"]["C_lp"]), list(payload["meta"]["C_lp"].keys()))
+                    logger.debug(
+                        "Computed C_lp for %d fields: %s",
+                        len(payload["meta"]["C_lp"]),
+                        list(payload["meta"]["C_lp"].keys()),
+                    )
 
         # For every field that still has no C_lp entry, fill it using:
         #   1. The model's self-reported per-field confidence (returned in the "confidence" key), or
@@ -376,7 +440,10 @@ class GeminiClient:
             if filled_self:
                 logger.info("Used self-reported confidence for %d fields.", filled_self)
             if filled_overall:
-                logger.info("Used overall logprob confidence as fallback for %d fields.", filled_overall)
+                logger.info(
+                    "Used overall logprob confidence as fallback for %d fields.",
+                    filled_overall,
+                )
 
         # Legacy path: if C_lp is still completely empty (no logprobs at all and
         # no per-field self-reported values), bulk-fill from self-reported confidence.
@@ -388,11 +455,18 @@ class GeminiClient:
                     except (TypeError, ValueError):
                         pass
                 if payload["meta"]["C_lp"]:
-                    logger.info("Using model self-reported confidence for %d fields.", len(payload["meta"]["C_lp"]))
+                    logger.info(
+                        "Using model self-reported confidence for %d fields.",
+                        len(payload["meta"]["C_lp"]),
+                    )
                 else:
-                    logger.warning("Model self-reported confidence map was empty or malformed.")
+                    logger.warning(
+                        "Model self-reported confidence map was empty or malformed."
+                    )
             else:
-                logger.warning("No self-reported confidence in response; per-field C_lp will use default fallback.")
+                logger.warning(
+                    "No self-reported confidence in response; per-field C_lp will use default fallback."
+                )
 
         return payload
 

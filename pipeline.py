@@ -346,7 +346,11 @@ def process_form(
 
     update_status("ANALYSIS", "Detecting ink signatures and form differences...")
     differ = DifferentialAnalyzer(
-        diff_threshold=int(ks["diff_threshold"]), min_region_area=int(ks["min_region_area"])  # type: ignore[arg-type]
+        diff_threshold=int(ks["diff_threshold"]),  # type: ignore[arg-type]
+        min_region_area=int(ks["min_region_area"]),  # type: ignore[arg-type]
+        morph_open=int(ks["morph_open"]),  # type: ignore[arg-type]
+        morph_close=int(ks["morph_close"]),  # type: ignore[arg-type]
+        morph_dilate=int(ks["morph_dilate"]),  # type: ignore[arg-type]
     )
     mask, diff_meta = differ.analyze(aligned, template_img)
     stats.update(

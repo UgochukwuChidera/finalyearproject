@@ -31,23 +31,31 @@ class Evaluator:
             post_metrics_list: list[dict] = []
 
             for form in forms:
-                fields, pipeline_stats = pipeline.extract(form["image_path"], form["template_id"])
+                fields, pipeline_stats = pipeline.extract(
+                    form["image_path"], form["template_id"]
+                )
                 processing_time = float(pipeline_stats.get("processing_time_s", 0.0))
 
                 gt_record = self._gt.get(form["form_id"])
-                gt_fields: dict = (gt_record.get("fields", {}) if gt_record else {}) or {}
+                gt_fields: dict = (
+                    gt_record.get("fields", {}) if gt_record else {}
+                ) or {}
 
                 # ── Pre-HITL: use raw extracted values ────────────────────────
                 pre_comparisons = self._compare_fields(fields, gt_fields)
                 pre_hitl_stats = self._hitl_stats(fields, corrected=False)
-                pre_m = compute_form_metrics(pre_comparisons, pre_hitl_stats, processing_time)
+                pre_m = compute_form_metrics(
+                    pre_comparisons, pre_hitl_stats, processing_time
+                )
                 pre_metrics_list.append(pre_m)
 
                 # ── Post-HITL: apply simulated corrections for needs_review ───
                 corrected_fields = self._simulate_corrections(fields, gt_fields)
                 post_comparisons = self._compare_fields(corrected_fields, gt_fields)
                 post_hitl_stats = self._hitl_stats(corrected_fields, corrected=True)
-                post_m = compute_form_metrics(post_comparisons, post_hitl_stats, processing_time)
+                post_m = compute_form_metrics(
+                    post_comparisons, post_hitl_stats, processing_time
+                )
                 post_metrics_list.append(post_m)
 
                 pre_form_records.append(
@@ -80,7 +88,10 @@ class Evaluator:
                 "post_hitl_forms": post_form_records,
                 "pre_hitl_aggregate": pre_agg,
                 "post_hitl_aggregate": post_agg,
+                "post_hitl_simulated_aggregate": post_agg,
+                "hitl_impact_simulated": impact,
                 "hitl_impact": impact,
+                "note": "post_hitl_* is simulated (ideal reviewer = ground truth), not real HITL. Primary metric is pre_hitl_*.",
             }
 
         self._write_results(all_results)
@@ -106,7 +117,9 @@ class Evaluator:
                     "field_type": field_type,
                     "extracted_value": extracted,
                     "ground_truth_value": gt_value,
-                    "extracted_bool": bool(extracted) if field_type == "checkbox" else None,
+                    "extracted_bool": (
+                        bool(extracted) if field_type == "checkbox" else None
+                    ),
                     "needs_review": f.get("needs_review", False),
                     "corrected": f.get("corrected", False),
                 }
@@ -116,7 +129,9 @@ class Evaluator:
     def _hitl_stats(self, fields: list[dict], corrected: bool) -> dict:
         total = len(fields)
         flagged = sum(1 for f in fields if f.get("needs_review", False))
-        corrected_count = sum(1 for f in fields if f.get("corrected", False)) if corrected else 0
+        corrected_count = (
+            sum(1 for f in fields if f.get("corrected", False)) if corrected else 0
+        )
         return {
             "total_fields": total,
             "flagged_count": flagged,
@@ -126,13 +141,13 @@ class Evaluator:
 
     def _simulate_corrections(self, fields: list[dict], gt_fields: dict) -> list[dict]:
         """
-        Simulate post-HITL state for metric comparison purposes.
+        Simulate post-HITL state (upper-bound, not real reviewer).
 
         For fields flagged for review that have a known ground truth value, this
         method assumes an ideal human reviewer corrects them to the ground truth.
-        This gives an upper-bound estimate of post-HITL accuracy and allows a
-        fair pre/post comparison during offline evaluation. Real reviewer
-        corrections may differ and should be preferred when available.
+        This gives an upper-bound estimate of post-HITL accuracy. The evaluator
+        reports this as `post_hitl_simulated_*` — the primary metric is
+        `pre_hitl_*`. For thesis, treat post as simulated upper bound.
         """
         result: list[dict] = []
         for f in fields:

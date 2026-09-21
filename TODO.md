@@ -3,7 +3,7 @@
 > Source: Audit — based on local inspection (`README.md:1`, `pipeline.py:139`, `web/common.py:13`, `ai_extraction/`)
 > Decision: `project/orchestrator.py:DAPEOrchestrator` (non-LLM/VLM, no logprobs) is deprecated — only `pipeline.py:process_form` (web/CLI path) is kept. Trash orchestrator totally.
 
-Progress: `15/20` — hit one after the other, top to bottom.
+Progress: `18/20` — hit one after the other, top to bottom.
 
 ---
 
@@ -74,11 +74,11 @@ Progress: `15/20` — hit one after the other, top to bottom.
 
 ---
 
-## 4. Performance / Cost
+## 4. Performance / Cost ✅ DONE 2026-09-20
 
-- [ ] `ai_extraction/gemini_client.py:149` fixed `2**attempt` sleep blocks worker; use `tenacity` exponential jitter, don't sleep inside semaphore section (`web/job_routes.py:73`)
-- [ ] `project/differential/analyzer.py:19` hardcoded `7x7 dilate x2` ignores `dpi.py:32` `morph_dilate`; wire `kernel_sizes()` through
-- [ ] `evaluation/evaluator.py:127` `_simulate_corrections` assumes perfect HITL — report `pre` only by default, `post_simulated` separate column
+- [x] `ai_extraction/gemini_client.py:149` fixed `2**attempt` sleep blocks worker; use `tenacity` exponential jitter, don't sleep inside semaphore section (`web/job_routes.py:73`) — `gemini_client.py:149` now `base+jitter`, `web/job_routes.py:83` sleep moved outside `sem.acquire`
+- [x] `project/differential/analyzer.py:19` hardcoded `7x7 dilate x2` ignores `dpi.py:32` `morph_dilate`; wire `kernel_sizes()` through — `analyzer.py:7` params `morph_open/close/dilate`, `pipeline.py:344` wires `ks`
+- [x] `evaluation/evaluator.py:127` `_simulate_corrections` assumes perfect HITL — report `pre` only by default, `post_simulated` separate column — `evaluator.py:127` doc + `78` `post_hitl_simulated_aggregate`/`note`, primary `pre_hitl_*`
 
 ---
 

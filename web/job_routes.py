@@ -91,6 +91,13 @@ def _job_runner_gated(
 ) -> None:
     """Wrapper that rate-limits job execution via a semaphore + inter-request delay."""
     global _LAST_JOB_START
+    if inter_request_delay > 0:
+        with _RATE_LOCK:
+            now = time.monotonic()
+            elapsed = now - _LAST_JOB_START
+            if elapsed < inter_request_delay:
+                time.sleep(inter_request_delay - elapsed)
+            _LAST_JOB_START = time.monotonic()
     acquired = sem.acquire(timeout=300)
     if not acquired:
         with app.app_context():
@@ -104,13 +111,6 @@ def _job_runner_gated(
                     _save_jobs_db(JOBS)
         return
     try:
-        if inter_request_delay > 0:
-            with _RATE_LOCK:
-                now = time.monotonic()
-                elapsed = now - _LAST_JOB_START
-                if elapsed < inter_request_delay:
-                    time.sleep(inter_request_delay - elapsed)
-                _LAST_JOB_START = time.monotonic()
         _job_runner(app, job_id, image_path, config_name, original_filename)
     finally:
         sem.release()
