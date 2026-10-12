@@ -1,233 +1,304 @@
 {
+  "template_path": "templates/template_565bd191-1690-40a7-88ee-319ecd1b389a.png",
   "fields": [
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 1004,
-        "x": 116,
-        "y": 245
-      },
+      "name": "full_name",
+      "type": "text",
       "critical": false,
       "expected_type": "string",
       "label": "Full Name:",
       "label_hint": "Full Name:",
-      "name": "full_name",
-      "type": "text"
+      "bounding_box": {
+        "x": 116.0,
+        "y": 245.0,
+        "w": 1004.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 1004,
-        "x": 116,
-        "y": 285
-      },
+      "name": "matric_number",
+      "type": "text",
       "critical": true,
       "expected_type": "string",
       "label": "Matric Number:",
       "label_hint": "Matric Number:",
-      "name": "matric_number",
-      "type": "text"
+      "bounding_box": {
+        "x": 116.0,
+        "y": 285.0,
+        "w": 1004.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 1004,
-        "x": 116,
-        "y": 325
-      },
+      "name": "department",
+      "type": "text",
       "critical": false,
       "expected_type": "string",
       "label": "Department:",
       "label_hint": "Department:",
-      "name": "department",
-      "type": "text"
+      "bounding_box": {
+        "x": 116.0,
+        "y": 325.0,
+        "w": 1004.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 1004,
-        "x": 116,
-        "y": 364
-      },
+      "name": "faculty",
+      "type": "text",
       "critical": false,
       "expected_type": "string",
       "label": "Faculty:",
       "label_hint": "Faculty:",
-      "name": "faculty",
-      "type": "text"
+      "bounding_box": {
+        "x": 116.0,
+        "y": 364.0,
+        "w": 1004.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 132,
-        "x": 66,
-        "y": 416
-      },
+      "name": "level_100",
+      "type": "checkbox",
       "critical": false,
       "expected_type": "checkbox",
       "label": "Level: [ ] 100",
       "label_hint": "Level: [ ] 100",
-      "name": "level_100",
-      "type": "checkbox"
+      "bounding_box": {
+        "x": 66.0,
+        "y": 416.0,
+        "w": 132.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 108,
-        "x": 200,
-        "y": 421
-      },
+      "name": "level_200",
+      "type": "checkbox",
       "critical": false,
       "expected_type": "checkbox",
       "label": "[ ] 200",
       "label_hint": "[ ] 200",
-      "name": "level_200",
-      "type": "checkbox"
+      "bounding_box": {
+        "x": 200.0,
+        "y": 421.0,
+        "w": 108.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 108,
-        "x": 382,
-        "y": 420
-      },
+      "name": "level_300",
+      "type": "checkbox",
       "critical": false,
       "expected_type": "checkbox",
       "label": "[ ] 300",
       "label_hint": "[ ] 300",
-      "name": "level_300",
-      "type": "checkbox"
+      "bounding_box": {
+        "x": 382.0,
+        "y": 420.0,
+        "w": 108.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 108,
-        "x": 563,
-        "y": 420
-      },
+      "name": "level_400",
+      "type": "checkbox",
       "critical": false,
       "expected_type": "checkbox",
       "label": "[ ] 400",
       "label_hint": "[ ] 400",
-      "name": "level_400",
-      "type": "checkbox"
+      "bounding_box": {
+        "x": 563.0,
+        "y": 420.0,
+        "w": 108.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 1004,
-        "x": 116,
-        "y": 443
-      },
+      "name": "session",
+      "type": "text",
       "critical": false,
       "expected_type": "string",
       "label": "Session:",
       "label_hint": "Session:",
-      "name": "session",
-      "type": "text"
+      "bounding_box": {
+        "x": 116.0,
+        "y": 443.0,
+        "w": 1004.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 1004,
-        "x": 116,
-        "y": 483
-      },
-      "critical": false,
+      "name": "semester",
+      "type": "text",
+      "critical": true,
       "expected_type": "string",
       "label": "Semester:",
       "label_hint": "Semester:",
-      "name": "semester",
-      "type": "text"
+      "bounding_box": {
+        "x": 116.0,
+        "y": 483.0,
+        "w": 1004.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 144,
-        "x": 66,
-        "y": 541
-      },
+      "name": "mode_of_study_full_time",
+      "type": "checkbox",
       "critical": false,
       "expected_type": "checkbox",
       "label": "() Full-Time",
       "label_hint": "() Full-Time",
-      "name": "mode_of_study_full_time",
-      "type": "checkbox"
+      "bounding_box": {
+        "x": 66.0,
+        "y": 541.0,
+        "w": 144.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 144,
-        "x": 65,
-        "y": 570
-      },
+      "name": "mode_of_study_part_time",
+      "type": "checkbox",
       "critical": false,
       "expected_type": "checkbox",
       "label": "() Part-Time",
       "label_hint": "() Part-Time",
-      "name": "mode_of_study_part_time",
-      "type": "checkbox"
+      "bounding_box": {
+        "x": 65.0,
+        "y": 570.0,
+        "w": 144.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 165,
-        "w": 650,
-        "x": 63,
-        "y": 602
-      },
+      "name": "course_registration_table",
+      "type": "section",
       "critical": false,
       "expected_type": "string",
       "label": "Course Registration",
       "label_hint": "Course Registration",
-      "name": "course_registration_table",
-      "type": "section"
+      "bounding_box": {
+        "x": 63.0,
+        "y": 602.0,
+        "w": 650.0,
+        "h": 165.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 650,
-        "x": 148,
-        "y": 772
-      },
-      "critical": false,
+      "name": "total_units",
+      "type": "text",
+      "critical": true,
       "expected_type": "string",
       "label": "Total Units:",
       "label_hint": "Total Units:",
-      "name": "total_units",
-      "type": "text"
+      "bounding_box": {
+        "x": 148.0,
+        "y": 772.0,
+        "w": 650.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 650,
-        "x": 177,
-        "y": 824
-      },
+      "name": "student_signature",
+      "type": "text",
       "critical": false,
       "expected_type": "string",
       "label": "Student Signature:",
       "label_hint": "Student Signature:",
-      "name": "student_signature",
-      "type": "text"
+      "bounding_box": {
+        "x": 177.0,
+        "y": 824.0,
+        "w": 650.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     },
     {
-      "bounding_box": {
-        "h": 28,
-        "w": 336,
-        "x": 102,
-        "y": 868
-      },
+      "name": "date",
+      "type": "text",
       "critical": false,
       "expected_type": "string",
       "label": "Date:",
       "label_hint": "Date:",
-      "name": "date",
-      "type": "text"
+      "bounding_box": {
+        "x": 102.0,
+        "y": 868.0,
+        "w": 336.0,
+        "h": 28.0
+      },
+      "dictionary": null,
+      "validation": null,
+      "required": null,
+      "regex_validation": null
     }
   ],
   "editor_canvas": {
-    "width": 800,
-    "height": 1100
+    "width": 800.0,
+    "height": 1100.0
   },
-  "template_path": "templates/template_565bd191-1690-40a7-88ee-319ecd1b389a.png"
+  "form_type": null,
+  "confidence_weights": null,
+  "thresholds": null,
+  "preprocessing": null,
+  "template_extraction": null,
+  "bbox_normalized": null,
+  "coordinate_space": null
 }
